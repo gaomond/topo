@@ -1,0 +1,114 @@
+# topo
+
+位置情報協力型探索ゲーム。複数プレイヤーが実際に移動して位置を確定し、全員の確定位置から作る凸包の面積が条件を満たすとき、多角形内の対象オブジェクト数を競う。
+タスク実行前に本ファイルと [docs/DESIGN.md](docs/DESIGN.md)（HLD / DB 設計）を参照すること。ドメインの仕様・スキーマ・API は DESIGN.md を一次情報とする。
+
+## Tech Stack
+
+- **Language:** Kotlin（JSR305 strict）
+- **Backend:** Spring Boot（Web MVC / Data JPA / Actuator）
+- **DB:** PostgreSQL + PostGIS
+- **Migration:** Flyway
+- **Frontend:** 静的 SPA + Leaflet（地図描画）
+- **Build:** Gradle（Kotlin DSL）/ JDK 25
+- **Infra:** Docker Compose（PostgreSQL + PostGIS）
+- **Test:** JUnit 5 + Spring Boot Test（テストスライス）+ Testcontainers
+- **Lint / Format:** ktlint（品質ゲートで強制。detekt は JDK25/Kotlin2.3 対応版が出たら追加）
+
+## Architecture
+
+Clean Architecture。依存は内側（Domain）に向かう一方向。
+
+```text
+UI ─(HTTP)→ Adapter(inbound) → UseCase → Domain ← Adapter(outbound)
+```
+
+- **Domain:** 型定義と純粋ロジック。Spring / JPA / PostGIS / 外部ライブラリに依存しない。ポート（リポジトリ・空間計算）のインターフェースを持つ
+- **UseCase:** ビジネスロジック。Domain のポートに依存し、Adapter の実装には依存しない
+- **Adapter:** Domain のポートを実装する。**inbound** = REST コントローラ（Spring MVC）、**outbound** = 永続化。通常 CRUD は JPA、地理空間は生 SQL（`@Query(nativeQuery = true)` / `JdbcTemplate`）。生 SQL は outbound 内に閉じ込め、Domain / UseCase から PostGIS を隠す
+- **UI:** Leaflet SPA。HTTP 経由で inbound アダプタ（REST API）を呼ぶ
+
+- adapter 同士は直接呼び合わない。必ず UseCase / ポートを経由する
+- 凸包・面積・内包判定はサーバー（PostGIS）で計算する。クライアントでは計算しない（DRY・改ざん防止）
+
+### DIP
+
+UseCase は Domain 層の抽象インターフェース（ポート）に依存する。Adapter 層の具象を直接 import しない。具象の注入は Spring の DI（`@Configuration` / コンストラクタ注入）で行う。
+
+### Smart / Dumb
+
+フロントエンドのコンポーネントは Smart / Dumb に分ける。
+
+- **Smart（コンテナ）:** 状態保持・ポーリング・GPS 取得・API 通信を担う。API を呼べるのは Smart のみ
+- **Dumb（プレゼンテーショナル）:** props を受け取って描画するだけ。API も共有状態も知らない。入力欄の値など UI 固有の閉じた状態のみ自身で管理してよい
+- **Leaflet は描画専用**。面積などの計算はしない。turf.js は使わない
+
+## ユビキタス言語
+
+コード上の命名はこの用語に従う。新規用語が必要になったら本セクションに追記すること。
+
+| 用語 | 英語（コード識別子） | 意味 |
+| --- | --- | --- |
+| ゲーム | Game | 1ルーム。共有キー（UUID）で識別 |
+| プレイヤー | Player | ゲーム参加者。`playerId`（UUID）で識別。認証なし |
+| 人数 | playerCount | ゲームの固定参加人数 |
+| ゲームオブジェクト | GameObject | ゲーム非依存の参照データ（OSM 由来）。`objectType` で種別を表す |
+| オブジェクト種別 | objectType | `shrine` / `temple` / `school` / `convenience_store` / `park` / `station` |
+| ライブ位置 | liveLocation | プレイヤーの最新現在地。高頻度更新・友達ドット表示用。副作用なし |
+| 友達ドット | live marker | 地図上に表示する他プレイヤーのライブ位置マーカー |
+| 確定 | confirm | プレイヤーが現在地を1点確定する操作 |
+| 凸包 | ConvexHull（`ST_ConvexHull`） | 全員の確定位置から作る多角形 |
+| 面積 | area（areaSqm） | 凸包の実面積（m²）。`ST_Area(geography)` で測地面積を取得 |
+| 面積閾値 | areaThreshold | 面積成立判定の上限（m²） |
+| 面積プリセット | areaPreset | 面積閾値の選択肢（small / medium / large） |
+| 面積成立 | areaValid | 凸包面積が閾値以下で集計対象として成立している状態 |
+| 獲得オブジェクト数 | objectCount | 面積成立時に凸包内へ内包される対象オブジェクトの数 |
+| 座標 | Coordinate（lat / lng） | プレイヤー位置・オブジェクト位置を表す緯度経度のペア |
+| 座標参照系 | Crs（Coordinate Reference System） | 座標の基準となる参照系。現状は WGS84（SRID 4326）を採用するが、種別はこれに限定しない |
+| ポーリング | polling | 進行中の状態取得（一定間隔の `GET`） |
+
+## Implementation Rules
+
+### 命名
+
+ドメインの意図を表現する。ユビキタス言語に従う。`handleClick` ではなく `confirmLocation`、`DataList` ではなく `GameStateView`。
+
+#### Web 表現（レスポンス）の命名
+
+レスポンスのボディ全体は `XxxResponse`、その中にネストされる構成要素は `XxxPayload` と命名する。`Dto` は意味が広すぎ、`Response` の中身として `XxxDto` を使うと包含関係が逆に見えて分かりづらい（DTO の一部が Response であるかのように読める）ため、レスポンス構成要素には `Dto` を使わない（例: `ConfigResponse` の構成要素は `AreaPresetPayload`）。Domain モデルと Web 表現を別型として分離する方針自体は維持する。
+
+### Error Handling
+
+Domain でドメイン例外を定義し、inbound アダプタ（コントローラ）で HTTP ステータスにマッピングする（バリデーション失敗 = 400 / 対象不在 = 404）。
+
+### Logging
+
+ログは SLF4J（Spring 標準）を使う。Domain 層にはロギングフレームワークの import を持ち込まない（必要なら UseCase / Adapter 層で出す）。
+
+### Coding Workflow
+
+1. Domain の型とポート（インターフェース）を定義
+2. UseCase を実装（Adapter 実装には依存しない）
+3. Adapter を実装（inbound: コントローラ / outbound: 永続化）
+4. UI で繋ぐ
+
+## Testing
+
+JUnit 5。テストスライスを活用し、フルコンテキスト起動は最小限にする。
+
+- **テスト名は `test_Action_Condition_Result` で書く**。Action（対象操作）/ Condition（条件）/ Result（期待結果）をアンダースコアで区切る（例: `test_getConfig_always_returns200AndApplicationJson`）。
+- **テスト対象は必ず `src/` から import すること。** テストファイル内にプロダクションのクラスや関数を再定義してはいけない。再定義するとテストが実ソースの劣化版コピーを検証するだけになり、実ソースとの乖離（仕様変更・破壊的変更）を検出できなくなる。
+
+- **Level 1: Domain** — 純粋 Kotlin の検証。モック不要
+- **Level 2: UseCase** — ポートをモックし、ビジネスロジックの正当性を検証。エッジケースを重点的に
+- **Level 3: Adapter** — コントローラは `@WebMvcTest`、永続化・空間クエリは `@DataJpaTest` + Testcontainers（実 PostGIS で検証）
+
+## Code Quality
+
+- Kotlin の null 安全は JSR305 strict（`-Xjsr305=strict`）。プラットフォーム型を放置しない
+- ktlint を通すこと（format / lint）。整形は `./gradlew ktlintFormat`
+- **品質ゲート:** `./gradlew build`（test + ktlint 込み）を通る状態を「完了」とする
+
+## コミュニケーション
+
+応答・ドキュメント・コミットメッセージ・コメントはすべて**日本語**で書く。

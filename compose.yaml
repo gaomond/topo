@@ -1,0 +1,14 @@
+services:
+  db:
+    image: imresamu/postgis:17-3.5-bookworm
+    environment:
+      POSTGRES_DB: topo
+      POSTGRES_USER: topo
+      POSTGRES_PASSWORD: topo
+    ports:
+      - "5432:5432"
+    volumes:
+      - topo_pgdata:/var/lib/postgresql/data
+
+volumes:
+  topo_pgdata:

@@ -1,0 +1,22 @@
+{
+  "hooks": {
+    "SubagentStop": [
+      {
+        "matcher": "pipeline-impl",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && ./gradlew build -q 1>&2 || exit 2"
+          }
+        ]
+      }
+    ]
+  },
+  "enabledPlugins": {
+    "code-review@claude-plugins-official": true,
+    "hookify@claude-plugins-official": true,
+    "commit-commands@claude-plugins-official": true,
+    "security-guidance@claude-plugins-official": true,
+    "kotlin-agent-skills@Kotlin": true
+  }
+}
