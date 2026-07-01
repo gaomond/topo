@@ -4,7 +4,7 @@
 // エラー画面（LocationErrorScreen）とは別物で、DEGRADED でエラー画面に遷移しないことを
 // コンポーネント分離で担保する。
 
-import { DEGRADED_MESSAGE } from "../hooks/geoState";
+import { DEGRADED_MESSAGE } from "./geoState";
 
 export type DegradedBannerProps = {
   visible: boolean;

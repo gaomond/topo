@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { AccuracyReadout } from "./AccuracyReadout";
+import { AccuracyReadout } from "@/features/geo-tracking/AccuracyReadout";
 
 describe("AccuracyReadout", () => {
   it("test_render_withAccuracy_showsRoundedMeters", () => {

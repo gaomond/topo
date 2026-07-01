@@ -23,5 +23,14 @@ enum class ObjectType(
          * 順序を持つ List として公開する（クライアントの表示順に使える）。
          */
         val SELECTABLE: List<ObjectType> = listOf(SHRINE)
+
+        /**
+         * jsonValue（例: "shrine"）から選択可能な [ObjectType] を引く。
+         *
+         * 検証範囲は [SELECTABLE] に限定する（config が公開する選択肢＝単一ソース）。
+         * enum に存在しても SELECTABLE 外（temple / school など）は null を返し、
+         * 呼び出し側でバリデーション失敗として扱う。
+         */
+        fun selectableFromJsonValueOrNull(jsonValue: String): ObjectType? = SELECTABLE.firstOrNull { it.jsonValue == jsonValue }
     }
 }

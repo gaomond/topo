@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { LocationErrorScreen } from "./LocationErrorScreen";
+import { LocationErrorScreen } from "@/features/geo-tracking/LocationErrorScreen";
 
 describe("LocationErrorScreen", () => {
   it("test_render_always_showsMessageAsAlertdialog", () => {

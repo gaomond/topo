@@ -33,6 +33,8 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
+    // Kotlin 向け Mockito ラッパ（any()/whenever() の非 null 安全対応）。@MockitoBean のスタブに使う。
+    testImplementation("org.mockito.kotlin:mockito-kotlin:6.1.0")
     // Level 3（実 PostGIS でのスキーマ/永続化検証）用。バージョンは Spring Boot BOM に委ねる。
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
     testImplementation("org.testcontainers:testcontainers-junit-jupiter")

@@ -44,6 +44,26 @@ UseCase は Domain 層の抽象インターフェース（ポート）に依存�
 - **Dumb（プレゼンテーショナル）:** props を受け取って描画するだけ。API も共有状態も知らない。入力欄の値など UI 固有の閉じた状態のみ自身で管理してよい
 - **Leaflet は描画専用**（react-leaflet 経由）。面積などの計算はしない。turf.js は使わない
 
+Smart / Dumb は「役割」の区別であり、**フォルダは役割ではなく機能（feature）で分ける**。
+
+#### フロントエンドのディレクトリ構成
+
+機能ベース。関連する Smart（コンテナ）と Dumb（ビュー）、その機能専用の hooks を同じ機能フォルダに同居させる。型で分ける（`containers/` と `components/` を分離する）構成は取らない。
+
+```text
+frontend/
+├── src/
+│   ├── features/<機能>/   … 機能ごとに Smart+Dumb+専用hooks を同居（例: game-create / waiting-room / geo-tracking）
+│   ├── api/               … API クライアント・Web 表現型（機能横断）
+│   ├── routing/           … ルート定義・URL 組み立て（機能横断）
+│   ├── App.tsx / main.tsx … ルート結線
+│   └── ...
+└── tests/                 … src をミラーしたテスト（下記 Testing 参照）
+```
+
+- 複数機能で共有する Dumb / hooks が出てきたら `src/shared/` 配下に置く（現状は無し）。
+- **import は `@/` エイリアス（= `src/`）を使う。** 機能内の同居ファイルのみ相対 import（`./Xxx`）、機能をまたぐ参照（api / routing / 他 feature）や tests → src の参照は `@/...` を使う。エイリアスは `vite.config.ts` の `resolve.alias` と `tsconfig.app.json` の `paths` の2箇所で定義する。
+
 ## ユビキタス言語
 
 コード上の命名はこの用語に従う。新規用語が必要になったら本セクションに追記すること。
@@ -97,6 +117,8 @@ Domain でドメイン例外を定義し、inbound アダプタ（コントロ�
 
 バックエンドは JUnit 5。テストスライスを活用し、フルコンテキスト起動は最小限にする。フロントエンドは `frontend/` で Vitest + @testing-library/react（jsdom）。Geolocation 等のブラウザ API は注入・モックしてユニットテスト可能にする。テスト対象は必ず実ソースから import し、テスト内で再定義しない（バックエンド・フロント共通）。
 
+**フロントのテストは source と同居させない。** `frontend/tests/` に `src/` をミラーした構造で置き（例: `src/features/game-create/CreateGameContainer.tsx` → `tests/features/game-create/CreateGameContainer.test.tsx`）、テスト対象は `@/...` エイリアスで import する。テスト用ヘルパ（`fakeGeolocation` 等）も `tests/` 配下に置く。
+
 - **テスト名は `test_Action_Condition_Result` で書く**。Action（対象操作）/ Condition（条件）/ Result（期待結果）をアンダースコアで区切る（例: `test_getConfig_always_returns200AndApplicationJson`）。
 - **テスト対象は必ず `src/` から import すること。** テストファイル内にプロダクションのクラスや関数を再定義してはいけない。再定義するとテストが実ソースの劣化版コピーを検証するだけになり、実ソースとの乖離（仕様変更・破壊的変更）を検出できなくなる。
 
@@ -110,6 +132,8 @@ Domain でドメイン例外を定義し、inbound アダプタ（コントロ�
 - ktlint を通すこと（format / lint）。整形は `./gradlew ktlintFormat`
 - **品質ゲート（バックエンド）:** `./gradlew build`（test + ktlint 込み）を通る状態を「完了」とする
 - **品質ゲート（フロントエンド）:** `frontend/` で `npm run lint`（Biome）・`npm run typecheck`（tsc）・`npm run test`（Vitest）・`npm run build`（Vite）が通る状態を「完了」とする。`/implement` パイプラインでは SubagentStop フック（matcher=`pipeline-impl`）が Gradle ビルドに続けて上記4ゲートも自動実行し、失敗時は Impl に差し戻す（`frontend/package.json` が無いストーリーではスキップ）。ローカルのコミット時は husky + lint-staged でも担保
+- **React Hooks の lint（フロントエンド）:** Biome の `useExhaustiveDependencies` と `useHookAtTopLevel` を `error` で固定する（`biome.json` の `linter.rules.correctness` に明示。recommended 任せにしない）。フックの依存配列はこれらのルールに従う。`useEffect` の依存配列ミス由来のバグ（無限ループ・無限フェッチ等）を「完了」前に機械的に弾くための強制ゲート。
+- **上記2ルールの `biome-ignore` 抑制を禁止する。** ルールが鳴ったら抑制せず、依存配列を正すかコード構造を変えて解消する。抑制コメントは `npm run lint`（`lint:no-suppress`）が `src` / `tests` を走査して検出し、1件でもあればゲートを赤にする。
 
 ## コミュニケーション
 

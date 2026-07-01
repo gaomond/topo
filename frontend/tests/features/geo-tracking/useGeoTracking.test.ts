@@ -1,19 +1,19 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  DEGRADED_MESSAGE,
+  GeoState,
+  INSECURE_CONTEXT_MESSAGE,
+  PERMISSION_DENIED_MESSAGE,
+} from "@/features/geo-tracking/geoState";
+import { useGeoTracking } from "@/features/geo-tracking/useGeoTracking";
+import {
   createFakeGeolocation,
   type FakeGeolocation,
   PERMISSION_DENIED,
   POSITION_UNAVAILABLE,
   TIMEOUT,
-} from "../test/fakeGeolocation";
-import {
-  DEGRADED_MESSAGE,
-  GeoState,
-  INSECURE_CONTEXT_MESSAGE,
-  PERMISSION_DENIED_MESSAGE,
-} from "./geoState";
-import { useGeoTracking } from "./useGeoTracking";
+} from "../../fakeGeolocation";
 
 describe("useGeoTracking", () => {
   let geolocation: FakeGeolocation;

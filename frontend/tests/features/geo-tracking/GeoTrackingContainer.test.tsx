@@ -1,13 +1,13 @@
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
+import { GeoTrackingContainer } from "@/features/geo-tracking/GeoTrackingContainer";
 import {
   createFakeGeolocation,
   type FakeGeolocation,
   PERMISSION_DENIED,
   TIMEOUT,
-} from "../test/fakeGeolocation";
-import { GeoTrackingContainer } from "./GeoTrackingContainer";
+} from "../../fakeGeolocation";
 
 describe("GeoTrackingContainer", () => {
   let geolocation: FakeGeolocation;

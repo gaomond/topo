@@ -4,7 +4,7 @@
 // 描画専用部品で、Geolocation も状態も知らない（props で受け取るだけ）。
 // 地図は隠さない（DegradedBanner と同様のオーバーレイ様式）。
 
-import { formatAccuracy } from "../hooks/geoState";
+import { formatAccuracy } from "./geoState";
 
 export type AccuracyReadoutProps = {
   // 直近の測位精度（メートル）。未測位は null で、その場合は何も表示しない。

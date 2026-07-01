@@ -4,12 +4,12 @@
 // 出し分ける結線点。地図は測位成否と独立に「まず描画」する（PERMISSION_ERROR のときだけ隠す）。
 // API 呼び出し・ポーリング・URL（gameId / playerId）解釈は本ストーリーに含めない。
 
-import { AccuracyReadout } from "../components/AccuracyReadout";
-import { DegradedBanner } from "../components/DegradedBanner";
-import { LocationErrorScreen } from "../components/LocationErrorScreen";
-import { MapView } from "../components/MapView";
-import { GeoState } from "../hooks/geoState";
-import { type UseGeoTrackingDeps, useGeoTracking } from "../hooks/useGeoTracking";
+import { AccuracyReadout } from "./AccuracyReadout";
+import { DegradedBanner } from "./DegradedBanner";
+import { GeoState } from "./geoState";
+import { LocationErrorScreen } from "./LocationErrorScreen";
+import { MapView } from "./MapView";
+import { type UseGeoTrackingDeps, useGeoTracking } from "./useGeoTracking";
 
 export type GeoTrackingContainerProps = {
   // テスト用に Geolocation / isSecureContext を注入できる（既定はブラウザ実体）。

@@ -9,7 +9,7 @@ import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
 import { useEffect, useRef } from "react";
 import { MapContainer, Marker, TileLayer, useMap } from "react-leaflet";
-import type { Coordinate } from "../hooks/geoState";
+import type { Coordinate } from "./geoState";
 
 // Vite バンドルでは Leaflet 既定アイコンの画像パスが壊れるため、import した URL で明示解決する。
 const selfIcon = L.icon({

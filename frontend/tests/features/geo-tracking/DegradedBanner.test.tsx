@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { DEGRADED_MESSAGE } from "../hooks/geoState";
-import { DegradedBanner } from "./DegradedBanner";
+import { DegradedBanner } from "@/features/geo-tracking/DegradedBanner";
+import { DEGRADED_MESSAGE } from "@/features/geo-tracking/geoState";
 
 describe("DegradedBanner", () => {
   it("test_render_visibleTrue_showsQuietNotice", () => {

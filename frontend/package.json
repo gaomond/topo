@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "biome check .",
+    "lint": "biome check . && npm run lint:no-suppress",
+    "lint:no-suppress": "! grep -rnE 'biome-ignore lint/correctness/(useExhaustiveDependencies|useHookAtTopLevel)' src tests",
     "format": "biome format --write .",
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run --passWithNoTests",
@@ -26,6 +27,7 @@
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-leaflet": "^5.0.0",
+    "react-router-dom": "^7.18.1",
     "tailwindcss": "^4.1.13"
   },
   "devDependencies": {

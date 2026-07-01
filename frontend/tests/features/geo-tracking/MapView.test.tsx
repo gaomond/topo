@@ -1,6 +1,6 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { MapView } from "./MapView";
+import { MapView } from "@/features/geo-tracking/MapView";
 
 // jsdom は実タイルを読まない。ここでは MapContainer がクラッシュせず描画でき、
 // selfLocation の有無で自分ピン（Leaflet marker img）の有無が変わることだけを軽く確認する。

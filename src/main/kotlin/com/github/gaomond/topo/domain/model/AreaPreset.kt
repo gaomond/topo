@@ -22,5 +22,12 @@ data class AreaPreset(
                 AreaPreset(key = "medium", label = "ふつう", sqm = 2_000_000L),
                 AreaPreset(key = "large", label = "がっつり", sqm = 10_000_000L),
             )
+
+        /**
+         * プリセット key（small / medium / large）から対応する [AreaPreset] を引く。
+         * 未知の key は null を返す（呼び出し側でバリデーション失敗として扱う）。
+         * config が公開する [ALL] を単一ソースにする（DRY）。
+         */
+        fun byKey(key: String): AreaPreset? = ALL.firstOrNull { it.key == key }
     }
 }
