@@ -1,103 +1,65 @@
-# 01-spec.md — US-00: `game` / `player` スキーマ構築
+# 01-spec.md — US-02: クライアント雛形（地図＋自分の現在地GPS表示）
 
-> 本編ループ（US-02以降）の全APIが依存する基盤テーブルのスキーマを定義する。
-> `game_object`（GiST含む）は投入済みのため本仕様の対象外。
-> 本仕様は1実装単位（US-00）分。Phase 2（実装）へ引き継ぐ。
+> プレイヤーとして、地図と自分の現在地（GPS）が表示されるクライアント雛形がほしい。
+> すべての操作の前提になるため。
+> 本仕様は1実装単位（US-02）分。Phase 2（実装）へ引き継ぐ。
 
 ---
 
 ## 1. 合意された仕様
 
-### 1.1 対象テーブル
+### 1.1 スコープの骨格
 
-`game` と `player` の2テーブル。ともにUUID主キー。マイグレーションは **Flyway**（導入済み）で管理する。
+「地図が描画され、自分の現在地（GPS）が地図上にピンで表示され、移動に追従する」最小の雛形まで。ゲーム作成・参加・ポーリング・面積表示・友達ドットはUS-04以降で、本ストーリーには含めない。
 
-### 1.2 `game`
+### 1.2 構成
 
-| カラム | 型 | 制約 / 既定 | 備考 |
-|---|---|---|---|
-| `id` | UUID | PK | 共有キー（URLのgameId）を兼ねる |
-| `status` | enum `game_status` | NOT NULL | `WAITING` / `ACTIVE` / `COMPLETED` |
-| `player_count` | int | NOT NULL | 部屋の定員（可変保持）。初回リリースは N=3 運用。上限CHECKは張らない |
-| `object_type` | text | NOT NULL | 集計対象（MVPは `'shrine'`） |
-| `area_threshold` | double precision | NOT NULL | m²（プリセットの実値） |
-| `creator_player_id` | UUID | FK → `player.id`、**NULL許容** | 作成者（US-06の開始ボタン押下者判定の根拠）。循環回避のため後段UPDATEで埋める |
-| `created_at` | timestamptz | NOT NULL, default now() | |
-| `polygon_geom` | geometry(Polygon, 4326) | NULL | 結果。COMPLETEDまでNULL |
-| `area_sqm` | double precision | NULL | 結果。同上 |
-| `area_valid` | boolean | NULL | `area_sqm <= area_threshold`。同上 |
-| `object_count` | int | NULL | 結果。同上 |
+- **SPA**・静的ホスティング前提（ドキュメントのレイヤー方針どおり）。
+- 技術スタックは **React 19 + Vite + TypeScript**。スタイルは **Tailwind CSS v4**、Lint/Format は **Biome**、テストは **Vitest + @testing-library/react（jsdom）**。リポジトリ直下 `frontend/` に独立プロジェクトとして配置し、Spring の `resources/static` には同梱しない（バックエンドの `./gradlew build` とは独立した品質ゲート）。
+- 地図描画は **Leaflet**（**react-leaflet** で統合）。クライアントでの座標計算はしない。
+- 地図タイルは **OSM標準タイル**（APIキー・登録不要）。
+- Smart（コンテナ）/ Dumb（プレゼンテーショナル）に分割する。`watchPosition` 等のブラウザ API は Smart 側に閉じ込め、注入・モック可能にして Vitest でユニットテストできるようにする。
+- このストーリーは「地図＋現在地」単体ページに限定する。URL（gameId / playerId）の解釈はここでは行わず、US-04 / US-05 に寄せる（D2: 案B）。React Router 等のルーティングも本ストーリーでは導入しない。
 
-### 1.3 `player`
+### 1.3 現在地の取得・追従
 
-| カラム | 型 | 制約 / 既定 | 備考 |
-|---|---|---|---|
-| `id` | UUID | PK | クライアントはURLに同梱して保持（後述スコープ外メモ） |
-| `game_id` | UUID | FK → `game.id` | ON DELETE 句は付けない（物理削除を前提にしない） |
-| `display_name` | text | NULL | 任意 |
-| `joined_at` | timestamptz | NOT NULL, default now() | |
-| `live_lat` | double precision | NULL | 最新現在地（高頻度更新・共有用） |
-| `live_lng` | double precision | NULL | 同上 |
-| `live_at` | timestamptz | NULL | ライブ位置の更新時刻 |
-| `fixed_geom` | geometry(Point, 4326) | NULL | 確定座標。確定前NULL。US-13で `ST_ConvexHull` にそのまま渡す |
-| `confirmed_at` | timestamptz | NULL | 確定時刻。確定前NULL |
+- ブラウザの Geolocation API を使用。
+- **`watchPosition`** で移動に追従し、自分のピンが動く（D3: 案B）。
+- HTTPS（または localhost）必須。Geolocationは安全コンテキストでしか動作しないため、これは動作前提として扱う。
 
-> 注: 確定座標は当初ドキュメントの `fixed_lat`/`fixed_lng`(double) ではなく **`geometry(Point,4326)`** で保持する（D3決定）。集計SQLが素直になるため。ライブ座標は表示用途のみのため `lat`/`lng`(double) のまま。
+### 1.4 パーミッション / エラー時の挙動
 
-### 1.4 enum型
+ゲームが成立しないため、デフォルト位置へのフォールバックはしない。
 
-```sql
-create type game_status as enum ('WAITING', 'ACTIVE', 'COMPLETED');
-```
-
-- 状態値の追加はほぼ起きない前提のため enum 型を採用（D2決定）。
-
-### 1.5 status 遷移（参考・本仕様は格納のみ担保）
-
-`WAITING`（定員未満〜定員到達） → `ACTIVE`（作成者が開始ボタンを押下） → `COMPLETED`（N人確定・結果確定）。
-※ 参加到達では自動でACTIVEにしない（US-06変更点）。遷移ロジック自体はUS-05/06/13のスコープ。
-
-### 1.6 創成順序（循環参照の回避）
-
-`game.creator_player_id` ↔ `player.game_id` の相互参照を、以下の順で解消する。
-
-1. `game` を作成（`creator_player_id` は NULL）
-2. 作成者の `player` を作成（`game_id` を埋める）
-3. `game.creator_player_id` を 2 のplayer.idでUPDATE
-
-### 1.7 永続化方針
-
-- **物理削除しない**（ゲーム・プレイヤーとも）。MVPに削除機能・TTL・削除バッチは設けない。
-- 進行中にゲームを放棄しても status を保持したまま残し、URL（gameId）で **いつでも復帰可能**とする。
-- プレイヤーは使い捨て（認証なし・UUID識別）だが物理削除せず、無期限保持。データ量がMVP規模で問題にならないため。
+- **初回の許可拒否**: エラー画面にフォールバックする（D4）。
+- **エラー画面**: 文言＋「再試行」ボタンを持つ。再試行で再度 `watchPosition` を試みる（D6: 案A）。
+- **追従中の一時的失敗**（タイムアウト / `POSITION_UNAVAILABLE` / 追従中の許可取り消し等）: 地図は維持し、控えめな表示（例:「位置更新が滞っています」程度）にとどめる。エラー画面には飛ばさない（D5: 案B）。
 
 ---
 
 ## 2. 受け入れ条件
 
-- [ ] Flywayマイグレーションで `game` / `player` / `game_status`(enum) が生成される。
-- [ ] `game.id` / `player.id` が UUID 主キーである。
-- [ ] `player.game_id` → `game.id` の FK が存在し、ON DELETE 句が付いていない。
-- [ ] `game.creator_player_id` → `player.id` の FK が存在し、**NULL許容**である。
-- [ ] `game.status` は enum `game_status` 型で、3値以外は格納できない。
-- [ ] 結果カラム（`polygon_geom` / `area_sqm` / `area_valid` / `object_count`）が NULL 許容である。
-- [ ] `player.fixed_geom` が `geometry(Point,4326)`、`game.polygon_geom` が `geometry(Polygon,4326)` である。
-- [ ] `created_at` / `joined_at` が `timestamptz`・default now() を持つ。
-- [ ] `player_count` に上限CHECKが付いていない（可変保持）。
-- [ ] 1.6の3ステップ（game作成→creator player作成→creator_id UPDATE）が成功する。
-- [ ] JPAエンティティから通常CRUDがマッピングでき、空間カラムは生SQL側で扱える。
+- [ ] ページを開くと OSM標準タイルの地図が描画される。
+- [ ] 位置情報を許可すると、自分の現在地に自分のピンが立つ。
+- [ ] 移動すると（`watchPosition`）自分のピンが追従して動く。
+- [ ] 位置情報を**拒否**すると、エラー画面が表示される（地図のフォールバック表示はしない）。
+- [ ] エラー画面に「再試行」ボタンがあり、押すと再度 `watchPosition` を試みる。
+- [ ] 追従中に一時的な取得失敗が起きても、地図は維持され控えめな表示にとどまる（エラー画面に遷移しない）。
+- [ ] HTTP（非安全コンテキスト）では動作前提を満たさないことが明示される（localhost / https で動く）。
+- [ ] このページは gameId / playerId を要求せず単体で表示できる（URL解釈をしない）。
 
 ---
 
 ## 3. テスト観点
 
-- **マイグレーション再現性**: クリーンDBに対しFlyway適用が成功し、enum型・FK・default・NULL許容が定義どおり生成される。
-- **enum制約**: `status` に許可外値を INSERT すると失敗する。
-- **FK整合**: 存在しない `game_id` での player INSERT が失敗する。`creator_player_id` に存在しないUUIDを入れると失敗する。
-- **NULL許容**: 結果4カラム・`fixed_geom`・`live_*`・`confirmed_at`・`creator_player_id` が NULL のまま INSERT できる。
-- **循環解消**: 1.6の順序でcreatorを埋められる。逆順（先に creator_id 必須）にしていないことを確認。
-- **空間型**: `fixed_geom`/`polygon_geom` に 4326 のPoint/Polygonを格納・取得できる。
-- **エッジ**: `player_count` に大きな値（例: 100）を入れてもCHECKで弾かれない（上限なし確認）。
+- **地図描画**: タイルがロードされ地図が操作（パン/ズーム）できる。
+- **現在地ピン**: 許可時に現在地にピンが立つ。座標が地図中心に来る。
+- **追従**: 位置をモック移動させると（DevTools等）ピンが追従する。
+- **拒否**: パーミッション拒否でエラー画面が出る。地図は出ない（フォールバックしない）。
+- **再試行**: エラー画面の再試行ボタンで `watchPosition` が再実行される。許可済みに変えてから再試行すると地図表示に復帰する。
+- **一時失敗**: 追従中にタイムアウト/`POSITION_UNAVAILABLE` を起こしても地図が維持され、控えめ表示に切り替わる（エラー画面に飛ばない）。
+- **安全コンテキスト**: localhost / https で動作、平文httpで動作前提を満たさないことを確認。
+- **モバイル差**: iOS Safari / Android Chrome で許可ダイアログとピン表示が破綻しない（精度・補間は対象外）。
 
 ---
 
@@ -105,22 +67,21 @@ create type game_status as enum ('WAITING', 'ACTIVE', 'COMPLETED');
 
 ### 含む
 
-- `game` / `player` テーブルおよび `game_status` enum のスキーマ定義（Flywayマイグレーション）。
-- 上記の制約（PK / FK / NOT NULL / default / NULL許容 / enum）。
-- 循環参照を解消できるカラム設計（creator_player_id NULL許容）。
+- Leaflet + OSM標準タイルでの地図描画。
+- `watchPosition` による現在地取得・追従と自分ピン表示。
+- 許可拒否時のエラー画面（文言＋再試行ボタン）。
+- 追従中の一時失敗時の控えめ表示（最小実装）。
 
 ### 含まない（他ストーリー / 将来）
 
-- `game_object` テーブル（**投入済み・対象外**）。
-- status遷移ロジック、開始ボタンの押下条件・途中参加・押せる人の判定（US-05 / US-06）。**未回答の3問は当該ストーリーで決定**。
-- 凸包・測地面積・範囲内COUNT等の空間SQL（US-13）。
-- **playerId のクライアント保持方式**: URL同梱（案C `/game/<gameId>?p=<playerId>`）に決定済みだが、これはUS-02 / US-05の実装事項。スキーマはクライアント保持方式に依存しない（サーバーは発番してJSONで返すだけ）。
-- 退化ケース（一直線・重複で面積ゼロ）の結果保存挙動（US-16）。`polygon_geom` のNULL許容で吸収可能だが、扱いの確定は当該ストーリー。
-- TTL / 物理削除 / 削除バッチ（永続化方針によりMVP対象外）。
-- 将来のユーザー登録・匿名playerのアカウント紐付け・古いplayerの掃除。
+- URL（`/game/<gameId>?p=<playerId>`）の解釈・ルーティング（US-04 / US-05）。
+- 友達ドット・面積メーター・2秒ポーリング（US-07〜US-10）。
+- ライブ位置のサーバー送信、追従失敗時の本格的なリトライ/間引き（US-07）。
+- ゲーム作成・参加（US-04 / US-05）。
+- OSM標準タイルの本番常用ポリシー対応（タイルプロバイダ差し替え）は将来論点。
+- エラー画面の汎用化（参加失敗・ゲーム不在等への再利用）は将来論点。今回は「位置情報エラー」用途に限定。
+- GPS精度向上・マーカー補間（ドキュメントの参考メモ）。
 
-### 座標系に関するスコープ外メモ
+### 前提
 
-- 現状の確定点・凸包・測地面積はすべて **SRID 4326（緯度経度）** 前提。
-- 将来の「生産多角形 / 正多角形」要素は **平面投影系**（対象エリアに応じた平面直角座標系 / UTM 等）を想定するため、測地系は1つに固定しない。
-- 当該図形カラムを追加する際にSRIDの持ち方（保存時SRIDを別に持つ / 変換して扱う）を別途決める。本US-00では4326のPoint/Polygonのみ定義し、図形カラムのSRIDを4326でハード固定する設計判断は将来列に波及させない。
+- Geolocationは安全コンテキスト（https / localhost）必須。デプロイ先（静的ホスト）は未決のため、確定後に本番HTTPSを満たす。

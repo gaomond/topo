@@ -1,0 +1,19 @@
+# ログ
+logs
+*.log
+npm-debug.log*
+
+# 依存
+node_modules
+
+# ビルド成果物
+dist
+dist-ssr
+coverage
+
+# エディタ / OS
+.DS_Store
+*.local
+.vscode/*
+!.vscode/extensions.json
+.idea

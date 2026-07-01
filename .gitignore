@@ -43,3 +43,11 @@ out/
 # pbf はリポジトリに含めない（取得元URLは docs/osm-ingestion-pipeline.md に記載）
 *.osm.pbf
 *.pbf
+
+### Frontend (Node / Vite) ###
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+frontend/.vite/
+npm-debug.log*
+.husky/_/

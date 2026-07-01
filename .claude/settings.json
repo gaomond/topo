@@ -7,6 +7,10 @@
           {
             "type": "command",
             "command": "cd \"$CLAUDE_PROJECT_DIR\" && ./gradlew build -q 1>&2 || exit 2"
+          },
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && if [ -f frontend/package.json ]; then cd frontend && { [ -d node_modules ] || npm ci 1>&2; } && npm run lint 1>&2 && npm run typecheck 1>&2 && npm run test 1>&2 && npm run build 1>&2 || exit 2; fi"
           }
         ]
       }

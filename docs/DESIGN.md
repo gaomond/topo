@@ -142,7 +142,7 @@ Player
 
 ### レイヤー判断
 
-- **フロントエンド: SPA**（SSR不要）。認証なし・SEO不要・処理はほぼクライアント側（GPS取得・Leaflet描画・ポーリング）。静的ホスティングに配置（ホスト先は後決め）。
+- **フロントエンド: React 19 + Vite + TypeScript の SPA**（SSR不要）。認証なし・SEO不要・処理はほぼクライアント側（GPS取得・Leaflet描画・ポーリング）。リポジトリ直下 `frontend/` に独立プロジェクトとして置き、Vite で静的ビルドして静的ホスティングに配置する（ホスト先は後決め）。**Spring の `resources/static` には同梱しない**（API サーバーとは別デプロイ）。
 - **APIサーバー: ステートレスなSpring Boot 1プロセス**。WSなし・確定計算もリクエスト内で完結するため、ゲートウェイ/LB/複数インスタンス不要。
 - **DB: PostgreSQL + PostGIS 1台**。Redis等のキャッシュなし。
 - **CORS**: フロント（静的ホスト）とAPI（別ドメイン）が分離するため、Spring側でCORS許可設定が必要（認証がない分これだけ）。
@@ -169,6 +169,7 @@ Player
 
 - **Leaflet**: 地図の描画・操作（地図/自分のピン/友達ドット/凸包ポリゴン）。**計算はしない**。
 - **turf.js**: 不要（面積計算をサーバーに寄せたため）。
+- **フロントエンド ツールチェイン**: ビルド = Vite、言語 = TypeScript、UI = React 19、スタイル = Tailwind CSS v4、Lint/Format = Biome、テスト = Vitest + @testing-library/react（jsdom）。品質ゲートはフロント側の npm scripts（lint / typecheck / test / build）で回し、バックエンドの `./gradlew build` とは独立。pre-commit は husky + lint-staged（Biome）で担保。
 - **ORM方針**: 通常のCRUDは **JPA**、地理空間SQL（凸包・測地面積・範囲内SELECT/COUNT）は **生SQL**（`@Query(nativeQuery=true)` または `JdbcTemplate`）で記述。
 - **OSMデータ取得**: Overpass API で対象オブジェクトを取得し、PostGIS（`game_object`）へINSERT。ローカルOSMサーバー構築は不要。将来オブジェクト種別を広げる場合は pbf + osm2pgsql への移行も可能（`game_object` スキーマは共通に保つ）。
 

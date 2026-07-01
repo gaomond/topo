@@ -2,75 +2,91 @@
 
 ## 変更サマリ
 
-US-00（`game` / `player` スキーマ構築）。本編ループ（US-02以降）の全 API が依存する基盤テーブルを Flyway マイグレーションと JPA エンティティで整備した。
+US-02（クライアント雛形＝地図＋自分の現在地GPS表示）を **React 19 + Vite + TypeScript** で実装した。当初 vanilla JS（`src/main/resources/static/`）で実装していたが、レビュー方針転換により、リポジトリ直下 `frontend/` の独立 SPA（react-leaflet / Tailwind v4 / Biome / Vitest）へ全面的に作り直した。サーバー側（Kotlin/Spring/DB/Flyway）の変更はない。
 
-- **Domain**: `GameStatus` enum（`WAITING` / `ACTIVE` / `COMPLETED`）を新規追加。Spring/JPA/PostGIS 非依存の純粋 Kotlin。
-- **スキーマ（Flyway）**: `V2__game_player.sql` を新規追加。`game_status` enum・`game`・`player` テーブルを定義。`creator_player_id` ↔ `player.game_id` の循環参照は FK 後付け（`ALTER TABLE ... ADD CONSTRAINT`）で解消。空間カラム（`polygon_geom` / `fixed_geom`）は `geometry(...,4326)`。V1（`postgis` 拡張 + `game_object`）は不変のまま。
-- **Adapter(outbound: persistence)**: `GameJpaEntity` / `PlayerJpaEntity`（非空間カラムのみマッピング、空間カラムは意図的に除外し US-13 以降の生 SQL に隠蔽）、`GameRepository` / `PlayerRepository`（`JpaRepository` の薄いリポジトリ。Domain ポート抽象は US-02 へ引き継ぎ）。
-- **テスト基盤**: Testcontainers（`imresamu/postgis:17-3.5-bookworm`）を `build.gradle.kts` に追加。共有コンテナ `PostgisTestContainer` を新設し、`GamePlayerSchemaTest`（Level 3・実 PostGIS、11 テスト）で受け入れ条件 §2・テスト観点 §3 を 1:1 検証。`TopoApplicationTests.contextLoads` も data-jpa 導入に伴い同コンテナへ接続するよう変更。
+### スタック確定（ドキュメント更新済み）
 
-品質ゲート `./gradlew build` は **SUCCESS**（20 tests / 0 failed、ktlint 通過）。レビューは `.agent-pipeline/05-review.md` にて **承認**済み。
+- フロントエンド = React 19 + Vite + TypeScript、地図 = Leaflet（**react-leaflet** で統合）、スタイル = Tailwind CSS v4、Lint/Format = Biome、テスト = Vitest + @testing-library/react（jsdom）、pre-commit = husky + lint-staged。
+- 配置はリポジトリ直下 `frontend/`。**静的ホスティング前提で Spring の `resources/static` には同梱しない**（API サーバーとは別デプロイ）。品質ゲートはフロント側 npm scripts で回し、バックエンドの `./gradlew build` とは独立。
+- 上記を `CLAUDE.md` / `docs/DESIGN.md` に反映済み。
+
+### 実装（Smart/Dumb・D4/D5）
+
+- **Smart**: `src/hooks/useGeoTracking.ts`（+ `geoState.ts`）— `watchPosition`・状態遷移（INITIALIZING / TRACKING / DEGRADED / PERMISSION_ERROR）を一元所有。`everTrackedRef`（useRef）で **D4**（初回拒否 → PERMISSION_ERROR・地図非表示・再試行可）と **D5**（追従中の一時失敗 → DEGRADED・地図維持・控えめバナー）を分離。非安全コンテキスト／geolocation 未提供は測位を開始せず `canRetry=false`。`geolocation`/`isSecureContext` を注入可能にしてテスト容易化。
+- **Smart 結線**: `src/containers/GeoTrackingContainer.tsx` — 状態に応じて Dumb を出し分け（`onRetry={canRetry ? retry : undefined}`）。
+- **Dumb**: `src/components/MapView.tsx`（react-leaflet で OSM 標準タイル＋自分ピン、`SelfFollower` で中心追従）/ `LocationErrorScreen.tsx`（許可拒否・非安全コンテキストのエラー画面＋再試行）/ `DegradedBanner.tsx`（控えめバナー）。Leaflet は描画専用・座標計算なし。
+- URL（gameId/playerId）解釈・ルーティング・API・ポーリング・友達ドット・面積は本ストーリーに含めない（`react-router-dom` / `zod` 未導入を確認）。
+
+## 品質ゲート（最終確認・全緑）
+
+| 対象 | コマンド | 結果 |
+| --- | --- | --- |
+| フロント Lint | `frontend` `npm run lint`（Biome） | 成功・Checked 24 files・エラー 0 |
+| フロント 型 | `frontend` `npm run typecheck`（tsc） | 成功・エラー 0 |
+| フロント テスト | `frontend` `npm run test`（Vitest） | 成功・5 files / **27 tests passed** |
+| フロント ビルド | `frontend` `npm run build`（Vite） | 成功・dist 生成 |
+| バックエンド | `./gradlew build` | **BUILD SUCCESSFUL**（変更なし・回帰なし） |
+
+レビュー（`.agent-pipeline/05-review.md`）判定 = **承認**（ブロッカーなし）。
 
 ## コミット対象ファイル
 
-### 新規
+### 新規（`frontend/` 一式・27 ファイル）
 
-- `src/main/kotlin/com/github/gaomond/topo/domain/model/GameStatus.kt`
-- `src/main/kotlin/com/github/gaomond/topo/adapter/persistence/GameJpaEntity.kt`
-- `src/main/kotlin/com/github/gaomond/topo/adapter/persistence/PlayerJpaEntity.kt`
-- `src/main/kotlin/com/github/gaomond/topo/adapter/persistence/GameRepository.kt`
-- `src/main/kotlin/com/github/gaomond/topo/adapter/persistence/PlayerRepository.kt`
-- `src/main/resources/db/migration/V2__game_player.sql`
-- `src/test/kotlin/com/github/gaomond/topo/domain/model/GameStatusTest.kt`
-- `src/test/kotlin/com/github/gaomond/topo/adapter/persistence/GamePlayerSchemaTest.kt`
-- `src/test/kotlin/com/github/gaomond/topo/support/PostgisTestContainer.kt`
-- `src/test/resources/application.properties`
-- `.agent-pipeline/01-spec.md` 〜 `.agent-pipeline/06-commit-ready.md`（本パイプライン記録一式）
-- `docs/story/00.md`（US-00 確定仕様。`01-spec.md` と同内容のストーリー記録）
+- 設定: `frontend/{package.json, package-lock.json, tsconfig.json, tsconfig.app.json, tsconfig.node.json, vite.config.ts, vitest.setup.ts, biome.json, index.html, .gitignore, .husky/pre-commit}`
+- ソース: `frontend/src/{main.tsx, App.tsx, index.css, vite-env.d.ts}`
+- コンポーネント: `frontend/src/components/{MapView,LocationErrorScreen,DegradedBanner}.tsx`（+ 各 `.test.tsx`）
+- コンテナ: `frontend/src/containers/GeoTrackingContainer.tsx`（+ `.test.tsx`）
+- フック: `frontend/src/hooks/{useGeoTracking.ts, geoState.ts}`（+ `useGeoTracking.test.ts`）
+- テスト補助: `frontend/src/test/fakeGeolocation.ts`
 
 ### 変更
 
-- `build.gradle.kts`: Testcontainers（`spring-boot-testcontainers` / `testcontainers-junit-jupiter` / `testcontainers-postgresql`）を `testImplementation` に追加。
-- `src/test/kotlin/com/github/gaomond/topo/TopoApplicationTests.kt`: `@DynamicPropertySource` で共有 PostGIS コンテナに接続するよう変更（data-jpa 導入でフルコンテキスト起動が DataSource を要求するため）。
+- `CLAUDE.md` / `docs/DESIGN.md`（フロントスタックを React 等へ更新）
+- `.gitignore`（`frontend/node_modules`・`frontend/dist` 等を追加）
+- `.agent-pipeline/01-spec.md` 〜 `05-review.md`（US-02 React 版の記録）
 
-### 本コミットに含めない（別件として作業ツリーに残っている変更）
+### 削除
 
-作業ツリーには US-00 と無関係な変更が混在している。誤って同一コミットに含めないこと。
+- `src/main/resources/static/{index.html, styles.css, app.js, map-view.js, error-view.js, geo-tracker.js}`（旧 vanilla 実装）。※これらは未コミットの作業ツリー上のファイルだったため `git status` の削除差分には現れない（新規追跡もされない）。
 
-- `src/main/kotlin/com/github/gaomond/topo/adapter/web/ConfigController.kt` / `ConfigResponse.kt`、`domain/model/ObjectType.kt` / `AreaPreset.kt` とそのテスト一式（`GET /api/config` ストーリーの成果物。US-00 とは別タスク）
-- `.claude/agents/*.md`、`.claude/commands/build.md → implement.md`（リネーム）、`.agent-pipeline/README.md`、`CLAUDE.md` の差分（パイプライン基盤の改修。別件）
-- `docs/learning-notes-java-spring.md` / `docs/learning-notes-postgis.md` の削除、`docs/study/` への移動、`docs/story/01.md`〜`04.md`・`STORY.md`、`docs/request.md`（ドキュメント整理・別ストーリーの記録。US-00 では `docs/story/00.md` のみ対象）
-- `diff.txt`（作業用一時ファイル。コミット対象外。削除を推奨）
+### コミット対象外
+
+- `frontend/node_modules/`・`frontend/dist/`（`.gitignore` 済み）
+- `.agent-pipeline/06-commit-ready.md` 自体（Finish 記録物）
+- コミット直前に `git status` で意図しない混在がないか再確認すること
 
 ## コミットメッセージ案
 
 ```
-feat: game/playerスキーマとJPAエンティティを追加(US-00)
+feat: 地図と自分の現在地GPS表示のクライアント雛形をReactで追加(US-02)
 
-本編ループ(US-02以降)の全APIが依存する基盤テーブルを整備した。
+本編ループの全操作の前提になる、地図と自分の現在地表示・追従を行う
+最小のSPAを frontend/ に追加した。サーバー側の変更はない。
 
-- Flywayマイグレーション(V2)でgame_status enum・game・playerテーブルを追加。
-  game.creator_player_id <-> player.game_idの循環参照はFK後付けで解消し、
-  NULL許容を維持した。
-- domain.GameStatusを追加。DB enum値と一致する純粋Kotlin enumで、
-  Spring/JPA/PostGISに非依存。
-- adapter.persistenceにGameJpaEntity/PlayerJpaEntityを追加。空間カラム
-  (polygon_geom/fixed_geom)は意図的に除外し、PostGISをDomain/UseCaseから
-  隠す方針(CLAUDE.md)に従いUS-13以降の生SQLに委ねる。
-- game_status enumはNAMED_ENUM+STRING+columnDefinitionの組み合わせで
-  PostgreSQL named enumとマッピングし、型不一致を回避した。
-- GameRepository/PlayerRepositoryはJpaRepositoryの薄い実装に留め、
-  Domainポート抽象はUseCase登場(US-02)まで前倒ししない(YAGNI)。
-- Testcontainers(実PostGIS)によるGamePlayerSchemaTestを追加し、受け入れ
-  条件・テスト観点を1:1で検証(enum制約・FK整合・NULL許容・循環解消・
-  空間型・上限なしの計11テスト)。
+- スタックを React 19 + Vite + TypeScript に確定。地図は Leaflet を
+  react-leaflet で統合、スタイルは Tailwind v4、Lint/Format は Biome、
+  テストは Vitest。frontend/ を独立プロジェクトとして配置し、静的
+  ホスティング前提で Spring の resources/static には同梱しない。
+- Smart(useGeoTracking フック)に watchPosition・状態遷移・Geolocation
+  副作用を集約。everTracked で「初回拒否(PERMISSION_ERROR・地図非表示)」
+  と「追従中の一時失敗(DEGRADED・地図維持)」を分離(D4/D5)。非安全
+  コンテキスト等は再試行不可(canRetry=false)。
+- Dumb(MapView/LocationErrorScreen/DegradedBanner)は props 描画のみ。
+  Leaflet は描画専用で座標計算しない。
+- geolocation/isSecureContext を注入可能にし、fakeGeolocation で
+  状態遷移(D4/D5・再試行・非安全コンテキスト)を Vitest で自動検証(27件)。
+- 旧 vanilla 実装(src/main/resources/static/)は React 版へ移植のうえ削除。
+- URL解釈/ルーティング/API/ポーリング/友達ドット/面積は本ストーリー
+  では対象外(react-router-dom / zod 未導入)。
 
-品質ゲート: ./gradlew build SUCCESS(20 tests / 0 failed、ktlint通過)。
+品質ゲート: frontend で lint/typecheck/test(27 passed)/build 緑、
+バックエンド ./gradlew build も緑(変更なし)。
 ```
 
-## 残課題（フォローアップ）
+## 残課題（フォローアップ・ブロッカーでない）
 
-- **[med] `GameJpaEntity.objectType` の型強化（05-review.md 指摘）**: 現状 `objectType: String`（生 String）でマッピングしている。Domain には `ObjectType` enum（`jsonValue` 付き）が既に存在し、ユビキタス言語上も値域の決まった概念。スキーマが `TEXT` である点自体は仕様どおりで問題ないが、`ObjectType` への変換責務をどこに置くか（エンティティに `@Convert` を持たせるか、UseCase 境界で変換するか）を **US-02 で決定**する。承認を妨げる指摘ではない。
-- **[low] `PostgreSQLContainer` 非推奨警告**: Testcontainers の直起動 API が非推奨。動作影響はないが、将来 `@ServiceConnection` ベースへの移行余地がある（`PostgisTestContainer.kt:14`）。今ストーリーでの対応は不要。
-- **Domain リポジトリポート抽象の導入**: UseCase が存在しない段階のため本ストーリーでは作成していない。US-02 で `GameRepository` / `PlayerRepository` を実装詳細に降格させ、Domain 層にポートインターフェースを定義する。
-- **作業ツリーの整理**: 上記「本コミットに含めない」ファイル群は別タスクの成果物のため、US-00 とは別のコミット（または作業）として扱うこと。`diff.txt` は一時ファイルのため削除を推奨。
+- **[med] 初回未測位時の DEGRADED バナー文言**（`frontend/src/hooks/useGeoTracking.ts` 付近 / 05-review 指摘）: `everTracked=false` のまま TIMEOUT / POSITION_UNAVAILABLE が起きても「位置更新が滞っています」を表示する。仕様 D5 の方針（地図維持・控えめ表示）とは整合し承認は妨げないが、初回未測位時は「現在地を取得中です…」等の別文言に分けるとより実態に合う。将来の測位リトライ作り込み時に再考。
+- **[low] 非安全コンテキストと geolocation 未提供が同一文言**（`frontend/src/hooks/geoState.ts` / 05-review 指摘）: 両者を同じメッセージで扱う。原因別に文言を分けると案内が親切。
+- **フロントの品質ゲートは Gradle と分離**: 現状 `./gradlew build` はフロントを検査しない。将来 CI では `frontend` の lint/typecheck/test/build を別ジョブで回す運用を想定。
+- **OSM 標準タイルの本番常用ポリシー**: MVP では許容。本番デプロイ時にタイルプロバイダ差し替えの要否を検討（spec §4 記載の既知事項）。

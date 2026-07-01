@@ -9,11 +9,12 @@
 - **Backend:** Spring Boot（Web MVC / Data JPA / Actuator）
 - **DB:** PostgreSQL + PostGIS
 - **Migration:** Flyway
-- **Frontend:** 静的 SPA + Leaflet（地図描画）
-- **Build:** Gradle（Kotlin DSL）/ JDK 25
+- **Frontend:** React 19 + Vite + TypeScript の SPA。地図描画は Leaflet（**react-leaflet** で統合）、スタイルは Tailwind CSS v4。リポジトリ直下 `frontend/` に独立プロジェクトとして配置。静的ホスティング前提で、Spring の `resources/static` には同梱しない
+- **Build:** バックエンド = Gradle（Kotlin DSL）/ JDK 25。フロントエンド = Vite（`frontend/` の npm scripts）。両者は独立してビルドする
 - **Infra:** Docker Compose（PostgreSQL + PostGIS）
-- **Test:** JUnit 5 + Spring Boot Test（テストスライス）+ Testcontainers
-- **Lint / Format:** ktlint（品質ゲートで強制。detekt は JDK25/Kotlin2.3 対応版が出たら追加）
+- **Test:** バックエンド = JUnit 5 + Spring Boot Test（テストスライス）+ Testcontainers。フロントエンド = Vitest + @testing-library/react（jsdom）
+- **Lint / Format:** バックエンド = ktlint。フロントエンド = Biome（lint/format）。いずれも品質ゲートで強制（detekt は JDK25/Kotlin2.3 対応版が出たら追加）。フロントの pre-commit は husky + lint-staged
+- **ライブラリ方針:** 車輪の再発明をしない。react-leaflet 級に成熟・広く使われているライブラリは積極採用する（無名・小規模なものは避ける）
 
 ## Architecture
 
@@ -26,7 +27,7 @@ UI ─(HTTP)→ Adapter(inbound) → UseCase → Domain ← Adapter(outbound)
 - **Domain:** 型定義と純粋ロジック。Spring / JPA / PostGIS / 外部ライブラリに依存しない。ポート（リポジトリ・空間計算）のインターフェースを持つ
 - **UseCase:** ビジネスロジック。Domain のポートに依存し、Adapter の実装には依存しない
 - **Adapter:** Domain のポートを実装する。**inbound** = REST コントローラ（Spring MVC）、**outbound** = 永続化。通常 CRUD は JPA、地理空間は生 SQL（`@Query(nativeQuery = true)` / `JdbcTemplate`）。生 SQL は outbound 内に閉じ込め、Domain / UseCase から PostGIS を隠す
-- **UI:** Leaflet SPA。HTTP 経由で inbound アダプタ（REST API）を呼ぶ
+- **UI:** React + Leaflet（react-leaflet）の SPA（`frontend/`）。HTTP 経由で inbound アダプタ（REST API）を呼ぶ。バックエンドとは別に静的ホスティングへデプロイする（Spring の `resources/static` には置かない）
 
 - adapter 同士は直接呼び合わない。必ず UseCase / ポートを経由する
 - 凸包・面積・内包判定はサーバー（PostGIS）で計算する。クライアントでは計算しない（DRY・改ざん防止）
@@ -41,7 +42,7 @@ UseCase は Domain 層の抽象インターフェース（ポート）に依存�
 
 - **Smart（コンテナ）:** 状態保持・ポーリング・GPS 取得・API 通信を担う。API を呼べるのは Smart のみ
 - **Dumb（プレゼンテーショナル）:** props を受け取って描画するだけ。API も共有状態も知らない。入力欄の値など UI 固有の閉じた状態のみ自身で管理してよい
-- **Leaflet は描画専用**。面積などの計算はしない。turf.js は使わない
+- **Leaflet は描画専用**（react-leaflet 経由）。面積などの計算はしない。turf.js は使わない
 
 ## ユビキタス言語
 
@@ -94,7 +95,7 @@ Domain でドメイン例外を定義し、inbound アダプタ（コントロ�
 
 ## Testing
 
-JUnit 5。テストスライスを活用し、フルコンテキスト起動は最小限にする。
+バックエンドは JUnit 5。テストスライスを活用し、フルコンテキスト起動は最小限にする。フロントエンドは `frontend/` で Vitest + @testing-library/react（jsdom）。Geolocation 等のブラウザ API は注入・モックしてユニットテスト可能にする。テスト対象は必ず実ソースから import し、テスト内で再定義しない（バックエンド・フロント共通）。
 
 - **テスト名は `test_Action_Condition_Result` で書く**。Action（対象操作）/ Condition（条件）/ Result（期待結果）をアンダースコアで区切る（例: `test_getConfig_always_returns200AndApplicationJson`）。
 - **テスト対象は必ず `src/` から import すること。** テストファイル内にプロダクションのクラスや関数を再定義してはいけない。再定義するとテストが実ソースの劣化版コピーを検証するだけになり、実ソースとの乖離（仕様変更・破壊的変更）を検出できなくなる。
@@ -107,7 +108,8 @@ JUnit 5。テストスライスを活用し、フルコンテキスト起動は�
 
 - Kotlin の null 安全は JSR305 strict（`-Xjsr305=strict`）。プラットフォーム型を放置しない
 - ktlint を通すこと（format / lint）。整形は `./gradlew ktlintFormat`
-- **品質ゲート:** `./gradlew build`（test + ktlint 込み）を通る状態を「完了」とする
+- **品質ゲート（バックエンド）:** `./gradlew build`（test + ktlint 込み）を通る状態を「完了」とする
+- **品質ゲート（フロントエンド）:** `frontend/` で `npm run lint`（Biome）・`npm run typecheck`（tsc）・`npm run test`（Vitest）・`npm run build`（Vite）が通る状態を「完了」とする。`/implement` パイプラインでは SubagentStop フック（matcher=`pipeline-impl`）が Gradle ビルドに続けて上記4ゲートも自動実行し、失敗時は Impl に差し戻す（`frontend/package.json` が無いストーリーではスキップ）。ローカルのコミット時は husky + lint-staged でも担保
 
 ## コミュニケーション
 
