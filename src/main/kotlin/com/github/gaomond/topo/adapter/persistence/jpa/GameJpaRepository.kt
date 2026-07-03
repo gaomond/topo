@@ -1,4 +1,4 @@
-package com.github.gaomond.topo.adapter.persistence
+package com.github.gaomond.topo.adapter.persistence.jpa
 
 import org.springframework.data.jpa.repository.JpaRepository
 import java.util.UUID
@@ -10,4 +10,4 @@ import java.util.UUID
  * Domain ポート（リポジトリ抽象）は UseCase が登場する US-02 で導入し、本リポジトリを
  * 実装に降格させる方針（現段階では YAGNI のため抽象を前倒ししない）。
  */
-interface GameRepository : JpaRepository<GameJpaEntity, UUID>
+interface GameJpaRepository : JpaRepository<GameJpaEntity, UUID>

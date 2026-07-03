@@ -18,17 +18,17 @@ data class GameState(
     val gameId: UUID,
     val status: GameStatus,
     val playerCount: Int,
-    val players: List<PlayerView>,
+    val players: List<PlayerSnapshot>,
 )
 
 /**
- * 参加者の Domain ビュー（最小形）。
+ * 参加者のスナップショット（ある時点の読み取り射影・最小形）。Spring / JPA 非依存。
  *
  * @param playerId    プレイヤー ID
  * @param displayName 確定済み表示名（常に非 null）
  * @param confirmed   現在地を確定済みか（confirmedAt != null）
  */
-data class PlayerView(
+data class PlayerSnapshot(
     val playerId: UUID,
     val displayName: String,
     val confirmed: Boolean,

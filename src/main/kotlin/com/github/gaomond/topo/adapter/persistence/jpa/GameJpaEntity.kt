@@ -1,4 +1,4 @@
-package com.github.gaomond.topo.adapter.persistence
+package com.github.gaomond.topo.adapter.persistence.jpa
 
 import com.github.gaomond.topo.domain.model.GameStatus
 import jakarta.persistence.Column

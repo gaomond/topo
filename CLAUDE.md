@@ -87,6 +87,7 @@ frontend/
 | 座標 | Coordinate（lat / lng） | プレイヤー位置・オブジェクト位置を表す緯度経度のペア |
 | 座標参照系 | Crs（Coordinate Reference System） | 座標の基準となる参照系。現状は WGS84（SRID 4326）を採用するが、種別はこれに限定しない |
 | ポーリング | polling | 進行中の状態取得（一定間隔の `GET`） |
+| プレイヤースナップショット | PlayerSnapshot | ゲーム状態内のプレイヤーの読み取り射影（ある時点・最小形）。`GameState.players` の要素。JPA 非依存の Domain 値で、`View` とは呼ばない |
 
 ## Implementation Rules
 

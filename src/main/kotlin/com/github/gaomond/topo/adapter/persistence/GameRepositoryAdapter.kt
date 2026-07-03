@@ -1,5 +1,7 @@
 package com.github.gaomond.topo.adapter.persistence
 
+import com.github.gaomond.topo.adapter.persistence.jpa.GameJpaEntity
+import com.github.gaomond.topo.adapter.persistence.jpa.GameJpaRepository
 import com.github.gaomond.topo.domain.model.GameStatus
 import com.github.gaomond.topo.domain.model.GameSummary
 import com.github.gaomond.topo.domain.port.GameRepositoryPort
@@ -7,14 +9,14 @@ import org.springframework.stereotype.Component
 import java.util.UUID
 
 /**
- * [GameRepositoryPort]（Domain 抽象）を JPA リポジトリ [GameRepository] で実装する outbound アダプタ。
+ * [GameRepositoryPort]（Domain 抽象）を JPA リポジトリ [GameJpaRepository] で実装する outbound アダプタ。
  *
  * ドメイン値 ↔ [GameJpaEntity] の変換をここに閉じ込め、UseCase から JPA を隠す。
  * 本ストーリーは非空間 CRUD のみで生 SQL は不要（空間クエリは US-13 以降）。
  */
 @Component
 class GameRepositoryAdapter(
-    private val gameRepository: GameRepository,
+    private val gameRepository: GameJpaRepository,
 ) : GameRepositoryPort {
     override fun createGame(
         gameId: UUID,

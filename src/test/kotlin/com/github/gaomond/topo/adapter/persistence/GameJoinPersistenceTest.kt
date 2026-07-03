@@ -1,5 +1,7 @@
 package com.github.gaomond.topo.adapter.persistence
 
+import com.github.gaomond.topo.adapter.persistence.jpa.GameJpaRepository
+import com.github.gaomond.topo.adapter.persistence.jpa.PlayerJpaRepository
 import com.github.gaomond.topo.domain.model.GameStatus
 import com.github.gaomond.topo.support.PostgisTestContainer
 import jakarta.persistence.EntityManager
@@ -36,10 +38,10 @@ class GameJoinPersistenceTest {
     }
 
     @Autowired
-    private lateinit var gameRepository: GameRepository
+    private lateinit var gameRepository: GameJpaRepository
 
     @Autowired
-    private lateinit var playerRepository: PlayerRepository
+    private lateinit var playerRepository: PlayerJpaRepository
 
     @Autowired
     private lateinit var jdbcTemplate: JdbcTemplate

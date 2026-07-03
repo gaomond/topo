@@ -3,7 +3,7 @@ package com.github.gaomond.topo.usecase
 import com.github.gaomond.topo.domain.GameNotFoundException
 import com.github.gaomond.topo.domain.model.GameStatus
 import com.github.gaomond.topo.domain.model.GameSummary
-import com.github.gaomond.topo.domain.model.PlayerView
+import com.github.gaomond.topo.domain.model.PlayerSnapshot
 import com.github.gaomond.topo.domain.port.GameRepositoryPort
 import com.github.gaomond.topo.domain.port.PlayerRepositoryPort
 import org.junit.jupiter.api.Test
@@ -36,7 +36,7 @@ class GetGameStateUseCaseTest {
     }
 
     private class StubPlayerRepository(
-        private val players: List<PlayerView>,
+        private val players: List<PlayerSnapshot>,
     ) : PlayerRepositoryPort {
         override fun createPlayer(
             playerId: UUID,
@@ -46,7 +46,7 @@ class GetGameStateUseCaseTest {
 
         override fun countByGameId(gameId: UUID): Int = error("状態取得では呼ばれない")
 
-        override fun findByGameId(gameId: UUID): List<PlayerView> = players
+        override fun findByGameId(gameId: UUID): List<PlayerSnapshot> = players
     }
 
     private val gameId = UUID.randomUUID()
@@ -55,8 +55,8 @@ class GetGameStateUseCaseTest {
     fun test_getGameState_withExistingGame_returnsStatusPlayerCountAndPlayers() {
         val players =
             listOf(
-                PlayerView(UUID.randomUUID(), "たろう", confirmed = true),
-                PlayerView(UUID.randomUUID(), "じろう", confirmed = false),
+                PlayerSnapshot(UUID.randomUUID(), "たろう", confirmed = true),
+                PlayerSnapshot(UUID.randomUUID(), "じろう", confirmed = false),
             )
         val useCase =
             GetGameStateUseCase(
@@ -81,8 +81,8 @@ class GetGameStateUseCaseTest {
 
     @Test
     fun test_getGameState_reflectsConfirmedFlagFromPlayers() {
-        val confirmed = PlayerView(UUID.randomUUID(), "かくてい", confirmed = true)
-        val notYet = PlayerView(UUID.randomUUID(), "みかくてい", confirmed = false)
+        val confirmed = PlayerSnapshot(UUID.randomUUID(), "かくてい", confirmed = true)
+        val notYet = PlayerSnapshot(UUID.randomUUID(), "みかくてい", confirmed = false)
         val useCase =
             GetGameStateUseCase(
                 SpyGameRepository(GameSummary(GameStatus.WAITING, 3)),

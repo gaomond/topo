@@ -3,7 +3,7 @@ package com.github.gaomond.topo.adapter.web
 import com.github.gaomond.topo.domain.GameNotFoundException
 import com.github.gaomond.topo.domain.model.GameState
 import com.github.gaomond.topo.domain.model.GameStatus
-import com.github.gaomond.topo.domain.model.PlayerView
+import com.github.gaomond.topo.domain.model.PlayerSnapshot
 import com.github.gaomond.topo.usecase.GetGameStateUseCase
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
@@ -44,8 +44,8 @@ class GameStateControllerTest {
                 playerCount = 3,
                 players =
                     listOf(
-                        PlayerView(p1, "たろう", confirmed = true),
-                        PlayerView(p2, "じろう", confirmed = false),
+                        PlayerSnapshot(p1, "たろう", confirmed = true),
+                        PlayerSnapshot(p2, "じろう", confirmed = false),
                     ),
             ),
         )

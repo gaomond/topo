@@ -1,4 +1,4 @@
-package com.github.gaomond.topo.adapter.persistence
+package com.github.gaomond.topo.adapter.persistence.jpa
 
 import jakarta.persistence.Column
 import jakarta.persistence.Entity

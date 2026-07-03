@@ -7,7 +7,7 @@ import java.util.UUID
 /**
  * `game` の永続化ポート（Domain 抽象）。
  *
- * UseCase はこのポートに依存し、JPA 具象（`GameRepository` / `GameJpaEntity`）を import しない（DIP）。
+ * UseCase はこのポートに依存し、JPA 具象（`GameJpaRepository` / `GameJpaEntity`）を import しない（DIP）。
  * 実装は adapter(outbound) 側で JPA リポジトリに適合させる。
  */
 interface GameRepositoryPort {

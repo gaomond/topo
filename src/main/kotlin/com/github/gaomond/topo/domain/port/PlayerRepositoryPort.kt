@@ -1,12 +1,12 @@
 package com.github.gaomond.topo.domain.port
 
-import com.github.gaomond.topo.domain.model.PlayerView
+import com.github.gaomond.topo.domain.model.PlayerSnapshot
 import java.util.UUID
 
 /**
  * `player` の永続化ポート（Domain 抽象）。
  *
- * UseCase はこのポートに依存し、JPA 具象（`PlayerRepository` / `PlayerJpaEntity`）を import しない（DIP）。
+ * UseCase はこのポートに依存し、JPA 具象（`PlayerJpaRepository` / `PlayerJpaEntity`）を import しない（DIP）。
  */
 interface PlayerRepositoryPort {
     /**
@@ -30,9 +30,9 @@ interface PlayerRepositoryPort {
     fun countByGameId(gameId: UUID): Int
 
     /**
-     * 指定ゲームの参加者一覧を Domain ビュー [PlayerView] に射影して返す（US-05: 状態取得）。
+     * 指定ゲームの参加者一覧を [PlayerSnapshot]（読み取り射影）にして返す（US-05: 状態取得）。
      *
      * joined_at 昇順で返す（参加順表示）。JPA エンティティは露出させない。
      */
-    fun findByGameId(gameId: UUID): List<PlayerView>
+    fun findByGameId(gameId: UUID): List<PlayerSnapshot>
 }
