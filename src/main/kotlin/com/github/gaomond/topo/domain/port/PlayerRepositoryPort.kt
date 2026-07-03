@@ -1,5 +1,6 @@
 package com.github.gaomond.topo.domain.port
 
+import com.github.gaomond.topo.domain.model.PlayerView
 import java.util.UUID
 
 /**
@@ -22,4 +23,16 @@ interface PlayerRepositoryPort {
         gameId: UUID,
         displayName: String,
     )
+
+    /**
+     * 指定ゲームの現在の参加者数を返す（定員チェック用。US-05: 参加）。
+     */
+    fun countByGameId(gameId: UUID): Int
+
+    /**
+     * 指定ゲームの参加者一覧を Domain ビュー [PlayerView] に射影して返す（US-05: 状態取得）。
+     *
+     * joined_at 昇順で返す（参加順表示）。JPA エンティティは露出させない。
+     */
+    fun findByGameId(gameId: UUID): List<PlayerView>
 }

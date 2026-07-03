@@ -3,6 +3,8 @@ package com.github.gaomond.topo.usecase
 import com.github.gaomond.topo.domain.GameValidationException
 import com.github.gaomond.topo.domain.model.GameCreationCommand
 import com.github.gaomond.topo.domain.model.GameStatus
+import com.github.gaomond.topo.domain.model.GameSummary
+import com.github.gaomond.topo.domain.model.PlayerView
 import com.github.gaomond.topo.domain.port.GameRepositoryPort
 import com.github.gaomond.topo.domain.port.PlayerRepositoryPort
 import org.junit.jupiter.api.Test
@@ -61,6 +63,9 @@ class CreateGameUseCaseTest {
             if (failOnUpdate) throw IllegalStateException("update failed")
             calls.add(Call.UpdateCreator(gameId, creatorPlayerId))
         }
+
+        // 作成では参加系の取得は使わない。
+        override fun findSummary(gameId: UUID): GameSummary? = error("作成では呼ばれない")
     }
 
     private class SpyPlayerRepository(
@@ -73,6 +78,10 @@ class CreateGameUseCaseTest {
         ) {
             calls.add(Call.CreatePlayer(playerId, gameId, displayName))
         }
+
+        override fun countByGameId(gameId: UUID): Int = error("作成では呼ばれない")
+
+        override fun findByGameId(gameId: UUID): List<PlayerView> = error("作成では呼ばれない")
     }
 
     private fun useCase(

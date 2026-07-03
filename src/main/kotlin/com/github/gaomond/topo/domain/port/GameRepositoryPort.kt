@@ -1,6 +1,7 @@
 package com.github.gaomond.topo.domain.port
 
 import com.github.gaomond.topo.domain.model.GameStatus
+import com.github.gaomond.topo.domain.model.GameSummary
 import java.util.UUID
 
 /**
@@ -38,4 +39,11 @@ interface GameRepositoryPort {
         gameId: UUID,
         creatorPlayerId: UUID,
     )
+
+    /**
+     * 参加判定に必要なゲームサマリ（status / playerCount）を取得する。存在しなければ null。
+     *
+     * JPA エンティティは露出させず、Domain 値 [GameSummary] に射影して返す（US-05: 参加・状態取得）。
+     */
+    fun findSummary(gameId: UUID): GameSummary?
 }

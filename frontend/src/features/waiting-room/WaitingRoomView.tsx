@@ -1,16 +1,18 @@
 // 待機画面ビュー（Dumb / プレゼンテーショナル）。
 //
-// props で参加者一覧・状態・招待 URL・コピーハンドラを受け取り描画するだけ。
-// API も共有状態も知らない。ポーリング更新・開始ボタンは本ストーリー対象外（US-05/06）。
+// props で参加者一覧・状態・定員・招待 URL・コピーハンドラを受け取り描画するだけ。
+// API も共有状態も知らない。参加者一覧は GET のポーリング結果（実データ）を Smart から受け取る。
 
 export type Participant = {
   playerId: string;
   displayName: string;
+  confirmed: boolean;
 };
 
 export type WaitingRoomViewProps = {
   status: string;
   participants: Participant[];
+  playerCount: number;
   inviteUrl: string;
   onCopyInviteUrl: () => void;
   copied: boolean;
@@ -19,6 +21,7 @@ export type WaitingRoomViewProps = {
 export function WaitingRoomView({
   status,
   participants,
+  playerCount,
   inviteUrl,
   onCopyInviteUrl,
   copied,
@@ -31,7 +34,10 @@ export function WaitingRoomView({
         状態: <span data-testid="game-status">{status}</span>
       </p>
 
-      <h2>参加者</h2>
+      <h2>
+        参加者（
+        <span data-testid="participant-count">{participants.length}</span> / {playerCount}）
+      </h2>
       <ul aria-label="参加者一覧">
         {participants.map((participant) => (
           <li key={participant.playerId}>{participant.displayName}</li>

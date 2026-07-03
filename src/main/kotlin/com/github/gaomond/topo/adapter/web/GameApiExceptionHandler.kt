@@ -1,5 +1,7 @@
 package com.github.gaomond.topo.adapter.web
 
+import com.github.gaomond.topo.domain.GameJoinNotAllowedException
+import com.github.gaomond.topo.domain.GameNotFoundException
 import com.github.gaomond.topo.domain.GameValidationException
 import org.springframework.http.HttpStatus
 import org.springframework.http.ProblemDetail
@@ -10,7 +12,10 @@ import org.springframework.web.bind.annotation.RestControllerAdvice
  * ドメイン例外を HTTP ステータスにマッピングする inbound アダプタ。
  *
  * CLAUDE.md「Domain でドメイン例外を定義し、inbound で HTTP ステータスにマッピング
- * （バリデーション失敗 = 400）」に従う。US-04 が最初のエラーマッピング導入点。
+ * （バリデーション失敗 = 400 / 対象不在 = 404）」に従う。
+ * - [GameValidationException] → 400（US-04: 作成入力の検証）
+ * - [GameNotFoundException] → 404（US-05: 不在の gameId）
+ * - [GameJoinNotAllowedException] → 409（US-05: WAITING 以外 / 定員到達。理由は出し分けない）
  */
 @RestControllerAdvice
 class GameApiExceptionHandler {
@@ -20,4 +25,13 @@ class GameApiExceptionHandler {
         detail.setProperty("reason", ex.reason.name)
         return detail
     }
+
+    @ExceptionHandler(GameNotFoundException::class)
+    fun handleNotFound(ex: GameNotFoundException): ProblemDetail =
+        ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.message ?: "ゲームが見つかりません")
+
+    @ExceptionHandler(GameJoinNotAllowedException::class)
+    fun handleJoinNotAllowed(ex: GameJoinNotAllowedException): ProblemDetail =
+        // 仕様上 409 の理由は出し分けない（reason はレスポンスに含めない）。
+        ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "このゲームには参加できません")
 }

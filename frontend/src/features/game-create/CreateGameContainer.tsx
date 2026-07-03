@@ -3,10 +3,10 @@
 // config 取得・作成 API 呼び出し・作成後ナビゲーションを担う。API を呼べるのは Smart のみ。
 // api は注入可能にしてテストで差し替える（fakeGeolocation の DI パターンに倣う）。
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { createTopoApi, type TopoApi } from "@/api/topoApi";
-import type { ConfigResponse } from "@/api/types";
+import useSWR from "swr";
+import { type TopoApi, topoApi } from "@/api/topoApi";
 import { buildGamePath } from "@/routing/paths";
 import { CreateGameForm, type CreateGameFormValues } from "./CreateGameForm";
 
@@ -15,36 +15,24 @@ export type CreateGameContainerProps = {
   api?: TopoApi;
 };
 
-type LoadState = "loading" | "ready" | "error";
-
 export function CreateGameContainer({ api }: CreateGameContainerProps = {}) {
   const navigate = useNavigate();
-  // 既定の API 実体は毎レンダリング生成せず安定させる。ここを default 引数で生成すると
-  // レンダリングごとに別インスタンスになり、下の useEffect([resolvedApi]) が毎回再実行され
-  // fetchConfig が無限ループする。api を注入した場合はそれをそのまま使う。
-  const resolvedApi = useMemo(() => api ?? createTopoApi(), [api]);
-  const [config, setConfig] = useState<ConfigResponse | null>(null);
-  const [loadState, setLoadState] = useState<LoadState>("loading");
+  // 既定は共有シングルトン topoApi（identity が安定）。api を注入した場合はそれを使う。
+  const resolvedApi = api ?? topoApi;
+
+  // config は静的な一発取得。自前 useEffect を組まず SWR に寄せる（01-spec 1.5 と同じ流儀）。
+  // キーは定数なのでフェッチはマウント時 1 回のみ（fetchConfig 無限ループの心配がない）。
+  // 静的なのでフォーカス復帰の再取得は不要、エラーはリトライせず即 error 画面へ。
+  const { data: config, error: configError } = useSWR(
+    "app-config",
+    () => resolvedApi.fetchConfig(),
+    {
+      revalidateOnFocus: false,
+      shouldRetryOnError: false,
+    },
+  );
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    resolvedApi
-      .fetchConfig()
-      .then((loaded) => {
-        if (!active) return;
-        setConfig(loaded);
-        setLoadState("ready");
-      })
-      .catch(() => {
-        if (!active) return;
-        setLoadState("error");
-      });
-    return () => {
-      active = false;
-    };
-  }, [resolvedApi]);
 
   const handleSubmit = useCallback(
     async (values: CreateGameFormValues) => {
@@ -68,16 +56,16 @@ export function CreateGameContainer({ api }: CreateGameContainerProps = {}) {
     [resolvedApi, navigate],
   );
 
-  if (loadState === "loading") {
-    return <p role="status">設定を読み込み中…</p>;
-  }
-
-  if (loadState === "error" || config === null) {
+  if (configError) {
     return (
       <div role="alert">
         <p>設定の取得に失敗しました。時間をおいて再読み込みしてください。</p>
       </div>
     );
+  }
+
+  if (!config) {
+    return <p role="status">設定を読み込み中…</p>;
   }
 
   return (

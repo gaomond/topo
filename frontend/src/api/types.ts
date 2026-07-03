@@ -28,3 +28,28 @@ export type CreateGameResponse = {
   gameId: string;
   playerId: string;
 };
+
+/** POST /api/games/{id}/players のリクエストボディ。displayName は任意。 */
+export type JoinGameRequest = {
+  displayName?: string;
+};
+
+/** POST /api/games/{id}/players のレスポンス。サーバーは playerId のみ返す。 */
+export type JoinGameResponse = {
+  playerId: string;
+};
+
+/** GET /api/games/{id} のレスポンス（US-05 最小形）。 */
+export type GameStateResponse = {
+  gameId: string;
+  status: string;
+  playerCount: number;
+  players: PlayerPayload[];
+};
+
+/** 参加者（GameStateResponse の構成要素）。 */
+export type PlayerPayload = {
+  playerId: string;
+  displayName: string;
+  confirmed: boolean;
+};

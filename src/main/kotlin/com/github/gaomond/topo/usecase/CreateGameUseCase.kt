@@ -2,6 +2,7 @@ package com.github.gaomond.topo.usecase
 
 import com.github.gaomond.topo.domain.GameValidationException
 import com.github.gaomond.topo.domain.model.AreaPreset
+import com.github.gaomond.topo.domain.model.DisplayName
 import com.github.gaomond.topo.domain.model.GameCreationCommand
 import com.github.gaomond.topo.domain.model.GameCreationResult
 import com.github.gaomond.topo.domain.model.GameStatus
@@ -41,7 +42,7 @@ class CreateGameUseCase(
         // （player INSERT より前に確定させる必要がある）。
         val gameId = UUID.randomUUID()
         val playerId = UUID.randomUUID()
-        val displayName = resolveDisplayName(command.displayName, playerId)
+        val displayName = DisplayName.resolve(command.displayName, playerId)
 
         // 1. game を creatorPlayerId NULL / 結果 NULL / WAITING で作成
         gameRepository.createGame(
@@ -86,24 +87,8 @@ class CreateGameUseCase(
         }
     }
 
-    /**
-     * displayName を確定する（D6 案A）。null / 空 / 空白のみは playerId 先頭 8 文字にフォールバックする。
-     */
-    private fun resolveDisplayName(
-        raw: String?,
-        playerId: UUID,
-    ): String {
-        val trimmed = raw?.trim()
-        return if (trimmed.isNullOrEmpty()) {
-            playerId.toString().take(DISPLAY_NAME_FALLBACK_LENGTH)
-        } else {
-            trimmed
-        }
-    }
-
     private companion object {
         // 凸包成立に必要な最低点数（3 点）。
         const val MIN_PLAYER_COUNT = 3
-        const val DISPLAY_NAME_FALLBACK_LENGTH = 8
     }
 }

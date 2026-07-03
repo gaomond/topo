@@ -1,46 +1,119 @@
 // 待機画面コンテナ（Smart / 結線）。
 //
-// URL から gameId（パス）/ playerId（?p=）を取得し、招待 URL（gameId のみ）を組み立てる。
-// 招待 URL の組み立てはクライアント責務（サーバーは gameId/playerId のみ返す）。
-// 参加者一覧のポーリング更新は US-05 のスコープ。本ストーリーでは作成者のみを静的表示する。
+// URL の gameId（パス）/ playerId（?p=）と GET 状態で画面を分岐する（01-spec 1.2〜1.6）:
+// - playerId 無し + WAITING            → 参加画面（JoinGameForm）。参加成功で ?p=<playerId> へ遷移
+// - playerId 無し + ACTIVE/COMPLETED   → 「参加できません」（1.6）
+// - playerId 有り（復帰）              → 参加 API は叩かず状態表示。参加者一覧に自分が無ければ 404 扱い（1.3/1.4）
+// - 404                                 → 「ゲームが見つかりません」（1.4）
+// ポーリング（1.5）は useGameState（SWR）で実現し、参加者の増減を自動反映する。
+// API を呼ぶのは Smart のみ。api / clipboard / origin はテスト用に注入可能。
 
 import { useCallback, useState } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
-import { buildInviteUrl, PLAYER_QUERY_KEY } from "@/routing/paths";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { ApiError, type TopoApi, topoApi } from "@/api/topoApi";
+import { JoinGameForm } from "@/features/join-game/JoinGameForm";
+import { buildGamePath, buildInviteUrl, PLAYER_QUERY_KEY } from "@/routing/paths";
+import { CannotJoinScreen } from "@/shared/CannotJoinScreen";
+import { GameNotFoundScreen } from "@/shared/GameNotFoundScreen";
+import { useGameState } from "@/shared/useGameState";
 import type { Participant } from "./WaitingRoomView";
 import { WaitingRoomView } from "./WaitingRoomView";
 
 export type WaitingRoomContainerProps = {
-  // テスト用にクリップボード・origin を注入できる（既定はブラウザ実体）。
+  // テスト用に API・クリップボード・origin・ポーリング間隔を注入できる（既定はブラウザ実体）。
+  api?: TopoApi;
   clipboard?: Pick<Clipboard, "writeText">;
   origin?: string;
+  refreshIntervalMs?: number;
 };
 
+// 待機中のポーリング頻度（低頻度）。US-08 の ACTIVE 2s は refreshIntervalMs で切り替える。
+const WAITING_REFRESH_INTERVAL_MS = 5000;
+
 export function WaitingRoomContainer({
+  api,
   clipboard = navigator.clipboard,
   origin = window.location.origin,
+  refreshIntervalMs = WAITING_REFRESH_INTERVAL_MS,
 }: WaitingRoomContainerProps = {}) {
+  const navigate = useNavigate();
   const { gameId } = useParams();
   const [searchParams] = useSearchParams();
   const playerId = searchParams.get(PLAYER_QUERY_KEY) ?? "";
+
+  // 既定は共有シングルトン topoApi（identity が安定し SWR key の無限再実行を招かない）。
+  const resolvedApi = api ?? topoApi;
   const [copied, setCopied] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const { state, error } = useGameState({
+    api: resolvedApi,
+    gameId,
+    refreshIntervalMs,
+  });
 
   const inviteUrl = gameId ? buildInviteUrl(origin, gameId) : "";
-
-  // 参加者はこの時点では作成者（自分）のみ。表示名はサーバーが確定済みだが、
-  // US-04 ではポーリング取得しないため playerId から仮表示する（US-05 で実データに置換）。
-  const participants: Participant[] =
-    playerId === "" ? [] : [{ playerId, displayName: `あなた（${playerId.slice(0, 8)}）` }];
 
   const handleCopyInviteUrl = useCallback(async () => {
     await clipboard.writeText(inviteUrl);
     setCopied(true);
   }, [clipboard, inviteUrl]);
 
+  const handleJoin = useCallback(
+    async (displayName: string) => {
+      if (!gameId) return;
+      setSubmitting(true);
+      try {
+        const joined = await resolvedApi.joinGame(gameId, {
+          // 空文字はサーバー側フォールバック対象。未入力は送らない。
+          displayName: displayName.trim() === "" ? undefined : displayName,
+        });
+        // 参加成功で自分の URL（gameId + playerId）へ遷移する（1.2）。
+        navigate(buildGamePath(gameId, joined.playerId));
+      } catch {
+        // 参加失敗（409 等）は再取得（ポーリング）で画面が分岐に追従する。ボタンは戻す。
+        setSubmitting(false);
+      }
+    },
+    [resolvedApi, gameId, navigate],
+  );
+
+  // 404（存在しない gameId）→ 見つかりません（1.4）。
+  if (error instanceof ApiError && error.status === 404) {
+    return <GameNotFoundScreen />;
+  }
+
+  // 初回ロード中。
+  if (!state) {
+    return <p role="status">読み込み中…</p>;
+  }
+
+  // playerId 無し（招待 URL で来た側）。
+  if (playerId === "") {
+    if (state.status !== "WAITING") {
+      // ACTIVE / COMPLETED は締め切り（1.6）。
+      return <CannotJoinScreen />;
+    }
+    return <JoinGameForm onJoin={handleJoin} submitting={submitting} />;
+  }
+
+  // playerId 有り（復帰・1.3）。参加者一覧に自分がいなければ不正 playerId として 404 扱い（1.4）。
+  const isKnownPlayer = state.players.some((p) => p.playerId === playerId);
+  if (!isKnownPlayer) {
+    return <GameNotFoundScreen />;
+  }
+
+  const participants: Participant[] = state.players.map((p) => ({
+    playerId: p.playerId,
+    displayName: p.displayName,
+    confirmed: p.confirmed,
+  }));
+
   return (
     <WaitingRoomView
-      status="WAITING"
+      status={state.status}
       participants={participants}
+      playerCount={state.playerCount}
       inviteUrl={inviteUrl}
       onCopyInviteUrl={handleCopyInviteUrl}
       copied={copied}

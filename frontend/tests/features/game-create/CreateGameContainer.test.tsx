@@ -1,17 +1,11 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
+import { SWRConfig } from "swr";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createTopoApi, type TopoApi } from "@/api/topoApi";
+import { type TopoApi, topoApi } from "@/api/topoApi";
 import type { ConfigResponse, CreateGameResponse } from "@/api/types";
 import { CreateGameContainer } from "@/features/game-create/CreateGameContainer";
-
-// 既定 API パス（api を注入しない）を検証するため createTopoApi をモックする。
-// 呼び出しごとに別インスタンスを返す（実体と同じ挙動）ことで、default 引数で
-// 毎レンダリング生成する回帰（fetchConfig 無限ループ）を検出できる。
-vi.mock("@/api/topoApi", () => ({
-  createTopoApi: vi.fn(),
-}));
 
 // config / createGame を注入して作成フローを検証する（実 HTTP・実ルータ遷移に依存しない）。
 const config: ConfigResponse = {
@@ -29,14 +23,17 @@ function LocationProbe() {
   return <div data-testid="location">{`${location.pathname}${location.search}`}</div>;
 }
 
+// SWR キャッシュはテストごとに provider（新規 Map）で隔離する。
 function renderWithRouter(api: TopoApi) {
   return render(
-    <MemoryRouter initialEntries={["/"]}>
-      <Routes>
-        <Route path="/" element={<CreateGameContainer api={api} />} />
-        <Route path="/game/:gameId" element={<LocationProbe />} />
-      </Routes>
-    </MemoryRouter>,
+    <SWRConfig value={{ provider: () => new Map() }}>
+      <MemoryRouter initialEntries={["/"]}>
+        <Routes>
+          <Route path="/" element={<CreateGameContainer api={api} />} />
+          <Route path="/game/:gameId" element={<LocationProbe />} />
+        </Routes>
+      </MemoryRouter>
+    </SWRConfig>,
   );
 }
 
@@ -114,28 +111,23 @@ describe("CreateGameContainer", () => {
     });
   });
 
-  it("test_createScreen_withDefaultApi_fetchesConfigOnce", async () => {
-    // 既定 API（api 未注入）でも config 取得は 1 回だけ。default 引数で毎レンダリング
-    // 別インスタンスを作ると useEffect が再実行され無限ループする回帰を防ぐ。
-    const mockedCreateTopoApi = vi.mocked(createTopoApi);
-    mockedCreateTopoApi.mockImplementation(
-      () =>
-        ({
-          fetchConfig: vi.fn().mockResolvedValue(config),
-          createGame: vi.fn(),
-        }) as unknown as TopoApi,
-    );
+  it("test_createScreen_withDefaultApi_usesSharedSingletonTopoApi", async () => {
+    // api 未注入時は共有シングルトン topoApi を使う（毎レンダリング生成しない）。
+    const spy = vi.spyOn(topoApi, "fetchConfig").mockResolvedValue(config);
 
     render(
-      <MemoryRouter initialEntries={["/"]}>
-        <Routes>
-          <Route path="/" element={<CreateGameContainer />} />
-        </Routes>
-      </MemoryRouter>,
+      <SWRConfig value={{ provider: () => new Map() }}>
+        <MemoryRouter initialEntries={["/"]}>
+          <Routes>
+            <Route path="/" element={<CreateGameContainer />} />
+          </Routes>
+        </MemoryRouter>
+      </SWRConfig>,
     );
 
     await screen.findByLabelText("対象種別");
-    expect(mockedCreateTopoApi).toHaveBeenCalledTimes(1);
+    expect(spy).toHaveBeenCalledTimes(1);
+    spy.mockRestore();
   });
 
   it("test_createScreen_whenConfigFails_showsErrorState", async () => {

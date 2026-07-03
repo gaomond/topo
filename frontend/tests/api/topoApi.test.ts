@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
-import { createTopoApi } from "@/api/topoApi";
-import type { ConfigResponse, CreateGameResponse } from "@/api/types";
+import { ApiError, createTopoApi } from "@/api/topoApi";
+import type {
+  ConfigResponse,
+  CreateGameResponse,
+  GameStateResponse,
+  JoinGameResponse,
+} from "@/api/types";
 
 // fetch を注入して API ラッパの入出力・エラー変換を検証する（実 HTTP に依存しない）。
 function jsonResponse(body: unknown, ok = true, status = 200): Response {
@@ -57,5 +62,62 @@ describe("createTopoApi", () => {
     await expect(
       api.createGame({ objectType: "shrine", areaPreset: "medium", playerCount: 3 }),
     ).rejects.toThrow(/400/);
+  });
+
+  it("test_joinGame_onSuccess_returnsPlayerId", async () => {
+    const joined: JoinGameResponse = { playerId: "p-99" };
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(joined));
+    const api = createTopoApi({ baseUrl: "http://api.test", fetchImpl });
+
+    const result = await api.joinGame("g-1", { displayName: "じろう" });
+
+    expect(result).toEqual(joined);
+    const [url, init] = fetchImpl.mock.calls[0];
+    expect(url).toBe("http://api.test/api/games/g-1/players");
+    expect(init?.method).toBe("POST");
+    expect(JSON.parse(init?.body as string)).toEqual({ displayName: "じろう" });
+  });
+
+  it("test_joinGame_on404_throwsApiErrorWithStatus404", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({}, false, 404));
+    const api = createTopoApi({ baseUrl: "http://api.test", fetchImpl });
+
+    const error = await api.joinGame("g-x", {}).catch((e) => e);
+    expect(error).toBeInstanceOf(ApiError);
+    expect((error as ApiError).status).toBe(404);
+  });
+
+  it("test_joinGame_on409_throwsApiErrorWithStatus409", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({}, false, 409));
+    const api = createTopoApi({ baseUrl: "http://api.test", fetchImpl });
+
+    const error = await api.joinGame("g-1", {}).catch((e) => e);
+    expect(error).toBeInstanceOf(ApiError);
+    expect((error as ApiError).status).toBe(409);
+  });
+
+  it("test_getGameState_onSuccess_returnsState", async () => {
+    const state: GameStateResponse = {
+      gameId: "g-1",
+      status: "WAITING",
+      playerCount: 3,
+      players: [{ playerId: "p-1", displayName: "たろう", confirmed: false }],
+    };
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(state));
+    const api = createTopoApi({ baseUrl: "http://api.test", fetchImpl });
+
+    const result = await api.getGameState("g-1");
+
+    expect(result).toEqual(state);
+    expect(fetchImpl).toHaveBeenCalledWith("http://api.test/api/games/g-1", undefined);
+  });
+
+  it("test_getGameState_on404_throwsApiErrorWithStatus404", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({}, false, 404));
+    const api = createTopoApi({ baseUrl: "http://api.test", fetchImpl });
+
+    const error = await api.getGameState("g-x").catch((e) => e);
+    expect(error).toBeInstanceOf(ApiError);
+    expect((error as ApiError).status).toBe(404);
   });
 });
