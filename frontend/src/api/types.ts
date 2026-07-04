@@ -39,12 +39,25 @@ export type JoinGameResponse = {
   playerId: string;
 };
 
-/** GET /api/games/{id} のレスポンス（US-05 最小形）。 */
+/** GET /api/games/{id} のレスポンス（US-05 最小形 + US-06 の creatorPlayerId）。 */
 export type GameStateResponse = {
   gameId: string;
   status: string;
   playerCount: number;
+  // 作成者の playerId（開始ボタンの creator 判定用）。作成直後の一瞬は null。
+  creatorPlayerId?: string | null;
   players: PlayerPayload[];
+};
+
+/** POST /api/games/{id}/start のリクエストボディ。playerId は creator 判定に使う必須項目。 */
+export type StartGameRequest = {
+  playerId: string;
+};
+
+/** POST /api/games/{id}/start のレスポンス。開始後の gameId と status（"ACTIVE"）を返す。 */
+export type StartGameResponse = {
+  gameId: string;
+  status: string;
 };
 
 /** 参加者（GameStateResponse の構成要素）。 */

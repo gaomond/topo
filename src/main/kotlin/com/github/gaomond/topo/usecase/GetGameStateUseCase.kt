@@ -36,6 +36,7 @@ class GetGameStateUseCase(
             gameId = gameId,
             status = summary.status,
             playerCount = summary.playerCount,
+            creatorPlayerId = summary.creatorPlayerId,
             players = players,
         )
     }

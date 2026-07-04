@@ -16,6 +16,12 @@ export type WaitingRoomViewProps = {
   inviteUrl: string;
   onCopyInviteUrl: () => void;
   copied: boolean;
+  // 開始ボタン（US-06）。全員に表示し、活性/非活性は Smart が算出して渡す（Dumb は描画のみ）。
+  onStart: () => void;
+  // 押下可能か（作成者かつ定員到達で true）。非作成者・定員未達は false。
+  startEnabled: boolean;
+  // 開始 API 送信中か（二重送信防止）。
+  starting: boolean;
 };
 
 export function WaitingRoomView({
@@ -25,6 +31,9 @@ export function WaitingRoomView({
   inviteUrl,
   onCopyInviteUrl,
   copied,
+  onStart,
+  startEnabled,
+  starting,
 }: WaitingRoomViewProps) {
   return (
     <section aria-label="待機画面">
@@ -48,6 +57,10 @@ export function WaitingRoomView({
       <p data-testid="invite-url">{inviteUrl}</p>
       <button type="button" onClick={onCopyInviteUrl}>
         {copied ? "コピーしました" : "招待URLをコピー"}
+      </button>
+
+      <button type="button" onClick={onStart} disabled={!startEnabled || starting}>
+        {starting ? "開始しています…" : "ゲームを開始"}
       </button>
     </section>
   );

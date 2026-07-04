@@ -11,6 +11,8 @@ import type {
   GameStateResponse,
   JoinGameRequest,
   JoinGameResponse,
+  StartGameRequest,
+  StartGameResponse,
 } from "./types";
 
 // 注入可能な fetch。既定はブラウザ実体。テストではモックを渡す。
@@ -39,6 +41,7 @@ export type TopoApi = {
   createGame: (request: CreateGameRequest) => Promise<CreateGameResponse>;
   joinGame: (gameId: string, request: JoinGameRequest) => Promise<JoinGameResponse>;
   getGameState: (gameId: string) => Promise<GameStateResponse>;
+  startGame: (gameId: string, request: StartGameRequest) => Promise<StartGameResponse>;
 };
 
 export type CreateTopoApiOptions = {
@@ -84,6 +87,12 @@ export function createTopoApi(options: CreateTopoApiOptions = {}): TopoApi {
       }),
     getGameState: (gameId) =>
       requestJson<GameStateResponse>(`/api/games/${encodeURIComponent(gameId)}`),
+    startGame: (gameId, request) =>
+      requestJson<StartGameResponse>(`/api/games/${encodeURIComponent(gameId)}/start`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(request),
+      }),
   };
 }
 

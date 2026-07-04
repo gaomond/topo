@@ -11,6 +11,8 @@
 import { useCallback, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ApiError, type TopoApi, topoApi } from "@/api/topoApi";
+import { GeoTrackingContainer } from "@/features/geo-tracking/GeoTrackingContainer";
+import type { UseGeoTrackingDeps } from "@/features/geo-tracking/useGeoTracking";
 import { JoinGameForm } from "@/features/join-game/JoinGameForm";
 import { buildGamePath, buildInviteUrl, PLAYER_QUERY_KEY } from "@/routing/paths";
 import { CannotJoinScreen } from "@/shared/CannotJoinScreen";
@@ -25,6 +27,8 @@ export type WaitingRoomContainerProps = {
   clipboard?: Pick<Clipboard, "writeText">;
   origin?: string;
   refreshIntervalMs?: number;
+  // 地図画面（ACTIVE 遷移先）の Geolocation 注入。テスト用（既定はブラウザ実体）。
+  geoDeps?: UseGeoTrackingDeps;
 };
 
 // 待機中のポーリング頻度（低頻度）。US-08 の ACTIVE 2s は refreshIntervalMs で切り替える。
@@ -35,6 +39,7 @@ export function WaitingRoomContainer({
   clipboard = navigator.clipboard,
   origin = window.location.origin,
   refreshIntervalMs = WAITING_REFRESH_INTERVAL_MS,
+  geoDeps,
 }: WaitingRoomContainerProps = {}) {
   const navigate = useNavigate();
   const { gameId } = useParams();
@@ -45,8 +50,9 @@ export function WaitingRoomContainer({
   const resolvedApi = api ?? topoApi;
   const [copied, setCopied] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [starting, setStarting] = useState(false);
 
-  const { state, error } = useGameState({
+  const { state, error, mutate } = useGameState({
     api: resolvedApi,
     gameId,
     refreshIntervalMs,
@@ -78,6 +84,19 @@ export function WaitingRoomContainer({
     [resolvedApi, gameId, navigate],
   );
 
+  const handleStart = useCallback(async () => {
+    if (!gameId) return;
+    setStarting(true);
+    try {
+      await resolvedApi.startGame(gameId, { playerId });
+      // 開始成功で ACTIVE を即取り込み、地図画面へ切り替える（作成者の即時遷移）。
+      await mutate();
+    } catch {
+      // 失敗（403/409）はポーリングで状態が追従し画面分岐が是正される。ボタンは戻す。
+      setStarting(false);
+    }
+  }, [resolvedApi, gameId, playerId, mutate]);
+
   // 404（存在しない gameId）→ 見つかりません（1.4）。
   if (error instanceof ApiError && error.status === 404) {
     return <GameNotFoundScreen />;
@@ -103,11 +122,21 @@ export function WaitingRoomContainer({
     return <GameNotFoundScreen />;
   }
 
+  // ACTIVE 検知で地図画面（US-02 雛形）へ切り替える（1.3）。作成者は開始成功→mutate で、
+  // 非作成者はポーリングで ACTIVE を検知し、両者とも status 駆動の同一分岐に集約する。
+  if (state.status === "ACTIVE") {
+    return <GeoTrackingContainer deps={geoDeps} />;
+  }
+
   const participants: Participant[] = state.players.map((p) => ({
     playerId: p.playerId,
     displayName: p.displayName,
     confirmed: p.confirmed,
   }));
+
+  // creator 判定と開始ボタン活性: 作成者かつ定員到達で押下可（1.2）。
+  const isCreator = playerId === state.creatorPlayerId;
+  const startEnabled = isCreator && participants.length === state.playerCount;
 
   return (
     <WaitingRoomView
@@ -117,6 +146,9 @@ export function WaitingRoomContainer({
       inviteUrl={inviteUrl}
       onCopyInviteUrl={handleCopyInviteUrl}
       copied={copied}
+      onStart={handleStart}
+      startEnabled={startEnabled}
+      starting={starting}
     />
   );
 }

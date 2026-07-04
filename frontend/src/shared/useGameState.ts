@@ -4,7 +4,7 @@
 // US-08（ACTIVE 後の 2 秒ポーリング）と共有する前提で、頻度は refreshInterval 引数で切り替える。
 // この hook は複数機能（待機 / ACTIVE）で共有するため src/shared に置く（CLAUDE.md）。
 
-import useSWR from "swr";
+import useSWR, { type KeyedMutator } from "swr";
 import type { TopoApi } from "@/api/topoApi";
 import type { GameStateResponse } from "@/api/types";
 
@@ -21,6 +21,8 @@ export type UseGameStateResult = {
   state: GameStateResponse | undefined;
   error: unknown;
   isLoading: boolean;
+  // 手動再検証（SWR mutate）。開始成功後に即 ACTIVE を取り込むために使う（US-06 creator 即時遷移）。
+  mutate: KeyedMutator<GameStateResponse>;
 };
 
 const DEFAULT_REFRESH_INTERVAL_MS = 5000;
@@ -39,7 +41,7 @@ export function useGameState({
   // SWR key は [プレフィックス, gameId]。gameId 未確定時は null でフェッチを止める。
   const key = gameId ? (["game-state", gameId] as const) : null;
 
-  const { data, error, isLoading } = useSWR<GameStateResponse>(
+  const { data, error, isLoading, mutate } = useSWR<GameStateResponse>(
     key,
     ([, id]: readonly [string, string]) => api.getGameState(id),
     {
@@ -49,5 +51,5 @@ export function useGameState({
     },
   );
 
-  return { state: data, error, isLoading };
+  return { state: data, error, isLoading, mutate };
 }

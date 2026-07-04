@@ -64,6 +64,11 @@ class CreateGameUseCaseTest {
             calls.add(Call.UpdateCreator(gameId, creatorPlayerId))
         }
 
+        override fun updateStatus(
+            gameId: UUID,
+            status: GameStatus,
+        ) = error("作成では呼ばれない")
+
         // 作成では参加系の取得は使わない。
         override fun findSummary(gameId: UUID): GameSummary? = error("作成では呼ばれない")
     }

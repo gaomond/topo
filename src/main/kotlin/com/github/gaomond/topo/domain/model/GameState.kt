@@ -9,15 +9,18 @@ import java.util.UUID
  * live 座標・currentArea・result は US-07〜10 で拡張する領域のため本型には含めない
  * （将来のキー追加で破壊的変更なく拡張できる形）。Spring / JPA 非依存。
  *
- * @param gameId      ゲーム ID
- * @param status      現在の状態
- * @param playerCount 固定参加人数（定員）
- * @param players     参加者一覧
+ * @param gameId          ゲーム ID
+ * @param status          現在の状態
+ * @param playerCount     固定参加人数（定員）
+ * @param creatorPlayerId 作成者の playerId（フロントの開始ボタン creator 判定用・US-06）。
+ *                        作成直後の一瞬を除き設定済みだが型は nullable を維持する。
+ * @param players         参加者一覧
  */
 data class GameState(
     val gameId: UUID,
     val status: GameStatus,
     val playerCount: Int,
+    val creatorPlayerId: UUID?,
     val players: List<PlayerSnapshot>,
 )
 

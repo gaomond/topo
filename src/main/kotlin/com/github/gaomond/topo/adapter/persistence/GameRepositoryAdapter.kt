@@ -50,9 +50,27 @@ class GameRepositoryAdapter(
         gameRepository.save(game)
     }
 
+    override fun updateStatus(
+        gameId: UUID,
+        status: GameStatus,
+    ) {
+        val game =
+            gameRepository.findById(gameId).orElseThrow {
+                IllegalStateException("status 更新対象の game が存在しません: $gameId")
+            }
+        // status カラムのみ更新する。creatorPlayerId / playerCount / 結果カラムは触らない。
+        game.status = status
+        gameRepository.save(game)
+    }
+
     override fun findSummary(gameId: UUID): GameSummary? =
         gameRepository
             .findById(gameId)
-            .map { GameSummary(status = it.status, playerCount = it.playerCount) }
-            .orElse(null)
+            .map {
+                GameSummary(
+                    status = it.status,
+                    playerCount = it.playerCount,
+                    creatorPlayerId = it.creatorPlayerId,
+                )
+            }.orElse(null)
 }

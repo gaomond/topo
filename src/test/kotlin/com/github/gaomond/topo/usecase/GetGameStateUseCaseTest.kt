@@ -32,6 +32,11 @@ class GetGameStateUseCaseTest {
             creatorPlayerId: UUID,
         ) = error("状態取得では呼ばれない")
 
+        override fun updateStatus(
+            gameId: UUID,
+            status: GameStatus,
+        ) = error("状態取得では呼ばれない")
+
         override fun findSummary(gameId: UUID): GameSummary? = summary
     }
 
@@ -60,7 +65,7 @@ class GetGameStateUseCaseTest {
             )
         val useCase =
             GetGameStateUseCase(
-                SpyGameRepository(GameSummary(GameStatus.WAITING, playerCount = 3)),
+                SpyGameRepository(GameSummary(GameStatus.WAITING, playerCount = 3, creatorPlayerId = null)),
                 StubPlayerRepository(players),
             )
 
@@ -80,12 +85,26 @@ class GetGameStateUseCaseTest {
     }
 
     @Test
+    fun test_getGameState_returnsCreatorPlayerIdFromSummary() {
+        val creator = UUID.randomUUID()
+        val useCase =
+            GetGameStateUseCase(
+                SpyGameRepository(GameSummary(GameStatus.WAITING, 3, creatorPlayerId = creator)),
+                StubPlayerRepository(emptyList()),
+            )
+
+        val state = useCase.getState(gameId)
+
+        assertEquals(creator, state.creatorPlayerId)
+    }
+
+    @Test
     fun test_getGameState_reflectsConfirmedFlagFromPlayers() {
         val confirmed = PlayerSnapshot(UUID.randomUUID(), "かくてい", confirmed = true)
         val notYet = PlayerSnapshot(UUID.randomUUID(), "みかくてい", confirmed = false)
         val useCase =
             GetGameStateUseCase(
-                SpyGameRepository(GameSummary(GameStatus.WAITING, 3)),
+                SpyGameRepository(GameSummary(GameStatus.WAITING, 3, creatorPlayerId = null)),
                 StubPlayerRepository(listOf(confirmed, notYet)),
             )
 

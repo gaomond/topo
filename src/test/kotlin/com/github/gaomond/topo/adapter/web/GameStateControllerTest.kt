@@ -42,6 +42,7 @@ class GameStateControllerTest {
                 gameId = gameId,
                 status = GameStatus.WAITING,
                 playerCount = 3,
+                creatorPlayerId = p1,
                 players =
                     listOf(
                         PlayerSnapshot(p1, "たろう", confirmed = true),
@@ -62,6 +63,27 @@ class GameStateControllerTest {
                 jsonPath("$.players[0].displayName") { value("たろう") }
                 jsonPath("$.players[0].confirmed") { value(true) }
                 jsonPath("$.players[1].confirmed") { value(false) }
+            }
+    }
+
+    @Test
+    fun test_getGame_responseIncludesCreatorPlayerId() {
+        val creator = UUID.randomUUID()
+        whenever(getGameStateUseCase.getState(any())).thenReturn(
+            GameState(
+                gameId = gameId,
+                status = GameStatus.WAITING,
+                playerCount = 3,
+                creatorPlayerId = creator,
+                players = listOf(PlayerSnapshot(creator, "たろう", confirmed = false)),
+            ),
+        )
+
+        mockMvc
+            .get("/api/games/$gameId")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.creatorPlayerId") { value(creator.toString()) }
             }
     }
 

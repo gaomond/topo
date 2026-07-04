@@ -13,6 +13,8 @@ data class GameStateResponse(
     val gameId: String,
     val status: String,
     val playerCount: Int,
+    // 作成者の playerId（フロントの開始ボタン creator 判定用・US-06）。作成直後の一瞬は null。
+    val creatorPlayerId: String?,
     val players: List<PlayerPayload>,
 ) {
     companion object {
@@ -21,6 +23,7 @@ data class GameStateResponse(
                 gameId = state.gameId.toString(),
                 status = state.status.name,
                 playerCount = state.playerCount,
+                creatorPlayerId = state.creatorPlayerId?.toString(),
                 players =
                     state.players.map {
                         PlayerPayload(

@@ -41,9 +41,21 @@ interface GameRepositoryPort {
     )
 
     /**
-     * 参加判定に必要なゲームサマリ（status / playerCount）を取得する。存在しなければ null。
+     * ゲームの status を更新する（US-06: 開始）。status カラムのみ更新し、他カラムは変更しない。
      *
-     * JPA エンティティは露出させず、Domain 値 [GameSummary] に射影して返す（US-05: 参加・状態取得）。
+     * @param gameId 対象ゲーム ID
+     * @param status 更新後の状態（開始時は [GameStatus.ACTIVE]）
+     */
+    fun updateStatus(
+        gameId: UUID,
+        status: GameStatus,
+    )
+
+    /**
+     * 参加・開始判定に必要なゲームサマリ（status / playerCount / creatorPlayerId）を取得する。
+     * 存在しなければ null。
+     *
+     * JPA エンティティは露出させず、Domain 値 [GameSummary] に射影して返す（US-05: 参加・状態取得 / US-06: 開始）。
      */
     fun findSummary(gameId: UUID): GameSummary?
 }

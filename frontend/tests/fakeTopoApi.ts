@@ -8,6 +8,7 @@ import type {
   CreateGameResponse,
   GameStateResponse,
   JoinGameResponse,
+  StartGameResponse,
 } from "@/api/types";
 
 export type FakeTopoApi = {
@@ -16,6 +17,7 @@ export type FakeTopoApi = {
   createGame: ReturnType<typeof vi.fn<() => Promise<CreateGameResponse>>>;
   joinGame: ReturnType<typeof vi.fn<() => Promise<JoinGameResponse>>>;
   getGameState: ReturnType<typeof vi.fn<() => Promise<GameStateResponse>>>;
+  startGame: ReturnType<typeof vi.fn<() => Promise<StartGameResponse>>>;
 };
 
 export function createFakeTopoApi(): FakeTopoApi {
@@ -23,8 +25,9 @@ export function createFakeTopoApi(): FakeTopoApi {
   const createGame = vi.fn<() => Promise<CreateGameResponse>>();
   const joinGame = vi.fn<() => Promise<JoinGameResponse>>();
   const getGameState = vi.fn<() => Promise<GameStateResponse>>();
-  const api: TopoApi = { fetchConfig, createGame, joinGame, getGameState };
-  return { api, fetchConfig, createGame, joinGame, getGameState };
+  const startGame = vi.fn<() => Promise<StartGameResponse>>();
+  const api: TopoApi = { fetchConfig, createGame, joinGame, getGameState, startGame };
+  return { api, fetchConfig, createGame, joinGame, getGameState, startGame };
 }
 
 export function gameState(overrides: Partial<GameStateResponse> = {}): GameStateResponse {
