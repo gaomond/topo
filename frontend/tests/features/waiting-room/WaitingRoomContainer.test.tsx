@@ -7,7 +7,7 @@ import { ApiError } from "@/api/topoApi";
 import type { GameStateResponse } from "@/api/types";
 import { WaitingRoomContainer } from "@/features/waiting-room/WaitingRoomContainer";
 import { createFakeGeolocation } from "../../fakeGeolocation";
-import { createFakeTopoApi, type FakeTopoApi, gameState } from "../../fakeTopoApi";
+import { createFakeTopoApi, type FakeTopoApi, gameState, player } from "../../fakeTopoApi";
 
 // 現在 URL（パス + クエリ）を可視化するプローブ。遷移後の URL を検証する。
 function LocationProbe() {
@@ -36,7 +36,7 @@ function renderAt(url: string, fake: FakeTopoApi, clipboard?: Pick<Clipboard, "w
                 api={fake.api}
                 clipboard={clip}
                 origin="https://topo.example"
-                refreshIntervalMs={5000}
+                refreshIntervalMs={2000}
                 geoDeps={geoDeps()}
               />
             }
@@ -89,7 +89,7 @@ describe("WaitingRoomContainer", () => {
     fake.getGameState.mockResolvedValue(
       gameState({
         status: "WAITING",
-        players: [{ playerId: "player-456", displayName: "あなた", confirmed: false }],
+        players: [player({ playerId: "player-456", displayName: "あなた" })],
       }),
     );
 
@@ -103,13 +103,13 @@ describe("WaitingRoomContainer", () => {
     const fake = createFakeTopoApi();
     const one: GameStateResponse = gameState({
       status: "WAITING",
-      players: [{ playerId: "player-456", displayName: "あなた", confirmed: false }],
+      players: [player({ playerId: "player-456", displayName: "あなた" })],
     });
     const two: GameStateResponse = gameState({
       status: "WAITING",
       players: [
-        { playerId: "player-456", displayName: "あなた", confirmed: false },
-        { playerId: "player-999", displayName: "なかま", confirmed: false },
+        player({ playerId: "player-456", displayName: "あなた" }),
+        player({ playerId: "player-999", displayName: "なかま" }),
       ],
     });
     fake.getGameState.mockResolvedValueOnce(one).mockResolvedValue(two);
@@ -118,7 +118,7 @@ describe("WaitingRoomContainer", () => {
 
     await waitFor(() => expect(screen.getByTestId("participant-count")).toHaveTextContent("1"));
 
-    await vi.advanceTimersByTimeAsync(5000);
+    await vi.advanceTimersByTimeAsync(2000);
 
     await waitFor(() => expect(screen.getByTestId("participant-count")).toHaveTextContent("2"));
     expect(screen.getByLabelText("参加者一覧")).toHaveTextContent("なかま");
@@ -158,7 +158,7 @@ describe("WaitingRoomContainer", () => {
     fake.getGameState.mockResolvedValue(
       gameState({
         status: "WAITING",
-        players: [{ playerId: "someone-else", displayName: "別人", confirmed: false }],
+        players: [player({ playerId: "someone-else", displayName: "別人" })],
       }),
     );
 
@@ -172,7 +172,7 @@ describe("WaitingRoomContainer", () => {
     fake.getGameState.mockResolvedValue(
       gameState({
         status: "WAITING",
-        players: [{ playerId: "player-456", displayName: "あなた", confirmed: false }],
+        players: [player({ playerId: "player-456", displayName: "あなた" })],
       }),
     );
     const clipboard = { writeText: vi.fn().mockResolvedValue(undefined) };
@@ -190,9 +190,9 @@ describe("WaitingRoomContainer", () => {
   // 定員ちょうどの参加者一覧（player-456 を含む 3 人）。
   function fullPlayers() {
     return [
-      { playerId: "player-456", displayName: "あなた", confirmed: false },
-      { playerId: "player-2", displayName: "ふたり", confirmed: false },
-      { playerId: "player-3", displayName: "さんにん", confirmed: false },
+      player({ playerId: "player-456", displayName: "あなた" }),
+      player({ playerId: "player-2", displayName: "ふたり" }),
+      player({ playerId: "player-3", displayName: "さんにん" }),
     ];
   }
 
@@ -219,7 +219,7 @@ describe("WaitingRoomContainer", () => {
         status: "WAITING",
         playerCount: 3,
         creatorPlayerId: "player-456",
-        players: [{ playerId: "player-456", displayName: "あなた", confirmed: false }],
+        players: [player({ playerId: "player-456", displayName: "あなた" })],
       }),
     );
 
@@ -312,7 +312,7 @@ describe("WaitingRoomContainer", () => {
 
     await screen.findByRole("button", { name: "ゲームを開始" });
 
-    await vi.advanceTimersByTimeAsync(5000);
+    await vi.advanceTimersByTimeAsync(2000);
 
     await waitFor(() => expect(container.querySelector(".leaflet-container")).not.toBeNull());
   });
@@ -357,5 +357,81 @@ describe("WaitingRoomContainer", () => {
     );
     // 待機画面に留まり、開始ボタンは再度押せる。
     expect(screen.getByRole("button", { name: "ゲームを開始" })).toBeEnabled();
+  });
+
+  // US-08: 統一 2 秒ポーリング（WAITING / ACTIVE 共通）と live/online/currentArea の保持。
+  it("test_WAITING_2秒ごとにgetGameStateが呼ばれる", async () => {
+    const fake = createFakeTopoApi();
+    fake.getGameState.mockResolvedValue(
+      gameState({
+        status: "WAITING",
+        players: [player({ playerId: "player-456", displayName: "あなた" })],
+      }),
+    );
+
+    renderAt("/game/game-123?p=player-456", fake);
+
+    await waitFor(() => expect(fake.getGameState).toHaveBeenCalledTimes(1));
+    await vi.advanceTimersByTimeAsync(2000);
+    await waitFor(() => expect(fake.getGameState).toHaveBeenCalledTimes(2));
+    await vi.advanceTimersByTimeAsync(2000);
+    await waitFor(() => expect(fake.getGameState).toHaveBeenCalledTimes(3));
+  });
+
+  it("test_ACTIVE_2秒ごとにgetGameStateが呼ばれ続ける", async () => {
+    const fake = createFakeTopoApi();
+    fake.getGameState.mockResolvedValue(
+      gameState({
+        status: "ACTIVE",
+        players: [player({ playerId: "player-456", displayName: "あなた" })],
+      }),
+    );
+
+    const { container } = renderAt("/game/game-123?p=player-456", fake);
+
+    // ACTIVE では地図画面に切り替わるが、ポーリング hook（WaitingRoomContainer）は回り続ける。
+    await waitFor(() => expect(container.querySelector(".leaflet-container")).not.toBeNull());
+    const callsAfterMount = fake.getGameState.mock.calls.length;
+
+    await vi.advanceTimersByTimeAsync(2000);
+    await waitFor(() =>
+      expect(fake.getGameState.mock.calls.length).toBeGreaterThan(callsAfterMount),
+    );
+  });
+
+  it("test_取得したlive_online_currentAreaがパースされGeoTrackingへ伝播する", async () => {
+    const fake = createFakeTopoApi();
+    fake.getGameState.mockResolvedValue(
+      gameState({
+        status: "ACTIVE",
+        players: [
+          player({
+            playerId: "player-456",
+            displayName: "あなた",
+            live: { lat: 35.68, lng: 139.76, at: "2026-07-06T12:00:00Z" },
+            online: true,
+          }),
+          player({ playerId: "player-2", displayName: "ふたり" }),
+        ],
+        currentArea: {
+          sqm: 1234567,
+          hull: [
+            [35.68, 139.76],
+            [35.69, 139.77],
+            [35.68, 139.78],
+          ],
+        },
+      }),
+    );
+
+    const { container } = renderAt("/game/game-123?p=player-456", fake);
+
+    // 地図ラッパの不可視 data 属性に、live 保有者数と currentArea.sqm が伝播している（保持・公開）。
+    await waitFor(() => {
+      const wrapper = container.querySelector("[data-current-area-sqm]");
+      expect(wrapper).not.toBeNull();
+      expect(wrapper?.getAttribute("data-live-player-count")).toBe("1");
+      expect(wrapper?.getAttribute("data-current-area-sqm")).toBe("1234567");
+    });
   });
 });

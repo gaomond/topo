@@ -31,14 +31,15 @@ export type WaitingRoomContainerProps = {
   geoDeps?: UseGeoTrackingDeps;
 };
 
-// 待機中のポーリング頻度（低頻度）。US-08 の ACTIVE 2s は refreshIntervalMs で切り替える。
-const WAITING_REFRESH_INTERVAL_MS = 5000;
+// ポーリング頻度（統一 2 秒・US-08 / E5）。WAITING / ACTIVE で周期を分けず、送信周期
+// （LOCATION_SEND_INTERVAL_MS=2000）と概念一致させる。ACTIVE 遷移後も本 hook が回り続ける。
+const POLL_INTERVAL_MS = 2000;
 
 export function WaitingRoomContainer({
   api,
   clipboard = navigator.clipboard,
   origin = window.location.origin,
-  refreshIntervalMs = WAITING_REFRESH_INTERVAL_MS,
+  refreshIntervalMs = POLL_INTERVAL_MS,
   geoDeps,
 }: WaitingRoomContainerProps = {}) {
   const navigate = useNavigate();
@@ -148,12 +149,16 @@ export function WaitingRoomContainer({
   // 非作成者はポーリングで ACTIVE を検知し、両者とも status 駆動の同一分岐に集約する。
   if (state.status === "ACTIVE") {
     // 地図画面へ切り替え。ライブ位置送信のため gameId / playerId / api を Smart へ渡す（US-07）。
+    // さらに US-08 でポーリング済みの players（live/online）と currentArea を Smart→Smart で渡す
+    // （保持・公開のみ。友達ドット/面積メーターの描画は US-09/10）。
     return (
       <GeoTrackingContainer
         gameId={gameId ?? ""}
         playerId={playerId}
         api={resolvedApi}
         deps={geoDeps}
+        players={state.players}
+        currentArea={state.currentArea}
       />
     );
   }

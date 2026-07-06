@@ -6,7 +6,7 @@ import com.github.gaomond.topo.domain.model.Coordinate
 import com.github.gaomond.topo.domain.model.GameStatus
 import com.github.gaomond.topo.domain.model.GameSummary
 import com.github.gaomond.topo.domain.model.JoinGameCommand
-import com.github.gaomond.topo.domain.model.PlayerSnapshot
+import com.github.gaomond.topo.domain.model.PlayerReading
 import com.github.gaomond.topo.domain.port.GameRepositoryPort
 import com.github.gaomond.topo.domain.port.PlayerRepositoryPort
 import org.junit.jupiter.api.Test
@@ -67,7 +67,7 @@ class JoinGameUseCaseTest {
 
         override fun countByGameId(gameId: UUID): Int = count
 
-        override fun findByGameId(gameId: UUID): List<PlayerSnapshot> = error("参加では呼ばれない")
+        override fun findByGameId(gameId: UUID): List<PlayerReading> = error("参加では呼ばれない")
 
         override fun updateLiveLocation(
             gameId: UUID,

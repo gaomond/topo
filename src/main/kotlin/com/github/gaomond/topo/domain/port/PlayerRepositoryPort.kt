@@ -1,7 +1,7 @@
 package com.github.gaomond.topo.domain.port
 
 import com.github.gaomond.topo.domain.model.Coordinate
-import com.github.gaomond.topo.domain.model.PlayerSnapshot
+import com.github.gaomond.topo.domain.model.PlayerReading
 import java.time.Instant
 import java.util.UUID
 
@@ -32,11 +32,13 @@ interface PlayerRepositoryPort {
     fun countByGameId(gameId: UUID): Int
 
     /**
-     * 指定ゲームの参加者一覧を [PlayerSnapshot]（読み取り射影）にして返す（US-05: 状態取得）。
+     * 指定ゲームの参加者一覧を [PlayerReading]（生読み取り・facts）にして返す（US-05: 状態取得 / US-08: live 射影）。
      *
+     * live 位置（live_lat / live_lng / live_at）が揃っていれば `live` に載せ、欠けていれば null にする。
+     * presence（online）は now を要する policy のため含めない（UseCase が計算する）。
      * joined_at 昇順で返す（参加順表示）。JPA エンティティは露出させない。
      */
-    fun findByGameId(gameId: UUID): List<PlayerSnapshot>
+    fun findByGameId(gameId: UUID): List<PlayerReading>
 
     /**
      * ライブ位置（live_lat / live_lng / live_at）を更新する（US-07: 高頻度・副作用なし）。

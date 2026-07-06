@@ -112,7 +112,11 @@ describe("createTopoApi", () => {
       gameId: "g-1",
       status: "WAITING",
       playerCount: 3,
-      players: [{ playerId: "p-1", displayName: "たろう", confirmed: false }],
+      players: [
+        { playerId: "p-1", displayName: "たろう", confirmed: false, live: null, online: false },
+      ],
+      currentArea: null,
+      result: null,
     };
     const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(state));
     const api = createTopoApi({ baseUrl: "http://api.test", fetchImpl });

@@ -128,6 +128,32 @@ class LiveLocationPersistenceTest {
     }
 
     @Test
+    fun `test_findByGameId_live送信済み_LiveLocationを射影`() {
+        val gameId = seedGame()
+        val playerId = seedPlayer(gameId)
+        val at = Instant.parse("2026-07-04T12:00:00Z")
+        playerAdapter().updateLiveLocation(gameId, playerId, Coordinate(35.68, 139.76), at)
+        entityManager.clear()
+
+        val reading = playerAdapter().findByGameId(gameId).single()
+
+        assertEquals(35.68, reading.live?.coordinate?.lat)
+        assertEquals(139.76, reading.live?.coordinate?.lng)
+        assertEquals(at, reading.live?.at)
+    }
+
+    @Test
+    fun `test_findByGameId_live未送信_liveはnull`() {
+        val gameId = seedGame()
+        seedPlayer(gameId)
+        entityManager.clear()
+
+        val reading = playerAdapter().findByGameId(gameId).single()
+
+        assertNull(reading.live)
+    }
+
+    @Test
     fun test_updateLiveLocation_setsLiveAtToGivenInstant() {
         val gameId = seedGame()
         val playerId = seedPlayer(gameId)

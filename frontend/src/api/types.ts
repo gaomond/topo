@@ -39,7 +39,7 @@ export type JoinGameResponse = {
   playerId: string;
 };
 
-/** GET /api/games/{id} のレスポンス（US-05 最小形 + US-06 の creatorPlayerId）。 */
+/** GET /api/games/{id} のレスポンス（US-05 最小形 + US-06 creatorPlayerId + US-08 live/online/currentArea）。 */
 export type GameStateResponse = {
   gameId: string;
   status: string;
@@ -47,6 +47,10 @@ export type GameStateResponse = {
   // 作成者の playerId（開始ボタンの creator 判定用）。作成直後の一瞬は null。
   creatorPlayerId?: string | null;
   players: PlayerPayload[];
+  // live 位置の暫定凸包（ACTIVE かつ live 点 3 点以上のときのみ非 null・US-08）。
+  currentArea: CurrentAreaPayload | null;
+  // 確定結果。confirm/集計（US-11/13）まで常に null。
+  result: unknown | null;
 };
 
 /** POST /api/games/{id}/start のリクエストボディ。playerId は creator 判定に使う必須項目。 */
@@ -65,6 +69,23 @@ export type PlayerPayload = {
   playerId: string;
   displayName: string;
   confirmed: boolean;
+  // 最新ライブ位置（未送信は null・US-08）。
+  live: LiveLocationPayload | null;
+  // live_at の鮮度（TTL 内）による在室判定（サーバー計算・US-08）。
+  online: boolean;
+};
+
+/** ライブ位置（PlayerPayload の構成要素・US-08）。at は ISO-8601 / Z。 */
+export type LiveLocationPayload = {
+  lat: number;
+  lng: number;
+  at: string;
+};
+
+/** 進行中メーター（GameStateResponse の構成要素・US-08）。hull は [[lat,lng],...] の閉環。 */
+export type CurrentAreaPayload = {
+  sqm: number;
+  hull: [number, number][];
 };
 
 /** PUT /api/games/{id}/players/{pid}/location のリクエストボディ（ライブ位置）。 */

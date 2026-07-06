@@ -7,6 +7,7 @@
 
 import { useCallback } from "react";
 import { type TopoApi, topoApi } from "@/api/topoApi";
+import type { CurrentAreaPayload, PlayerPayload } from "@/api/types";
 import { AccuracyReadout } from "./AccuracyReadout";
 import { DegradedBanner } from "./DegradedBanner";
 import { type Coordinate, GeoState } from "./geoState";
@@ -23,9 +24,20 @@ export type GeoTrackingContainerProps = {
   api?: TopoApi;
   // テスト用に Geolocation / isSecureContext を注入できる（既定はブラウザ実体）。
   deps?: UseGeoTrackingDeps;
+  // US-08: ポーリング済みの他プレイヤー（live/online）と暫定凸包面積。保持・公開のみで、
+  // 友達ドット（live marker）/ 面積メーターの描画は US-09/10。本 US では地図に重ねない。
+  players?: PlayerPayload[];
+  currentArea?: CurrentAreaPayload | null;
 };
 
-export function GeoTrackingContainer({ gameId, playerId, api, deps }: GeoTrackingContainerProps) {
+export function GeoTrackingContainer({
+  gameId,
+  playerId,
+  api,
+  deps,
+  players = [],
+  currentArea = null,
+}: GeoTrackingContainerProps) {
   // 既定は共有シングルトン（identity が安定し、send の再生成連鎖を招かない）。
   const resolvedApi = api ?? topoApi;
   const { state, selfLocation, accuracyMeters, errorMessage, canRetry, retry } =
@@ -52,8 +64,15 @@ export function GeoTrackingContainer({ gameId, playerId, api, deps }: GeoTrackin
 
   // それ以外（INITIALIZING / TRACKING / DEGRADED）は地図を維持する。
   // DEGRADED のときのみ控えめバナーを地図上部に重ねる（地図は隠さない）。
+  // players（live 保有者数）と currentArea（sqm）は US-08 で保持・公開のみ行い、可視描画は変えない
+  // （不可視の data 属性で公開。友達ドット/面積メーターの描画は US-09/10）。
+  const liveCount = players.filter((p) => p.live !== null).length;
   return (
-    <div className="absolute inset-0">
+    <div
+      className="absolute inset-0"
+      data-live-player-count={liveCount}
+      data-current-area-sqm={currentArea?.sqm ?? ""}
+    >
       <MapView selfLocation={selfLocation} />
       <AccuracyReadout accuracyMeters={accuracyMeters} />
       <DegradedBanner visible={state === GeoState.DEGRADED} />

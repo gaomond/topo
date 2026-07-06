@@ -46,6 +46,9 @@ export function useGameState({
     ([, id]: readonly [string, string]) => api.getGameState(id),
     {
       refreshInterval: refreshIntervalMs,
+      // SWR の既定 dedupingInterval（2000ms）は、refreshInterval が同値以下（US-08 は 2000ms）のとき
+      // 定期リバリデーションを重複とみなして握り潰す。ポーリング周期より必ず短くして各周期のフェッチを通す。
+      dedupingInterval: Math.floor(refreshIntervalMs / 2),
       // 404 は復旧しない永続エラーのため自動リトライしない（error に載せて分岐させる）。
       shouldRetryOnError: false,
     },

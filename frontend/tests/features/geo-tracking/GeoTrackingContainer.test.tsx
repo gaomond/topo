@@ -8,7 +8,7 @@ import {
   PERMISSION_DENIED,
   TIMEOUT,
 } from "../../fakeGeolocation";
-import { createFakeTopoApi, type FakeTopoApi } from "../../fakeTopoApi";
+import { createFakeTopoApi, type FakeTopoApi, player } from "../../fakeTopoApi";
 
 describe("GeoTrackingContainer", () => {
   let geolocation: FakeGeolocation;
@@ -85,6 +85,38 @@ describe("GeoTrackingContainer", () => {
     // 非安全コンテキストは再試行しても解決しないので再試行ボタンを出さない。
     expect(screen.queryByRole("button", { name: "再試行" })).not.toBeInTheDocument();
     expect(geolocation.watchPosition).not.toHaveBeenCalled();
+  });
+
+  it("test_ACTIVE_currentAreaとplayersを受領しても可視描画は変えず保持する", () => {
+    // US-08: 友達ドット / 面積メーターの描画は US-09/10。本 US は受領・保持のみ（不可視 data 属性で公開）。
+    const { container } = render(
+      <GeoTrackingContainer
+        gameId="game-123"
+        playerId="player-1"
+        api={fake.api}
+        deps={{ geolocation, isSecureContext: true }}
+        players={[
+          player({ live: { lat: 35.0, lng: 139.0, at: "2026-07-06T12:00:00Z" }, online: true }),
+          player(),
+        ]}
+        currentArea={{
+          sqm: 500000,
+          hull: [
+            [35.0, 139.0],
+            [35.1, 139.1],
+            [35.0, 139.2],
+          ],
+        }}
+      />,
+    );
+    // 可視 UI は従来どおり（地図表示・エラー画面やバナー無し）。
+    expect(container.querySelector(".leaflet-container")).not.toBeNull();
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    // 受領した live 保有者数・currentArea.sqm を保持・公開している。
+    const wrapper = container.querySelector("[data-current-area-sqm]");
+    expect(wrapper?.getAttribute("data-live-player-count")).toBe("1");
+    expect(wrapper?.getAttribute("data-current-area-sqm")).toBe("500000");
   });
 
   describe("ライブ位置送信（US-07）", () => {

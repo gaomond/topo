@@ -3,7 +3,7 @@ package com.github.gaomond.topo.usecase
 import com.github.gaomond.topo.domain.exception.GameValidationException
 import com.github.gaomond.topo.domain.exception.PlayerNotFoundException
 import com.github.gaomond.topo.domain.model.Coordinate
-import com.github.gaomond.topo.domain.model.PlayerSnapshot
+import com.github.gaomond.topo.domain.model.PlayerReading
 import com.github.gaomond.topo.domain.port.PlayerRepositoryPort
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -38,7 +38,7 @@ class UpdateLiveLocationUseCaseTest {
 
         override fun countByGameId(gameId: UUID): Int = error("位置更新では呼ばれない")
 
-        override fun findByGameId(gameId: UUID): List<PlayerSnapshot> = error("位置更新では呼ばれない")
+        override fun findByGameId(gameId: UUID): List<PlayerReading> = error("位置更新では呼ばれない")
 
         override fun updateLiveLocation(
             gameId: UUID,

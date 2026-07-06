@@ -8,6 +8,7 @@ import type {
   CreateGameResponse,
   GameStateResponse,
   JoinGameResponse,
+  PlayerPayload,
   StartGameResponse,
 } from "@/api/types";
 
@@ -46,6 +47,21 @@ export function gameState(overrides: Partial<GameStateResponse> = {}): GameState
     status: "WAITING",
     playerCount: 3,
     players: [],
+    // US-08 で追加。既定は「未計測（currentArea=null）」「未確定（result=null）」。
+    currentArea: null,
+    result: null,
+    ...overrides,
+  };
+}
+
+// PlayerPayload のテスト用ファクトリ。live/online の既定（未送信・非在室）を埋める。
+export function player(overrides: Partial<PlayerPayload> = {}): PlayerPayload {
+  return {
+    playerId: "player-1",
+    displayName: "プレイヤー",
+    confirmed: false,
+    live: null,
+    online: false,
     ...overrides,
   };
 }
