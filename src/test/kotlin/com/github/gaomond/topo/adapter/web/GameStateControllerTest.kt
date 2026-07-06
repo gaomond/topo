@@ -1,6 +1,6 @@
 package com.github.gaomond.topo.adapter.web
 
-import com.github.gaomond.topo.domain.GameNotFoundException
+import com.github.gaomond.topo.domain.exception.GameNotFoundException
 import com.github.gaomond.topo.domain.model.GameState
 import com.github.gaomond.topo.domain.model.GameStatus
 import com.github.gaomond.topo.domain.model.PlayerSnapshot

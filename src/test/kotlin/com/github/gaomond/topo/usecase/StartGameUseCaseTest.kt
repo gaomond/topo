@@ -1,8 +1,9 @@
 package com.github.gaomond.topo.usecase
 
-import com.github.gaomond.topo.domain.GameNotFoundException
-import com.github.gaomond.topo.domain.GameStartNotAllowedException
-import com.github.gaomond.topo.domain.NotGameCreatorException
+import com.github.gaomond.topo.domain.exception.GameNotFoundException
+import com.github.gaomond.topo.domain.exception.GameStartNotAllowedException
+import com.github.gaomond.topo.domain.exception.NotGameCreatorException
+import com.github.gaomond.topo.domain.model.Coordinate
 import com.github.gaomond.topo.domain.model.GameStatus
 import com.github.gaomond.topo.domain.model.GameSummary
 import com.github.gaomond.topo.domain.model.PlayerSnapshot
@@ -10,6 +11,7 @@ import com.github.gaomond.topo.domain.port.GameRepositoryPort
 import com.github.gaomond.topo.domain.port.PlayerRepositoryPort
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import java.time.Instant
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -60,6 +62,13 @@ class StartGameUseCaseTest {
         override fun countByGameId(gameId: UUID): Int = count
 
         override fun findByGameId(gameId: UUID): List<PlayerSnapshot> = error("開始では呼ばれない")
+
+        override fun updateLiveLocation(
+            gameId: UUID,
+            playerId: UUID,
+            coordinate: Coordinate,
+            at: Instant,
+        ): Boolean = error("開始では呼ばれない")
     }
 
     private val gameId = UUID.randomUUID()

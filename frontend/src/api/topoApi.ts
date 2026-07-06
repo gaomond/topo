@@ -13,6 +13,7 @@ import type {
   JoinGameResponse,
   StartGameRequest,
   StartGameResponse,
+  UpdateLocationRequest,
 } from "./types";
 
 // 注入可能な fetch。既定はブラウザ実体。テストではモックを渡す。
@@ -42,6 +43,12 @@ export type TopoApi = {
   joinGame: (gameId: string, request: JoinGameRequest) => Promise<JoinGameResponse>;
   getGameState: (gameId: string) => Promise<GameStateResponse>;
   startGame: (gameId: string, request: StartGameRequest) => Promise<StartGameResponse>;
+  // ライブ位置更新（204 No Content）。高頻度・副作用なし。ボディは読まない。
+  updateLocation: (
+    gameId: string,
+    playerId: string,
+    request: UpdateLocationRequest,
+  ) => Promise<void>;
 };
 
 export type CreateTopoApiOptions = {
@@ -71,6 +78,14 @@ export function createTopoApi(options: CreateTopoApiOptions = {}): TopoApi {
     return (await response.json()) as T;
   }
 
+  // 204 No Content 用。ボディを読まず（response.json() を呼ばない）、成否のみ判定する。
+  async function requestNoContent(path: string, init?: RequestInit): Promise<void> {
+    const response = await fetchImpl(`${baseUrl}${path}`, init);
+    if (!response.ok) {
+      throw new ApiError(response.status, path);
+    }
+  }
+
   return {
     fetchConfig: () => requestJson<ConfigResponse>("/api/config"),
     createGame: (request) =>
@@ -93,6 +108,15 @@ export function createTopoApi(options: CreateTopoApiOptions = {}): TopoApi {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(request),
       }),
+    updateLocation: (gameId, playerId, request) =>
+      requestNoContent(
+        `/api/games/${encodeURIComponent(gameId)}/players/${encodeURIComponent(playerId)}/location`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(request),
+        },
+      ),
   };
 }
 

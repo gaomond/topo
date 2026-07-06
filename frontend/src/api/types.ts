@@ -66,3 +66,9 @@ export type PlayerPayload = {
   displayName: string;
   confirmed: boolean;
 };
+
+/** PUT /api/games/{id}/players/{pid}/location のリクエストボディ（ライブ位置）。 */
+export type UpdateLocationRequest = {
+  lat: number;
+  lng: number;
+};

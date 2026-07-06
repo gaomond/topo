@@ -2,9 +2,11 @@ package com.github.gaomond.topo.adapter.persistence
 
 import com.github.gaomond.topo.adapter.persistence.jpa.PlayerJpaEntity
 import com.github.gaomond.topo.adapter.persistence.jpa.PlayerJpaRepository
+import com.github.gaomond.topo.domain.model.Coordinate
 import com.github.gaomond.topo.domain.model.PlayerSnapshot
 import com.github.gaomond.topo.domain.port.PlayerRepositoryPort
 import org.springframework.stereotype.Component
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -32,6 +34,21 @@ class PlayerRepositoryAdapter(
     }
 
     override fun countByGameId(gameId: UUID): Int = playerRepository.countByGameId(gameId).toInt()
+
+    override fun updateLiveLocation(
+        gameId: UUID,
+        playerId: UUID,
+        coordinate: Coordinate,
+        at: Instant,
+    ): Boolean =
+        // Domain 値（Coordinate）↔ JPA の分解をアダプタ内に閉じ込める。更新行数 > 0 を Boolean で返す。
+        playerRepository.updateLiveLocation(
+            gameId = gameId,
+            playerId = playerId,
+            lat = coordinate.lat,
+            lng = coordinate.lng,
+            at = at,
+        ) > 0
 
     override fun findByGameId(gameId: UUID): List<PlayerSnapshot> =
         playerRepository.findByGameIdOrderByJoinedAtAsc(gameId).map { entity ->

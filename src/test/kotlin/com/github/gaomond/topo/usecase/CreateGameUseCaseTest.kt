@@ -1,6 +1,7 @@
 package com.github.gaomond.topo.usecase
 
-import com.github.gaomond.topo.domain.GameValidationException
+import com.github.gaomond.topo.domain.exception.GameValidationException
+import com.github.gaomond.topo.domain.model.Coordinate
 import com.github.gaomond.topo.domain.model.GameCreationCommand
 import com.github.gaomond.topo.domain.model.GameStatus
 import com.github.gaomond.topo.domain.model.GameSummary
@@ -9,6 +10,7 @@ import com.github.gaomond.topo.domain.port.GameRepositoryPort
 import com.github.gaomond.topo.domain.port.PlayerRepositoryPort
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import java.time.Instant
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -87,6 +89,13 @@ class CreateGameUseCaseTest {
         override fun countByGameId(gameId: UUID): Int = error("作成では呼ばれない")
 
         override fun findByGameId(gameId: UUID): List<PlayerSnapshot> = error("作成では呼ばれない")
+
+        override fun updateLiveLocation(
+            gameId: UUID,
+            playerId: UUID,
+            coordinate: Coordinate,
+            at: Instant,
+        ): Boolean = error("作成では呼ばれない")
     }
 
     private fun useCase(

@@ -51,6 +51,9 @@ export function WaitingRoomContainer({
   const [copied, setCopied] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [starting, setStarting] = useState(false);
+  // 参加/開始アクションの失敗メッセージ（409 等）。従来は握り潰していたためユーザーに何も出なかった。
+  // ポーリングで是正しきれない 409（満員のまま WAITING 継続など）を明示するために保持する。
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const { state, error, mutate } = useGameState({
     api: resolvedApi,
@@ -69,6 +72,7 @@ export function WaitingRoomContainer({
     async (displayName: string) => {
       if (!gameId) return;
       setSubmitting(true);
+      setActionError(null);
       try {
         const joined = await resolvedApi.joinGame(gameId, {
           // 空文字はサーバー側フォールバック対象。未入力は送らない。
@@ -76,8 +80,13 @@ export function WaitingRoomContainer({
         });
         // 参加成功で自分の URL（gameId + playerId）へ遷移する（1.2）。
         navigate(buildGamePath(gameId, joined.playerId));
-      } catch {
-        // 参加失敗（409 等）は再取得（ポーリング）で画面が分岐に追従する。ボタンは戻す。
+      } catch (e) {
+        // 参加失敗を明示する。409（満員/開始済み）は WAITING 継続時ポーリングでは是正されないため必須。
+        setActionError(
+          e instanceof ApiError && e.status === 409
+            ? "このゲームには参加できません。満員か、すでに開始されています。"
+            : "参加に失敗しました。通信状態を確認してもう一度お試しください。",
+        );
         setSubmitting(false);
       }
     },
@@ -87,12 +96,20 @@ export function WaitingRoomContainer({
   const handleStart = useCallback(async () => {
     if (!gameId) return;
     setStarting(true);
+    setActionError(null);
     try {
       await resolvedApi.startGame(gameId, { playerId });
       // 開始成功で ACTIVE を即取り込み、地図画面へ切り替える（作成者の即時遷移）。
       await mutate();
-    } catch {
-      // 失敗（403/409）はポーリングで状態が追従し画面分岐が是正される。ボタンは戻す。
+    } catch (e) {
+      // 開始失敗を明示する。403（非作成者）/ 409（人数・状態不整合）を区別してメッセージ化する。
+      setActionError(
+        e instanceof ApiError && e.status === 403
+          ? "ゲームを開始できるのは作成者だけです。"
+          : e instanceof ApiError && e.status === 409
+            ? "ゲームを開始できません。参加人数や状態が変化した可能性があります。"
+            : "ゲームの開始に失敗しました。もう一度お試しください。",
+      );
       setStarting(false);
     }
   }, [resolvedApi, gameId, playerId, mutate]);
@@ -113,7 +130,12 @@ export function WaitingRoomContainer({
       // ACTIVE / COMPLETED は締め切り（1.6）。
       return <CannotJoinScreen />;
     }
-    return <JoinGameForm onJoin={handleJoin} submitting={submitting} />;
+    return (
+      <>
+        {actionError !== null && <p role="alert">{actionError}</p>}
+        <JoinGameForm onJoin={handleJoin} submitting={submitting} />
+      </>
+    );
   }
 
   // playerId 有り（復帰・1.3）。参加者一覧に自分がいなければ不正 playerId として 404 扱い（1.4）。
@@ -125,7 +147,15 @@ export function WaitingRoomContainer({
   // ACTIVE 検知で地図画面（US-02 雛形）へ切り替える（1.3）。作成者は開始成功→mutate で、
   // 非作成者はポーリングで ACTIVE を検知し、両者とも status 駆動の同一分岐に集約する。
   if (state.status === "ACTIVE") {
-    return <GeoTrackingContainer deps={geoDeps} />;
+    // 地図画面へ切り替え。ライブ位置送信のため gameId / playerId / api を Smart へ渡す（US-07）。
+    return (
+      <GeoTrackingContainer
+        gameId={gameId ?? ""}
+        playerId={playerId}
+        api={resolvedApi}
+        deps={geoDeps}
+      />
+    );
   }
 
   const participants: Participant[] = state.players.map((p) => ({
@@ -139,16 +169,19 @@ export function WaitingRoomContainer({
   const startEnabled = isCreator && participants.length === state.playerCount;
 
   return (
-    <WaitingRoomView
-      status={state.status}
-      participants={participants}
-      playerCount={state.playerCount}
-      inviteUrl={inviteUrl}
-      onCopyInviteUrl={handleCopyInviteUrl}
-      copied={copied}
-      onStart={handleStart}
-      startEnabled={startEnabled}
-      starting={starting}
-    />
+    <>
+      {actionError !== null && <p role="alert">{actionError}</p>}
+      <WaitingRoomView
+        status={state.status}
+        participants={participants}
+        playerCount={state.playerCount}
+        inviteUrl={inviteUrl}
+        onCopyInviteUrl={handleCopyInviteUrl}
+        copied={copied}
+        onStart={handleStart}
+        startEnabled={startEnabled}
+        starting={starting}
+      />
+    </>
   );
 }

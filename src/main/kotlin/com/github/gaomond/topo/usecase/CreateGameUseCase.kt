@@ -1,6 +1,6 @@
 package com.github.gaomond.topo.usecase
 
-import com.github.gaomond.topo.domain.GameValidationException
+import com.github.gaomond.topo.domain.exception.GameValidationException
 import com.github.gaomond.topo.domain.model.AreaPreset
 import com.github.gaomond.topo.domain.model.DisplayName
 import com.github.gaomond.topo.domain.model.GameCreationCommand

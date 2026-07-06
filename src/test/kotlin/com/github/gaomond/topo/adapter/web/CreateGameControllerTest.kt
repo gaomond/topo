@@ -1,6 +1,6 @@
 package com.github.gaomond.topo.adapter.web
 
-import com.github.gaomond.topo.domain.GameValidationException
+import com.github.gaomond.topo.domain.exception.GameValidationException
 import com.github.gaomond.topo.domain.model.GameCreationCommand
 import com.github.gaomond.topo.domain.model.GameCreationResult
 import com.github.gaomond.topo.usecase.CreateGameUseCase

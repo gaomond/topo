@@ -316,4 +316,46 @@ describe("WaitingRoomContainer", () => {
 
     await waitFor(() => expect(container.querySelector(".leaflet-container")).not.toBeNull());
   });
+
+  it("test_waitingRoom_whenJoinReturns409_showsCannotJoinAlert_andReenablesButton", async () => {
+    const fake = createFakeTopoApi();
+    fake.getGameState.mockResolvedValue(gameState({ status: "WAITING" }));
+    fake.joinGame.mockRejectedValue(new ApiError(409, "/api/games/game-123/players"));
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTimeAsync });
+
+    renderAt("/game/game-123", fake);
+
+    await user.click(await screen.findByRole("button", { name: "参加する" }));
+
+    // 409 は握り潰さず、参加不可を alert で明示する。
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "このゲームには参加できません。満員か、すでに開始されています。",
+    );
+    // 再試行できるようボタンは戻す。
+    expect(screen.getByRole("button", { name: "参加する" })).toBeEnabled();
+  });
+
+  it("test_waitingRoom_whenStartReturns409_showsCannotStartAlert_andStaysOnWaiting", async () => {
+    const fake = createFakeTopoApi();
+    fake.getGameState.mockResolvedValue(
+      gameState({
+        status: "WAITING",
+        playerCount: 3,
+        creatorPlayerId: "player-456",
+        players: fullPlayers(),
+      }),
+    );
+    fake.startGame.mockRejectedValue(new ApiError(409, "/api/games/game-123/start"));
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTimeAsync });
+
+    renderAt("/game/game-123?p=player-456", fake);
+
+    await user.click(await screen.findByRole("button", { name: "ゲームを開始" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "ゲームを開始できません。参加人数や状態が変化した可能性があります。",
+    );
+    // 待機画面に留まり、開始ボタンは再度押せる。
+    expect(screen.getByRole("button", { name: "ゲームを開始" })).toBeEnabled();
+  });
 });

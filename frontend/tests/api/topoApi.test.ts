@@ -16,6 +16,17 @@ function jsonResponse(body: unknown, ok = true, status = 200): Response {
   } as Response;
 }
 
+// 204 No Content（ボディなし）。json を呼ぶと失敗するようにして「読まない」ことを保証する。
+function noContentResponse(ok = true, status = 204): Response {
+  return {
+    ok,
+    status,
+    json: async (): Promise<unknown> => {
+      throw new Error("204 のボディを読んではいけない");
+    },
+  } as Response;
+}
+
 describe("createTopoApi", () => {
   it("test_fetchConfig_returnsObjectTypesAndAreaPresets", async () => {
     const config: ConfigResponse = {
@@ -150,5 +161,44 @@ describe("createTopoApi", () => {
     const error = await api.startGame("g-1", { playerId: "p-1" }).catch((e) => e);
     expect(error).toBeInstanceOf(ApiError);
     expect((error as ApiError).status).toBe(409);
+  });
+
+  it("test_updateLocation_on204_resolvesWithoutReadingBody", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(noContentResponse());
+    const api = createTopoApi({ baseUrl: "http://api.test", fetchImpl });
+
+    await expect(
+      api.updateLocation("g-1", "p-1", { lat: 35.68, lng: 139.76 }),
+    ).resolves.toBeUndefined();
+  });
+
+  it("test_updateLocation_usesPutWithLatLngBodyAtLocationPath", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(noContentResponse());
+    const api = createTopoApi({ baseUrl: "http://api.test", fetchImpl });
+
+    await api.updateLocation("g-1", "p-1", { lat: 35.68, lng: 139.76 });
+
+    const [url, init] = fetchImpl.mock.calls[0];
+    expect(url).toBe("http://api.test/api/games/g-1/players/p-1/location");
+    expect(init?.method).toBe("PUT");
+    expect(JSON.parse(init?.body as string)).toEqual({ lat: 35.68, lng: 139.76 });
+  });
+
+  it("test_updateLocation_on404_throwsApiErrorWithStatus404", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(noContentResponse(false, 404));
+    const api = createTopoApi({ baseUrl: "http://api.test", fetchImpl });
+
+    const error = await api.updateLocation("g-x", "p-1", { lat: 1, lng: 2 }).catch((e) => e);
+    expect(error).toBeInstanceOf(ApiError);
+    expect((error as ApiError).status).toBe(404);
+  });
+
+  it("test_updateLocation_on400_throwsApiErrorWithStatus400", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(noContentResponse(false, 400));
+    const api = createTopoApi({ baseUrl: "http://api.test", fetchImpl });
+
+    const error = await api.updateLocation("g-1", "p-1", { lat: 999, lng: 2 }).catch((e) => e);
+    expect(error).toBeInstanceOf(ApiError);
+    expect((error as ApiError).status).toBe(400);
   });
 });

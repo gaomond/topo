@@ -1,7 +1,7 @@
 package com.github.gaomond.topo.adapter.web
 
-import com.github.gaomond.topo.domain.GameJoinNotAllowedException
-import com.github.gaomond.topo.domain.GameNotFoundException
+import com.github.gaomond.topo.domain.exception.GameJoinNotAllowedException
+import com.github.gaomond.topo.domain.exception.GameNotFoundException
 import com.github.gaomond.topo.domain.model.JoinGameResult
 import com.github.gaomond.topo.usecase.JoinGameUseCase
 import org.junit.jupiter.api.Test

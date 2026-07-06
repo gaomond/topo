@@ -1,8 +1,8 @@
 package com.github.gaomond.topo.usecase
 
-import com.github.gaomond.topo.domain.GameNotFoundException
-import com.github.gaomond.topo.domain.GameStartNotAllowedException
-import com.github.gaomond.topo.domain.NotGameCreatorException
+import com.github.gaomond.topo.domain.exception.GameNotFoundException
+import com.github.gaomond.topo.domain.exception.GameStartNotAllowedException
+import com.github.gaomond.topo.domain.exception.NotGameCreatorException
 import com.github.gaomond.topo.domain.model.GameStatus
 import com.github.gaomond.topo.domain.model.StartGameResult
 import com.github.gaomond.topo.domain.port.GameRepositoryPort

@@ -1,6 +1,8 @@
 package com.github.gaomond.topo.domain.port
 
+import com.github.gaomond.topo.domain.model.Coordinate
 import com.github.gaomond.topo.domain.model.PlayerSnapshot
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -35,4 +37,23 @@ interface PlayerRepositoryPort {
      * joined_at 昇順で返す（参加順表示）。JPA エンティティは露出させない。
      */
     fun findByGameId(gameId: UUID): List<PlayerSnapshot>
+
+    /**
+     * ライブ位置（live_lat / live_lng / live_at）を更新する（US-07: 高頻度・副作用なし）。
+     *
+     * `id = playerId AND game_id = gameId` の一致つき更新で、所属不一致・不在を DB レベルで弾く。
+     * 更新できたか（更新行数 > 0）を返す。false は 404（不在 / 非所属）の判定材料（理由は出し分けない）。
+     *
+     * @param gameId     所属ゲーム ID（一致条件に含める）
+     * @param playerId   更新対象の player ID
+     * @param coordinate 検証済みライブ座標（Domain 値）
+     * @param at         live_at に記録する時刻（UseCase で確定して渡す。presence の last-seen 素材）
+     * @return 該当 player が存在し更新できたら true
+     */
+    fun updateLiveLocation(
+        gameId: UUID,
+        playerId: UUID,
+        coordinate: Coordinate,
+        at: Instant,
+    ): Boolean
 }
