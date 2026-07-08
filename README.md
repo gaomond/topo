@@ -1,5 +1,7 @@
 # topo
 
+![alt text](image.png)
+
 ## Overview
 
 A location-based cooperative exploration game. Players move through the real
