@@ -399,7 +399,8 @@ describe("WaitingRoomContainer", () => {
     );
   });
 
-  it("test_取得したlive_online_currentAreaがパースされGeoTrackingへ伝播する", async () => {
+  it("test_取得したlive_online_currentAreaがパースされGeoTrackingで可視描画される", async () => {
+    // US-09: 保持済みの players / currentArea が友達ドット・凸包ポリゴンとして地図に描画される。
     const fake = createFakeTopoApi();
     fake.getGameState.mockResolvedValue(
       gameState({
@@ -411,7 +412,12 @@ describe("WaitingRoomContainer", () => {
             live: { lat: 35.68, lng: 139.76, at: "2026-07-06T12:00:00Z" },
             online: true,
           }),
-          player({ playerId: "player-2", displayName: "ふたり" }),
+          player({
+            playerId: "player-2",
+            displayName: "ふたり",
+            live: { lat: 35.69, lng: 139.77, at: "2026-07-06T12:00:00Z" },
+            online: true,
+          }),
         ],
         currentArea: {
           sqm: 1234567,
@@ -419,6 +425,7 @@ describe("WaitingRoomContainer", () => {
             [35.68, 139.76],
             [35.69, 139.77],
             [35.68, 139.78],
+            [35.68, 139.76],
           ],
         },
       }),
@@ -426,12 +433,13 @@ describe("WaitingRoomContainer", () => {
 
     const { container } = renderAt("/game/game-123?p=player-456", fake);
 
-    // 地図ラッパの不可視 data 属性に、live 保有者数と currentArea.sqm が伝播している（保持・公開）。
+    // 友達ドット（自分 player-456 除く player-2）と凸包ポリゴンが描画される。
     await waitFor(() => {
-      const wrapper = container.querySelector("[data-current-area-sqm]");
-      expect(wrapper).not.toBeNull();
-      expect(wrapper?.getAttribute("data-live-player-count")).toBe("1");
-      expect(wrapper?.getAttribute("data-current-area-sqm")).toBe("1234567");
+      expect(container.querySelectorAll(".live-marker").length).toBe(1);
     });
+    expect(screen.getByText("ふたり")).toBeInTheDocument();
+    // 自分（あなた）は watchPosition で別描画され、友達ドットには含めない。
+    expect(screen.queryByText("あなた")).not.toBeInTheDocument();
+    expect(container.querySelector("path.leaflet-interactive")).not.toBeNull();
   });
 });

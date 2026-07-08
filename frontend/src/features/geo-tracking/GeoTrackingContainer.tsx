@@ -5,12 +5,12 @@
 // さらに Smart として、自分のライブ位置を throttle（≤1回/2秒）でサーバーへ送信する（US-07）。
 // API を呼ぶのは本コンテナ（Smart）のみ。Dumb は API を知らない。
 
-import { useCallback } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { type TopoApi, topoApi } from "@/api/topoApi";
 import type { CurrentAreaPayload, PlayerPayload } from "@/api/types";
 import { AccuracyReadout } from "./AccuracyReadout";
 import { DegradedBanner } from "./DegradedBanner";
-import { type Coordinate, GeoState } from "./geoState";
+import { type Coordinate, GeoState, type LiveMarker } from "./geoState";
 import { LocationErrorScreen } from "./LocationErrorScreen";
 import { MapView } from "./MapView";
 import { type UseGeoTrackingDeps, useGeoTracking } from "./useGeoTracking";
@@ -24,8 +24,7 @@ export type GeoTrackingContainerProps = {
   api?: TopoApi;
   // テスト用に Geolocation / isSecureContext を注入できる（既定はブラウザ実体）。
   deps?: UseGeoTrackingDeps;
-  // US-08: ポーリング済みの他プレイヤー（live/online）と暫定凸包面積。保持・公開のみで、
-  // 友達ドット（live marker）/ 面積メーターの描画は US-09/10。本 US では地図に重ねない。
+  // US-08 でポーリング済みの他プレイヤー（live/online）と暫定凸包。US-09 で友達ドット・凸包ポリゴンとして描画する。
   players?: PlayerPayload[];
   currentArea?: CurrentAreaPayload | null;
 };
@@ -51,6 +50,34 @@ export function GeoTrackingContainer({
   // 高頻度発火を ≤1回/2秒 に間引いて送信する。失敗しても地図は維持する（hook 側で握りつぶす）。
   useThrottledLocationSend(selfLocation, sendLocation);
 
+  // 友達ドットのビューモデルを導出（US-09）。自分（playerId）を除外し（自分は watchPosition で別描画・F1）、
+  // live=null（未送信）は非描画。identity を安定させ MapView / FitBoundsController の無駄な再評価を避ける。
+  const friends = useMemo<LiveMarker[]>(
+    () =>
+      players.flatMap((p) => {
+        if (p.playerId === playerId || p.live === null) {
+          return [];
+        }
+        return [
+          {
+            playerId: p.playerId,
+            displayName: p.displayName,
+            coordinate: { lat: p.live.lat, lng: p.live.lng },
+            online: p.online,
+          },
+        ];
+      }),
+    [players, playerId],
+  );
+
+  // 凸包（面積成立の形）。頂点はサーバー提供。sqm=0 は退化（線分）として描く。objectCount・正多角形スコアは扱わない。
+  const hull = currentArea?.hull ?? null;
+  const degenerate = currentArea?.sqm === 0;
+
+  // 「全体表示」押下ごとに +1 して FitBoundsController の強制リフィットをトリガする。
+  const [overviewNonce, setOverviewNonce] = useState(0);
+  const handleOverview = useCallback(() => setOverviewNonce((n) => n + 1), []);
+
   // 初回拒否 / 非安全コンテキスト: 地図を出さず、エラー画面を全面表示する（フォールバックしない）。
   if (state === GeoState.PERMISSION_ERROR) {
     return (
@@ -64,16 +91,18 @@ export function GeoTrackingContainer({
 
   // それ以外（INITIALIZING / TRACKING / DEGRADED）は地図を維持する。
   // DEGRADED のときのみ控えめバナーを地図上部に重ねる（地図は隠さない）。
-  // players（live 保有者数）と currentArea（sqm）は US-08 で保持・公開のみ行い、可視描画は変えない
-  // （不可視の data 属性で公開。友達ドット/面積メーターの描画は US-09/10）。
-  const liveCount = players.filter((p) => p.live !== null).length;
+  // US-09: 友達ドット（friends）・凸包ポリゴン（hull/degenerate）・全体表示（overview）を可視描画する。
+  // 面積数値（US-10）・objectCount・正多角形スコアは一切表示しない（形のみ）。
   return (
-    <div
-      className="absolute inset-0"
-      data-live-player-count={liveCount}
-      data-current-area-sqm={currentArea?.sqm ?? ""}
-    >
-      <MapView selfLocation={selfLocation} />
+    <div className="absolute inset-0">
+      <MapView
+        selfLocation={selfLocation}
+        friends={friends}
+        hull={hull}
+        degenerate={degenerate}
+        overviewNonce={overviewNonce}
+        onOverview={handleOverview}
+      />
       <AccuracyReadout accuracyMeters={accuracyMeters} />
       <DegradedBanner visible={state === GeoState.DEGRADED} />
     </div>

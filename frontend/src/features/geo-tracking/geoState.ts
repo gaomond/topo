@@ -21,6 +21,17 @@ export type Coordinate = {
   lng: number;
 };
 
+// 友達ドット（他プレイヤーのライブ位置）の描画用ビューモデル（US-09）。
+// API 型（PlayerPayload）とは分離した「描画に必要な最小形」。Dumb はこの型だけを受け取り、
+// PlayerPayload / api を import しない。自分除外・live=null 除外は Smart（導出側）の責務。
+export type LiveMarker = {
+  playerId: string;
+  displayName: string;
+  coordinate: Coordinate;
+  // 在室（online=true）= 通常表示 / 離席（online=false）= グレーアウト（半透明）。
+  online: boolean;
+};
+
 // 許可拒否時のエラー文言（旧 error-view.js から移植）。
 export const PERMISSION_DENIED_MESSAGE =
   "位置情報の利用が許可されませんでした。ブラウザの設定で許可してから再試行してください。";
