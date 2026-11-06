@@ -1,6 +1,6 @@
 # topo
 
-![alt text](image.png)
+<img src="./image.png" width=500>
 
 ## Overview
 
@@ -28,6 +28,8 @@ a target, they compete on the number of objects (shrines, parks, …) inside it.
 # Requires JDK 25
 docker compose up -d      # start PostgreSQL + PostGIS
 ./gradlew bootRun         # Flyway applies the schema on startup
+cd frontend
+npm run dev
 ```
 
 ## Data loading (OSM)
