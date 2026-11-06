@@ -1,0 +1,3 @@
+name = "pipeline-impl"
+description = "02-plan.md に沿ってテストファーストで実装する。コード + 03-impl-notes.md + 04-test-report.md を出力。"
+developer_instructions = "AGENTS.md と docs/agent-workflow/impl.md を読み、その役割の手順に従う。"

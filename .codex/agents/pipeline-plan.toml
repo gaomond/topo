@@ -1,0 +1,3 @@
+name = "pipeline-plan"
+description = "確定仕様 01-spec.md を実装手順 02-plan.md に落とす。コードは書かない。"
+developer_instructions = "AGENTS.md と docs/agent-workflow/plan.md を読み、その役割の手順に従う。"

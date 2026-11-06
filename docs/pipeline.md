@@ -4,6 +4,23 @@
 
 ---
 
+## 現在の起動方法
+
+開発規約は [AGENTS.md](../AGENTS.md)、共通の手順は [仕様スキル](../.agents/skills/topo-spec/SKILL.md)、
+[実装スキル](../.agents/skills/topo-implement/SKILL.md)、[各ステージの手順](agent-workflow/plan.md)に置く。
+下記は当初の設計メモ。実行時は共通手順を参照する。
+
+| 作業 | Claude Code | Codex |
+|---|---|---|
+| 仕様を詰める | `/spec US-11` | `$topo-spec US-11` |
+| 確定仕様から実装する | `/implement docs/story/11.md` | `$topo-implement docs/story/11.md` |
+| 品質ゲートを手動で実行する | `bash scripts/quality-gate.sh` | 同左 |
+
+Codexはtopoを作業フォルダとして開く。フックは初回に内容を確認して信頼設定を行う。
+Claude CodeとCodexの終了フックは同じ品質ゲートを呼ぶ。成果物は従来どおり `.agent-pipeline/` に置く。
+
+---
+
 ## 全体構成
 
 ```
