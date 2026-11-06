@@ -47,6 +47,7 @@ class GameStateModelTest {
                 playerCount = 3,
                 creatorPlayerId = null,
                 players = emptyList(),
+                areaThreshold = 2_000_000.0,
             )
         assertNull(state.currentArea)
     }

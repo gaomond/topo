@@ -64,6 +64,8 @@ class GetGameStateUseCase(
             playerCount = summary.playerCount,
             creatorPlayerId = summary.creatorPlayerId,
             players = players,
+            // 作成時確定の上限面積（US-10 の満杯ライン）。summary 由来の静的値をそのまま載せる。
+            areaThreshold = summary.areaThreshold,
             currentArea = currentArea,
         )
     }

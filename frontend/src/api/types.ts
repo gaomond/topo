@@ -47,6 +47,8 @@ export type GameStateResponse = {
   // 作成者の playerId（開始ボタンの creator 判定用）。作成直後の一瞬は null。
   creatorPlayerId?: string | null;
   players: PlayerPayload[];
+  // 面積成立判定の上限（m²）。作成時確定の静的値。面積メーターの満杯ライン（US-10）。
+  areaThreshold: number;
   // live 位置の暫定凸包（ACTIVE かつ live 点 3 点以上のときのみ非 null・US-08）。
   currentArea: CurrentAreaPayload | null;
   // 確定結果。confirm/集計（US-11/13）まで常に null。

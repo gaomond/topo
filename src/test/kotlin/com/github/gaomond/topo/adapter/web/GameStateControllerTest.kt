@@ -51,6 +51,7 @@ class GameStateControllerTest {
                         PlayerSnapshot(p1, "たろう", confirmed = true),
                         PlayerSnapshot(p2, "じろう", confirmed = false),
                     ),
+                areaThreshold = 2_000_000.0,
             ),
         )
 
@@ -62,6 +63,7 @@ class GameStateControllerTest {
                 jsonPath("$.gameId") { value(gameId.toString()) }
                 jsonPath("$.status") { value("WAITING") }
                 jsonPath("$.playerCount") { value(3) }
+                jsonPath("$.areaThreshold") { value(2000000.0) }
                 jsonPath("$.players[0].playerId") { value(p1.toString()) }
                 jsonPath("$.players[0].displayName") { value("たろう") }
                 jsonPath("$.players[0].confirmed") { value(true) }
@@ -79,6 +81,7 @@ class GameStateControllerTest {
                 playerCount = 3,
                 creatorPlayerId = creator,
                 players = listOf(PlayerSnapshot(creator, "たろう", confirmed = false)),
+                areaThreshold = 2_000_000.0,
             ),
         )
 
@@ -118,6 +121,7 @@ class GameStateControllerTest {
                             online = true,
                         ),
                     ),
+                areaThreshold = 2_000_000.0,
                 currentArea =
                     CurrentArea(
                         sqm = 1234567.0,
@@ -153,6 +157,7 @@ class GameStateControllerTest {
                 playerCount = 3,
                 creatorPlayerId = p1,
                 players = listOf(PlayerSnapshot(p1, "たろう", confirmed = false, live = null, online = false)),
+                areaThreshold = 2_000_000.0,
                 currentArea = null,
             ),
         )
@@ -176,6 +181,7 @@ class GameStateControllerTest {
                 playerCount = 3,
                 creatorPlayerId = p1,
                 players = listOf(PlayerSnapshot(p1, "たろう", confirmed = false)),
+                areaThreshold = 2_000_000.0,
                 currentArea = null,
             ),
         )
@@ -192,7 +198,7 @@ class GameStateControllerTest {
     fun `test_getGame_resultは常にnull`() {
         val p1 = UUID.randomUUID()
         whenever(getGameStateUseCase.getState(any())).thenReturn(
-            GameState(gameId, GameStatus.WAITING, 3, p1, listOf(PlayerSnapshot(p1, "たろう", confirmed = false))),
+            GameState(gameId, GameStatus.WAITING, 3, p1, listOf(PlayerSnapshot(p1, "たろう", confirmed = false)), 2_000_000.0),
         )
 
         mockMvc

@@ -442,4 +442,47 @@ describe("WaitingRoomContainer", () => {
     expect(screen.queryByText("あなた")).not.toBeInTheDocument();
     expect(container.querySelector("path.leaflet-interactive")).not.toBeNull();
   });
+
+  it("test_active_polling_updatesAreaMeterEverySecondsWithFakeTimer", async () => {
+    // US-10: 2秒ポーリングで currentArea.sqm が更新されるたび、面積メーターのゲージに反映される。
+    const fake = createFakeTopoApi();
+    const hull: [number, number][] = [
+      [35.68, 139.76],
+      [35.69, 139.77],
+      [35.68, 139.78],
+      [35.68, 139.76],
+    ];
+    const first = gameState({
+      status: "ACTIVE",
+      playerCount: 3,
+      creatorPlayerId: "player-2",
+      players: fullPlayers(),
+      areaThreshold: 2_000_000,
+      currentArea: { sqm: 500000, hull },
+    });
+    const second = gameState({
+      status: "ACTIVE",
+      playerCount: 3,
+      creatorPlayerId: "player-2",
+      players: fullPlayers(),
+      areaThreshold: 2_000_000,
+      currentArea: { sqm: 1_900_000, hull },
+    });
+    fake.getGameState.mockResolvedValueOnce(first).mockResolvedValue(second);
+
+    const { container } = renderAt("/game/game-123?p=player-456", fake);
+
+    await waitFor(() => expect(container.querySelector(".leaflet-container")).not.toBeNull());
+    // 初回: 500,000 / 2,000,000 = 25%。
+    await waitFor(() =>
+      expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "25"),
+    );
+
+    await vi.advanceTimersByTimeAsync(2000);
+
+    // ポーリング更新後: 1,900,000 / 2,000,000 = 95%。
+    await waitFor(() =>
+      expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "95"),
+    );
+  });
 });

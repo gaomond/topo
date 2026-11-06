@@ -82,7 +82,7 @@ class StartGameUseCaseTest {
 
     @Test
     fun test_start_withCreatorAndFullWaiting_updatesStatusToActiveAndReturnsActive() {
-        val gameRepo = SpyGameRepository(GameSummary(GameStatus.WAITING, 3, creatorPlayerId = creator))
+        val gameRepo = SpyGameRepository(GameSummary(GameStatus.WAITING, 3, creatorPlayerId = creator, areaThreshold = 2_000_000.0))
         val result = StartGameUseCase(gameRepo, StubPlayerRepository(count = 3)).start(gameId, creator)
 
         assertEquals(GameStatus.ACTIVE, result.status)
@@ -101,7 +101,7 @@ class StartGameUseCaseTest {
 
     @Test
     fun test_start_withNonCreator_throwsNotGameCreator() {
-        val gameRepo = SpyGameRepository(GameSummary(GameStatus.WAITING, 3, creatorPlayerId = creator))
+        val gameRepo = SpyGameRepository(GameSummary(GameStatus.WAITING, 3, creatorPlayerId = creator, areaThreshold = 2_000_000.0))
         val stranger = UUID.randomUUID()
         assertThrows<NotGameCreatorException> {
             StartGameUseCase(gameRepo, StubPlayerRepository(3)).start(gameId, stranger)
@@ -112,7 +112,7 @@ class StartGameUseCaseTest {
     @Test
     fun test_start_withNullCreatorPlayerId_throwsNotGameCreator() {
         // creator 未設定（作成直後の一瞬）は誰であれ非作成者扱い。
-        val gameRepo = SpyGameRepository(GameSummary(GameStatus.WAITING, 3, creatorPlayerId = null))
+        val gameRepo = SpyGameRepository(GameSummary(GameStatus.WAITING, 3, creatorPlayerId = null, areaThreshold = 2_000_000.0))
         assertThrows<NotGameCreatorException> {
             StartGameUseCase(gameRepo, StubPlayerRepository(3)).start(gameId, creator)
         }
@@ -120,7 +120,7 @@ class StartGameUseCaseTest {
 
     @Test
     fun test_start_withUnderCapacity_throwsStartNotAllowed() {
-        val gameRepo = SpyGameRepository(GameSummary(GameStatus.WAITING, 3, creatorPlayerId = creator))
+        val gameRepo = SpyGameRepository(GameSummary(GameStatus.WAITING, 3, creatorPlayerId = creator, areaThreshold = 2_000_000.0))
         assertThrows<GameStartNotAllowedException> {
             StartGameUseCase(gameRepo, StubPlayerRepository(count = 2)).start(gameId, creator)
         }
@@ -130,7 +130,7 @@ class StartGameUseCaseTest {
     @Test
     fun test_start_withActiveStatus_throwsStartNotAllowed() {
         // 2 回目の開始相当（冪等性）: 既に ACTIVE なので 409。
-        val gameRepo = SpyGameRepository(GameSummary(GameStatus.ACTIVE, 3, creatorPlayerId = creator))
+        val gameRepo = SpyGameRepository(GameSummary(GameStatus.ACTIVE, 3, creatorPlayerId = creator, areaThreshold = 2_000_000.0))
         assertThrows<GameStartNotAllowedException> {
             StartGameUseCase(gameRepo, StubPlayerRepository(3)).start(gameId, creator)
         }
@@ -139,7 +139,7 @@ class StartGameUseCaseTest {
 
     @Test
     fun test_start_withCompletedStatus_throwsStartNotAllowed() {
-        val gameRepo = SpyGameRepository(GameSummary(GameStatus.COMPLETED, 3, creatorPlayerId = creator))
+        val gameRepo = SpyGameRepository(GameSummary(GameStatus.COMPLETED, 3, creatorPlayerId = creator, areaThreshold = 2_000_000.0))
         assertThrows<GameStartNotAllowedException> {
             StartGameUseCase(gameRepo, StubPlayerRepository(3)).start(gameId, creator)
         }
@@ -149,7 +149,7 @@ class StartGameUseCaseTest {
     @Test
     fun test_start_withNonCreatorAndUnderCapacity_prefersForbiddenOverConflict() {
         // 権限（403）を状態・定員（409）より先に評価する（リスク1 の確定順序）。
-        val gameRepo = SpyGameRepository(GameSummary(GameStatus.WAITING, 3, creatorPlayerId = creator))
+        val gameRepo = SpyGameRepository(GameSummary(GameStatus.WAITING, 3, creatorPlayerId = creator, areaThreshold = 2_000_000.0))
         val stranger = UUID.randomUUID()
         assertThrows<NotGameCreatorException> {
             StartGameUseCase(gameRepo, StubPlayerRepository(count = 1)).start(gameId, stranger)
@@ -158,7 +158,7 @@ class StartGameUseCaseTest {
 
     @Test
     fun test_start_whenNotAllowed_doesNotUpdateStatus() {
-        val gameRepo = SpyGameRepository(GameSummary(GameStatus.WAITING, 3, creatorPlayerId = creator))
+        val gameRepo = SpyGameRepository(GameSummary(GameStatus.WAITING, 3, creatorPlayerId = creator, areaThreshold = 2_000_000.0))
         assertThrows<GameStartNotAllowedException> {
             StartGameUseCase(gameRepo, StubPlayerRepository(count = 2)).start(gameId, creator)
         }

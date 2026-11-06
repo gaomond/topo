@@ -20,6 +20,8 @@ data class GameStateResponse(
     // 作成者の playerId（フロントの開始ボタン creator 判定用・US-06）。作成直後の一瞬は null。
     val creatorPlayerId: String?,
     val players: List<PlayerPayload>,
+    // 面積成立判定の上限（m²）。作成時確定の静的値（US-10 の面積メーターが満杯ラインに使う）。常に非 null。
+    val areaThreshold: Double,
     // live 位置の暫定凸包（ACTIVE かつ live 点 3 点以上のときのみ非 null・US-08）。
     val currentArea: CurrentAreaPayload?,
     // 確定結果。confirm/集計（US-11/13）まで常に null。前方互換のためフィールドは用意する。
@@ -33,6 +35,7 @@ data class GameStateResponse(
                 playerCount = state.playerCount,
                 creatorPlayerId = state.creatorPlayerId?.toString(),
                 players = state.players.map(PlayerPayload::from),
+                areaThreshold = state.areaThreshold,
                 currentArea = state.currentArea?.let(CurrentAreaPayload::from),
             )
     }

@@ -107,7 +107,11 @@ class GetGameStateUseCaseTest {
     @Test
     fun test_getGameState_withExistingGame_returnsStatusPlayerCountAndPlayers() {
         val players = listOf(reading("たろう", confirmed = true), reading("じろう"))
-        val state = useCase(GameSummary(GameStatus.WAITING, 3, creatorPlayerId = null), players).getState(gameId)
+        val state =
+            useCase(
+                GameSummary(GameStatus.WAITING, 3, creatorPlayerId = null, areaThreshold = 2_000_000.0),
+                players,
+            ).getState(gameId)
 
         assertEquals(gameId, state.gameId)
         assertEquals(GameStatus.WAITING, state.status)
@@ -123,14 +127,26 @@ class GetGameStateUseCaseTest {
     @Test
     fun test_getGameState_returnsCreatorPlayerIdFromSummary() {
         val creator = UUID.randomUUID()
-        val state = useCase(GameSummary(GameStatus.WAITING, 3, creatorPlayerId = creator)).getState(gameId)
+        val state = useCase(GameSummary(GameStatus.WAITING, 3, creatorPlayerId = creator, areaThreshold = 2_000_000.0)).getState(gameId)
         assertEquals(creator, state.creatorPlayerId)
+    }
+
+    @Test
+    fun `test_getGameState_areaThresholdをsummaryから射影する`() {
+        // US-10: 面積メーターの満杯ラインに使う上限を GET リードパスへ載せる（summary 由来の静的値）。
+        val summary = GameSummary(GameStatus.WAITING, 3, creatorPlayerId = null, areaThreshold = 500_000.0)
+        val state = useCase(summary).getState(gameId)
+        assertEquals(500_000.0, state.areaThreshold)
     }
 
     @Test
     fun test_getGameState_reflectsConfirmedFlagFromPlayers() {
         val players = listOf(reading("かくてい", confirmed = true), reading("みかくてい", confirmed = false))
-        val state = useCase(GameSummary(GameStatus.WAITING, 3, creatorPlayerId = null), players).getState(gameId)
+        val state =
+            useCase(
+                GameSummary(GameStatus.WAITING, 3, creatorPlayerId = null, areaThreshold = 2_000_000.0),
+                players,
+            ).getState(gameId)
 
         assertTrue(state.players[0].confirmed)
         assertFalse(state.players[1].confirmed)
@@ -140,7 +156,11 @@ class GetGameStateUseCaseTest {
     fun `test_getState_ACTIVEかつlive3点以上_currentAreaを載せる`() {
         val area = CurrentArea(sqm = 1234.5, hull = listOf(Coordinate(35.0, 139.0)))
         val liveArea = SpyLiveAreaQuery(area)
-        val state = useCase(GameSummary(GameStatus.ACTIVE, 3, creatorPlayerId = null), liveArea = liveArea).getState(gameId)
+        val state =
+            useCase(
+                GameSummary(GameStatus.ACTIVE, 3, creatorPlayerId = null, areaThreshold = 2_000_000.0),
+                liveArea = liveArea,
+            ).getState(gameId)
 
         assertEquals(area, state.currentArea)
         assertEquals(1, liveArea.callCount)
@@ -149,7 +169,11 @@ class GetGameStateUseCaseTest {
     @Test
     fun `test_getState_WAITING_currentAreaはnullで空間ポート未呼び出し`() {
         val liveArea = SpyLiveAreaQuery(CurrentArea(1.0, emptyList()))
-        val state = useCase(GameSummary(GameStatus.WAITING, 3, creatorPlayerId = null), liveArea = liveArea).getState(gameId)
+        val state =
+            useCase(
+                GameSummary(GameStatus.WAITING, 3, creatorPlayerId = null, areaThreshold = 2_000_000.0),
+                liveArea = liveArea,
+            ).getState(gameId)
 
         assertNull(state.currentArea)
         assertEquals(0, liveArea.callCount, "WAITING では空間クエリを発火しない")
@@ -158,7 +182,11 @@ class GetGameStateUseCaseTest {
     @Test
     fun `test_getState_COMPLETED_currentAreaはnull`() {
         val liveArea = SpyLiveAreaQuery(CurrentArea(1.0, emptyList()))
-        val state = useCase(GameSummary(GameStatus.COMPLETED, 3, creatorPlayerId = null), liveArea = liveArea).getState(gameId)
+        val state =
+            useCase(
+                GameSummary(GameStatus.COMPLETED, 3, creatorPlayerId = null, areaThreshold = 2_000_000.0),
+                liveArea = liveArea,
+            ).getState(gameId)
 
         assertNull(state.currentArea)
         assertEquals(0, liveArea.callCount)
@@ -167,7 +195,11 @@ class GetGameStateUseCaseTest {
     @Test
     fun `test_getState_liveAtがTTL内_onlineはtrue`() {
         val live = LiveLocation(Coordinate(35.0, 139.0), now.minus(Presence.TTL))
-        val state = useCase(GameSummary(GameStatus.ACTIVE, 3, null), listOf(reading("たろう", live = live))).getState(gameId)
+        val state =
+            useCase(
+                GameSummary(GameStatus.ACTIVE, 3, null, areaThreshold = 2_000_000.0),
+                listOf(reading("たろう", live = live)),
+            ).getState(gameId)
 
         assertTrue(state.players[0].online)
         assertEquals(live, state.players[0].live)
@@ -176,14 +208,22 @@ class GetGameStateUseCaseTest {
     @Test
     fun `test_getState_liveAtがTTL超過_onlineはfalse`() {
         val live = LiveLocation(Coordinate(35.0, 139.0), now.minus(Presence.TTL).minusMillis(1))
-        val state = useCase(GameSummary(GameStatus.ACTIVE, 3, null), listOf(reading("たろう", live = live))).getState(gameId)
+        val state =
+            useCase(
+                GameSummary(GameStatus.ACTIVE, 3, null, areaThreshold = 2_000_000.0),
+                listOf(reading("たろう", live = live)),
+            ).getState(gameId)
 
         assertFalse(state.players[0].online)
     }
 
     @Test
     fun `test_getState_live未送信_onlineはfalseかつliveはnull`() {
-        val state = useCase(GameSummary(GameStatus.ACTIVE, 3, null), listOf(reading("たろう", live = null))).getState(gameId)
+        val state =
+            useCase(
+                GameSummary(GameStatus.ACTIVE, 3, null, areaThreshold = 2_000_000.0),
+                listOf(reading("たろう", live = null)),
+            ).getState(gameId)
 
         assertFalse(state.players[0].online)
         assertNull(state.players[0].live)

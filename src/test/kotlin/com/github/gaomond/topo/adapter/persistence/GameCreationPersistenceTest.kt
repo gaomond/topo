@@ -94,6 +94,10 @@ class GameCreationPersistenceTest {
             )
         assertEquals(gameId, player["game_id"])
         assertEquals("たろう", player["display_name"])
+
+        // US-10: findSummary が area_threshold を射影する（GET リードパスの満杯ラインの供給元）。
+        val summary = gameAdapter().findSummary(gameId)
+        assertEquals(2_000_000.0, summary?.areaThreshold)
     }
 
     @Test

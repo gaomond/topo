@@ -47,6 +47,8 @@ export function gameState(overrides: Partial<GameStateResponse> = {}): GameState
     status: "WAITING",
     playerCount: 3,
     players: [],
+    // US-10 で追加。作成時確定の上限（面積メーターの満杯ライン）。medium プリセット相当の既定。
+    areaThreshold: 2_000_000,
     // US-08 で追加。既定は「未計測（currentArea=null）」「未確定（result=null）」。
     currentArea: null,
     result: null,

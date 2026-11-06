@@ -71,6 +71,8 @@ class GameRepositoryAdapter(
                     status = it.status,
                     playerCount = it.playerCount,
                     creatorPlayerId = it.creatorPlayerId,
+                    // 作成時に書き込み済みの上限面積を GET リードパスへ射影する（US-10 の満杯ライン）。
+                    areaThreshold = it.areaThreshold,
                 )
             }.orElse(null)
 }

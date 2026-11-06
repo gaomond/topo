@@ -88,8 +88,13 @@ describe("GeoTrackingContainer", () => {
     expect(geolocation.watchPosition).not.toHaveBeenCalled();
   });
 
-  // US-09: 友達ドット・凸包ポリゴンの可視描画。API を呼ぶのは本 Smart のみで、Dumb には props で渡す。
-  function renderActive(players: PlayerPayload[], currentArea: CurrentAreaPayload | null = null) {
+  // US-09/10: 友達ドット・凸包ポリゴン・面積メーターの可視描画。API を呼ぶのは本 Smart のみで、
+  // Dumb には props で渡す。US-10 で面積メーター用に areaThreshold（既定 medium 相当）を渡す。
+  function renderActive(
+    players: PlayerPayload[],
+    currentArea: CurrentAreaPayload | null = null,
+    areaThreshold = 2_000_000,
+  ) {
     return render(
       <GeoTrackingContainer
         gameId="game-123"
@@ -98,6 +103,7 @@ describe("GeoTrackingContainer", () => {
         deps={{ geolocation, isSecureContext: true }}
         players={players}
         currentArea={currentArea}
+        areaThreshold={areaThreshold}
       />,
     );
   }
@@ -218,6 +224,50 @@ describe("GeoTrackingContainer", () => {
     expect(
       screen.queryByText(/オブジェクト数|objectCount|正多角形|スコア/i),
     ).not.toBeInTheDocument();
+  });
+
+  it("test_active_currentAreaChanges_meterReflectsNewSqm", () => {
+    // US-10: currentArea.sqm の変化がメーターのゲージに反映される（props 変化 = ポーリング反映相当）。
+    const hull: [number, number][] = [
+      [35.0, 139.0],
+      [35.1, 139.1],
+      [35.0, 139.2],
+      [35.0, 139.0],
+    ];
+    const { rerender } = render(
+      <GeoTrackingContainer
+        gameId="game-123"
+        playerId="player-1"
+        api={fake.api}
+        deps={{ geolocation, isSecureContext: true }}
+        players={[player({ playerId: "player-1" })]}
+        currentArea={{ sqm: 500000, hull }}
+        areaThreshold={2_000_000}
+      />,
+    );
+    // 500,000 / 2,000,000 = 25%。
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "25");
+
+    rerender(
+      <GeoTrackingContainer
+        gameId="game-123"
+        playerId="player-1"
+        api={fake.api}
+        deps={{ geolocation, isSecureContext: true }}
+        players={[player({ playerId: "player-1" })]}
+        currentArea={{ sqm: 1_900_000, hull }}
+        areaThreshold={2_000_000}
+      />,
+    );
+    // 1,900,000 / 2,000,000 = 95%。
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "95");
+  });
+
+  it("test_active_nullCurrentArea_meterShowsUnmeasured", () => {
+    // currentArea=null（3点未満）は面積メーターも未計測表示（0% にしない）。
+    renderActive([player({ playerId: "player-1" })], null);
+    expect(screen.getByText(/まだ計測できません/)).toBeInTheDocument();
+    expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
   });
 
   describe("ライブ位置送信（US-07）", () => {

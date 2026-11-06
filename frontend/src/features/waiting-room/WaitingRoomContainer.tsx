@@ -159,6 +159,7 @@ export function WaitingRoomContainer({
         deps={geoDeps}
         players={state.players}
         currentArea={state.currentArea}
+        areaThreshold={state.areaThreshold}
       />
     );
   }

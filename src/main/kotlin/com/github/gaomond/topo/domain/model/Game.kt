@@ -28,11 +28,14 @@ enum class GameStatus {
  * @param playerCount     固定参加人数（定員判定用）
  * @param creatorPlayerId 作成者の playerId（開始 API の creator 判定=403 / GET 露出用）。
  *                        創成順序上、作成直後の一瞬は NULL のため nullable を維持する。
+ * @param areaThreshold   面積成立判定の上限（m²）。作成時に確定（DB `area_threshold`・NOT NULL）。
+ *                        US-10 の面積メーターが「満杯ライン」に使うため GET のリードパスへ射影する。
  */
 data class GameSummary(
     val status: GameStatus,
     val playerCount: Int,
     val creatorPlayerId: UUID?,
+    val areaThreshold: Double,
 )
 
 /**
@@ -48,6 +51,8 @@ data class GameSummary(
  * @param creatorPlayerId 作成者の playerId（フロントの開始ボタン creator 判定用・US-06）。
  *                        作成直後の一瞬を除き設定済みだが型は nullable を維持する。
  * @param players         参加者一覧
+ * @param areaThreshold   面積成立判定の上限（m²）。作成時確定の静的値（playerCount / creatorPlayerId と同列）。
+ *                        US-10 の面積メーターが上限ラインに使う。currentArea.sqm はこの値と比較される。
  * @param currentArea     live 位置の暫定凸包面積・頂点列（US-08）。ACTIVE かつ live 点が 3 点以上の
  *                        ときのみ非 null。WAITING / COMPLETED や live 点 < 3 では null。
  */
@@ -57,6 +62,7 @@ data class GameState(
     val playerCount: Int,
     val creatorPlayerId: UUID?,
     val players: List<PlayerSnapshot>,
+    val areaThreshold: Double,
     val currentArea: CurrentArea? = null,
 )
 

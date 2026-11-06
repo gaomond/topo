@@ -8,6 +8,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { type TopoApi, topoApi } from "@/api/topoApi";
 import type { CurrentAreaPayload, PlayerPayload } from "@/api/types";
+import { AreaMeter } from "@/features/area-meter/AreaMeter";
 import { AccuracyReadout } from "./AccuracyReadout";
 import { DegradedBanner } from "./DegradedBanner";
 import { type Coordinate, GeoState, type LiveMarker } from "./geoState";
@@ -27,6 +28,9 @@ export type GeoTrackingContainerProps = {
   // US-08 でポーリング済みの他プレイヤー（live/online）と暫定凸包。US-09 で友達ドット・凸包ポリゴンとして描画する。
   players?: PlayerPayload[];
   currentArea?: CurrentAreaPayload | null;
+  // 面積成立判定の上限（m²・作成時確定）。US-10 の面積メーターの満杯ラインに使う。
+  // 親 Smart（WaitingRoomContainer）から state.areaThreshold を渡す。未指定時はメーターを出さない。
+  areaThreshold?: number;
 };
 
 export function GeoTrackingContainer({
@@ -36,6 +40,7 @@ export function GeoTrackingContainer({
   deps,
   players = [],
   currentArea = null,
+  areaThreshold,
 }: GeoTrackingContainerProps) {
   // 既定は共有シングルトン（identity が安定し、send の再生成連鎖を招かない）。
   const resolvedApi = api ?? topoApi;
@@ -92,7 +97,8 @@ export function GeoTrackingContainer({
   // それ以外（INITIALIZING / TRACKING / DEGRADED）は地図を維持する。
   // DEGRADED のときのみ控えめバナーを地図上部に重ねる（地図は隠さない）。
   // US-09: 友達ドット（friends）・凸包ポリゴン（hull/degenerate）・全体表示（overview）を可視描画する。
-  // 面積数値（US-10）・objectCount・正多角形スコアは一切表示しない（形のみ）。
+  // US-10: 面積メーター（現在面積の数値＋上限ゲージ）を重ねる。面積のみ開示し、objectCount・
+  // 正多角形スコアは引き続き渡さない/描かない（情報マスキング）。凸包・面積の計算はサーバー側。
   return (
     <div className="absolute inset-0">
       <MapView
@@ -105,6 +111,9 @@ export function GeoTrackingContainer({
       />
       <AccuracyReadout accuracyMeters={accuracyMeters} />
       <DegradedBanner visible={state === GeoState.DEGRADED} />
+      {areaThreshold !== undefined && (
+        <AreaMeter sqm={currentArea?.sqm ?? null} threshold={areaThreshold} />
+      )}
     </div>
   );
 }

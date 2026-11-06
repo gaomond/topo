@@ -89,8 +89,10 @@ class JoinGameUseCaseTest {
     fun test_join_withWaitingAndUnderCapacity_createsPlayerAndReturnsPlayerId() {
         val playerRepo = SpyPlayerRepository(count = 1)
         val result =
-            useCase(GameSummary(GameStatus.WAITING, playerCount = 3, creatorPlayerId = null), playerRepo = playerRepo)
-                .join(JoinGameCommand(gameId, displayName = "じろう"))
+            useCase(
+                GameSummary(GameStatus.WAITING, playerCount = 3, creatorPlayerId = null, areaThreshold = 2_000_000.0),
+                playerRepo = playerRepo,
+            ).join(JoinGameCommand(gameId, displayName = "じろう"))
 
         assertEquals(1, playerRepo.created.size)
         val created = playerRepo.created[0]
@@ -112,7 +114,7 @@ class JoinGameUseCaseTest {
     fun test_join_withActiveStatus_throwsJoinNotAllowed() {
         val playerRepo = SpyPlayerRepository(count = 0)
         assertThrows<GameJoinNotAllowedException> {
-            useCase(GameSummary(GameStatus.ACTIVE, 3, creatorPlayerId = null), playerRepo = playerRepo)
+            useCase(GameSummary(GameStatus.ACTIVE, 3, creatorPlayerId = null, areaThreshold = 2_000_000.0), playerRepo = playerRepo)
                 .join(JoinGameCommand(gameId))
         }
         assertTrue(playerRepo.created.isEmpty())
@@ -122,7 +124,7 @@ class JoinGameUseCaseTest {
     fun test_join_withCompletedStatus_throwsJoinNotAllowed() {
         val playerRepo = SpyPlayerRepository(count = 0)
         assertThrows<GameJoinNotAllowedException> {
-            useCase(GameSummary(GameStatus.COMPLETED, 3, creatorPlayerId = null), playerRepo = playerRepo)
+            useCase(GameSummary(GameStatus.COMPLETED, 3, creatorPlayerId = null, areaThreshold = 2_000_000.0), playerRepo = playerRepo)
                 .join(JoinGameCommand(gameId))
         }
         assertTrue(playerRepo.created.isEmpty())
@@ -133,7 +135,7 @@ class JoinGameUseCaseTest {
         // count == playerCount で満員。
         val playerRepo = SpyPlayerRepository(count = 3)
         assertThrows<GameJoinNotAllowedException> {
-            useCase(GameSummary(GameStatus.WAITING, 3, creatorPlayerId = null), playerRepo = playerRepo)
+            useCase(GameSummary(GameStatus.WAITING, 3, creatorPlayerId = null, areaThreshold = 2_000_000.0), playerRepo = playerRepo)
                 .join(JoinGameCommand(gameId))
         }
         assertTrue(playerRepo.created.isEmpty())
@@ -143,7 +145,7 @@ class JoinGameUseCaseTest {
     fun test_join_withBlankDisplayName_fallsBackToUuidPrefix8() {
         for (blank in listOf(null, "", "   ", "\t")) {
             val playerRepo = SpyPlayerRepository(count = 0)
-            useCase(GameSummary(GameStatus.WAITING, 3, creatorPlayerId = null), playerRepo = playerRepo)
+            useCase(GameSummary(GameStatus.WAITING, 3, creatorPlayerId = null, areaThreshold = 2_000_000.0), playerRepo = playerRepo)
                 .join(JoinGameCommand(gameId, displayName = blank))
             val created = playerRepo.created[0]
             assertEquals(created.playerId.toString().take(8), created.displayName, "blank=[$blank]")
@@ -153,7 +155,7 @@ class JoinGameUseCaseTest {
     @Test
     fun test_join_withDisplayName_persistsTrimmed() {
         val playerRepo = SpyPlayerRepository(count = 0)
-        useCase(GameSummary(GameStatus.WAITING, 3, creatorPlayerId = null), playerRepo = playerRepo)
+        useCase(GameSummary(GameStatus.WAITING, 3, creatorPlayerId = null, areaThreshold = 2_000_000.0), playerRepo = playerRepo)
             .join(JoinGameCommand(gameId, displayName = "  はなこ  "))
         assertEquals("はなこ", playerRepo.created[0].displayName)
     }
@@ -163,7 +165,7 @@ class JoinGameUseCaseTest {
         // count == playerCount - 1 は最後の 1 枠として参加可。
         val playerRepo = SpyPlayerRepository(count = 2)
         val result =
-            useCase(GameSummary(GameStatus.WAITING, 3, creatorPlayerId = null), playerRepo = playerRepo)
+            useCase(GameSummary(GameStatus.WAITING, 3, creatorPlayerId = null, areaThreshold = 2_000_000.0), playerRepo = playerRepo)
                 .join(JoinGameCommand(gameId))
         assertNull(playerRepo.created.getOrNull(1))
         assertEquals(playerRepo.created[0].playerId, result.playerId)
