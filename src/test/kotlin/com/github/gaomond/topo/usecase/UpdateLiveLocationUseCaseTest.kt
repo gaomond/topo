@@ -1,6 +1,6 @@
 package com.github.gaomond.topo.usecase
 
-import com.github.gaomond.topo.domain.exception.GameValidationException
+import com.github.gaomond.topo.domain.exception.InvalidCoordinateException
 import com.github.gaomond.topo.domain.exception.PlayerNotFoundException
 import com.github.gaomond.topo.domain.model.Coordinate
 import com.github.gaomond.topo.domain.model.PlayerReading
@@ -10,10 +10,9 @@ import org.junit.jupiter.api.assertThrows
 import java.time.Instant
 import java.util.UUID
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
-import kotlin.test.assertTrue
+import kotlin.test.assertSame
 
-/** 不正座標では更新を呼ばず、プレイヤー不在・非所属では拒否することを検証する。 */
+/** 座標の受け渡し、不在・非所属の拒否と後段例外の伝播を検証する。 */
 class UpdateLiveLocationUseCaseTest {
     private data class UpdateCall(
         val gameId: UUID,
@@ -24,6 +23,7 @@ class UpdateLiveLocationUseCaseTest {
 
     private class SpyPlayerRepository(
         private val updateResult: Boolean = true,
+        private val failure: RuntimeException? = null,
         val calls: MutableList<UpdateCall> = mutableListOf(),
     ) : PlayerRepositoryPort {
         override fun createPlayer(
@@ -43,6 +43,7 @@ class UpdateLiveLocationUseCaseTest {
             at: Instant,
         ): Boolean {
             calls.add(UpdateCall(gameId, playerId, coordinate, at))
+            failure?.let { throw it }
             return updateResult
         }
     }
@@ -53,40 +54,33 @@ class UpdateLiveLocationUseCaseTest {
     @Test
     fun test_update_withValidCoordinate_callsUpdatePortWithCoordinate() {
         val repo = SpyPlayerRepository(updateResult = true)
-        UpdateLiveLocationUseCase(repo).update(UpdateLiveLocationInput(gameId, playerId, lat = 35.68, lng = 139.76))
+        val coordinate = Coordinate(35.68, 139.76)
+        UpdateLiveLocationUseCase(repo).update(UpdateLiveLocationInput(gameId, playerId, coordinate))
 
         assertEquals(1, repo.calls.size)
         val call = repo.calls.single()
         assertEquals(gameId, call.gameId)
         assertEquals(playerId, call.playerId)
-        assertEquals(Coordinate(35.68, 139.76), call.coordinate)
+        assertSame(coordinate, call.coordinate)
     }
 
     @Test
     fun test_update_whenPlayerNotUpdated_throwsPlayerNotFound() {
         val repo = SpyPlayerRepository(updateResult = false)
         assertThrows<PlayerNotFoundException> {
-            UpdateLiveLocationUseCase(repo).update(UpdateLiveLocationInput(gameId, playerId, lat = 35.0, lng = 139.0))
+            UpdateLiveLocationUseCase(repo).update(UpdateLiveLocationInput(gameId, playerId, Coordinate(35.0, 139.0)))
         }
     }
 
     @Test
-    fun test_update_withOutOfRangeCoordinate_throwsValidationAndSkipsPort() {
-        val repo = SpyPlayerRepository()
+    fun test_update_whenPortThrowsCoordinateException_propagatesSameException() {
+        val failure = InvalidCoordinateException("復元した座標が不正です")
+        val repo = SpyPlayerRepository(failure = failure)
         val ex =
-            assertThrows<GameValidationException> {
-                UpdateLiveLocationUseCase(repo).update(UpdateLiveLocationInput(gameId, playerId, lat = 999.0, lng = 139.0))
+            assertThrows<InvalidCoordinateException> {
+                UpdateLiveLocationUseCase(repo).update(UpdateLiveLocationInput(gameId, playerId, Coordinate(35.0, 139.0)))
             }
-        assertEquals(GameValidationException.Reason.INVALID_COORDINATE, ex.reason)
-        assertTrue(repo.calls.isEmpty(), "不正座標では更新ポートを呼ばない")
-    }
-
-    @Test
-    fun test_update_withNaN_throwsValidationAndSkipsPort() {
-        val repo = SpyPlayerRepository()
-        assertThrows<GameValidationException> {
-            UpdateLiveLocationUseCase(repo).update(UpdateLiveLocationInput(gameId, playerId, lat = Double.NaN, lng = 139.0))
-        }
-        assertNull(repo.calls.getOrNull(0))
+        assertSame(failure, ex)
+        assertEquals(1, repo.calls.size)
     }
 }

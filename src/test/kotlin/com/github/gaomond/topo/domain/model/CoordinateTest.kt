@@ -1,5 +1,6 @@
 package com.github.gaomond.topo.domain.model
 
+import com.github.gaomond.topo.domain.exception.InvalidCoordinateException
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import kotlin.test.assertEquals
@@ -23,25 +24,52 @@ class CoordinateTest {
 
     @Test
     fun test_construct_withLatOutOfRange_throws() {
-        assertThrows<IllegalArgumentException> { Coordinate(lat = 90.0001, lng = 0.0) }
-        assertThrows<IllegalArgumentException> { Coordinate(lat = -90.0001, lng = 0.0) }
+        for (lat in listOf(90.0001, -90.0001)) {
+            val ex = assertThrows<InvalidCoordinateException> { Coordinate(lat = lat, lng = 0.0) }
+            assertEquals("lat が範囲外です（-90..90）: $lat", ex.message)
+        }
     }
 
     @Test
     fun test_construct_withLngOutOfRange_throws() {
-        assertThrows<IllegalArgumentException> { Coordinate(lat = 0.0, lng = 180.0001) }
-        assertThrows<IllegalArgumentException> { Coordinate(lat = 0.0, lng = -180.0001) }
+        for (lng in listOf(180.0001, -180.0001)) {
+            val ex = assertThrows<InvalidCoordinateException> { Coordinate(lat = 0.0, lng = lng) }
+            assertEquals("lng が範囲外です（-180..180）: $lng", ex.message)
+        }
     }
 
     @Test
     fun test_construct_withNaN_throws() {
-        assertThrows<IllegalArgumentException> { Coordinate(lat = Double.NaN, lng = 0.0) }
-        assertThrows<IllegalArgumentException> { Coordinate(lat = 0.0, lng = Double.NaN) }
+        val lat = assertThrows<InvalidCoordinateException> { Coordinate(lat = Double.NaN, lng = 0.0) }
+        val lng = assertThrows<InvalidCoordinateException> { Coordinate(lat = 0.0, lng = Double.NaN) }
+        assertEquals("lat が数値ではありません（NaN）", lat.message)
+        assertEquals("lng が数値ではありません（NaN）", lng.message)
     }
 
     @Test
     fun test_construct_withInfinity_throws() {
-        assertThrows<IllegalArgumentException> { Coordinate(lat = Double.POSITIVE_INFINITY, lng = 0.0) }
-        assertThrows<IllegalArgumentException> { Coordinate(lat = 0.0, lng = Double.NEGATIVE_INFINITY) }
+        for (value in listOf(Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY)) {
+            val lat = assertThrows<InvalidCoordinateException> { Coordinate(lat = value, lng = 0.0) }
+            val lng = assertThrows<InvalidCoordinateException> { Coordinate(lat = 0.0, lng = value) }
+            assertEquals("lat が範囲外です（-90..90）: $value", lat.message)
+            assertEquals("lng が範囲外です（-180..180）: $value", lng.message)
+        }
+    }
+
+    @Test
+    fun test_construct_withMultipleViolations_preservesValidationOrder() {
+        for ((lat, lng, message) in listOf(
+            Triple(Double.NaN, Double.NaN, "lat が数値ではありません（NaN）"),
+            Triple(100.0, Double.NaN, "lng が数値ではありません（NaN）"),
+            Triple(100.0, 200.0, "lat が範囲外です（-90..90）: 100.0"),
+        )) {
+            assertEquals(message, assertThrows<InvalidCoordinateException> { Coordinate(lat, lng) }.message)
+        }
+    }
+
+    @Test
+    fun test_copy_withInvalidValue_rejectsInvalidCoordinate() {
+        val coordinate = Coordinate(35.0, 139.0)
+        assertThrows<InvalidCoordinateException> { coordinate.copy(lng = 200.0) }
     }
 }

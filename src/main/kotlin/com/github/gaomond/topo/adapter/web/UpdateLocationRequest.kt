@@ -1,6 +1,9 @@
 package com.github.gaomond.topo.adapter.web
 
+import com.github.gaomond.topo.domain.model.Coordinate
+import com.github.gaomond.topo.usecase.UpdateLiveLocationInput
 import io.swagger.v3.oas.annotations.media.Schema
+import java.util.UUID
 
 /**
  * ゲーム ID とプレイヤー ID はパスに指定し、ボディには座標を指定する。
@@ -14,4 +17,9 @@ data class UpdateLocationRequest(
     val lat: Double,
     @field:Schema(minimum = "-180", maximum = "180", description = "WGS84の経度", requiredMode = Schema.RequiredMode.REQUIRED)
     val lng: Double,
-)
+) {
+    fun toInput(
+        gameId: UUID,
+        playerId: UUID,
+    ): UpdateLiveLocationInput = UpdateLiveLocationInput(gameId, playerId, Coordinate(lat, lng))
+}

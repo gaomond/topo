@@ -1,6 +1,6 @@
 package com.github.gaomond.topo.adapter.web
 
-import com.github.gaomond.topo.usecase.UpdateLiveLocationInput
+import com.github.gaomond.topo.domain.exception.InvalidCoordinateException
 import com.github.gaomond.topo.usecase.UpdateLiveLocationUseCase
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Content
@@ -9,6 +9,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.HttpStatus
+import org.springframework.http.ProblemDetail
+import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -32,7 +34,7 @@ class UpdateLocationController(
             ApiResponse(
                 responseCode = "204",
                 description = "更新した（ボディなし）",
-                content = [],
+                content = [Content()],
             ),
             ApiResponse(
                 responseCode = "400",
@@ -57,7 +59,17 @@ class UpdateLocationController(
         @PathVariable id: UUID,
         @PathVariable pid: UUID,
         @RequestBody request: UpdateLocationRequest,
-    ) {
-        updateLiveLocationUseCase.update(UpdateLiveLocationInput(id, pid, request.lat, request.lng))
+    ): ResponseEntity<*> {
+        // 入力からの生成だけを400にし、後段の同じ違反は内部異常として伝播させる。
+        val input =
+            try {
+                request.toInput(id, pid)
+            } catch (ex: InvalidCoordinateException) {
+                val detail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.message ?: "座標が不正です")
+                detail.setProperty("reason", "INVALID_COORDINATE")
+                return ResponseEntity.badRequest().body(detail)
+            }
+        updateLiveLocationUseCase.update(input)
+        return ResponseEntity.noContent().build<Void>()
     }
 }

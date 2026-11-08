@@ -2,12 +2,17 @@ package com.github.gaomond.topo.domain.exception
 
 import java.util.UUID
 
+/** 緯度経度が座標の不変条件を満たさない。 */
+class InvalidCoordinateException(
+    message: String,
+) : RuntimeException(message)
+
 /** 対象ゲームが存在せず、操作の前提が満たされない。 */
 class GameNotFoundException(
     val gameId: UUID,
 ) : RuntimeException("ゲームが存在しません: $gameId")
 
-/** ゲーム設定またはライブ座標の値が不正。失敗理由は [reason] で識別する。 */
+/** ゲーム設定の値が不正。失敗理由は [reason] で識別する。 */
 class GameValidationException(
     val reason: Reason,
     message: String,
@@ -16,8 +21,6 @@ class GameValidationException(
         INVALID_OBJECT_TYPE,
         INVALID_AREA_PRESET,
         INVALID_PLAYER_COUNT,
-
-        INVALID_COORDINATE,
     }
 }
 
