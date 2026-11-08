@@ -173,6 +173,37 @@ Player
 - **ORM方針**: 通常のCRUDは **JPA**、地理空間SQL（凸包・測地面積・範囲内SELECT/COUNT）は **生SQL**（`@Query(nativeQuery=true)` または `JdbcTemplate`）で記述。
 - **OSMデータ取得**: Overpass API で対象オブジェクトを取得し、PostGIS（`game_object`）へINSERT。ローカルOSMサーバー構築は不要。将来オブジェクト種別を広げる場合は pbf + osm2pgsql への移行も可能（`game_object` スキーマは共通に保つ）。
 
+### 永続化の構成
+
+通常 CRUD の取得・保存とドメインモデルへの変換が、Repository Adapter と JPA Repository に分かれていると、永続化処理を複数の場所で追う必要がある。topo では、Spring Data JPA を使う Repository 自体を outbound adapter とし、取得・保存と変換を同じ実装側にまとめる。
+
+以下は [RS-00](refactor/00.md) で移行する構成を示す。RS-00 では、[共通方針の「経路ごとの型名」](responsibilities-and-naming.md#3-経路ごとの型名) に沿った、HTTP 入力から応答までの境界の型名の統一も行う。
+
+```text
+依存方向:
+UseCase → GameRepositoryPort ← GameJpaRepository（outbound adapter）
+
+GameJpaRepository が担当する処理:
+  DB から GameRecord を取得 → Game に変換して返す
+  ドメインモデルの変更を永続化表現に変換 → DB に保存
+```
+
+| 要素 | topo での方針 |
+| --- | --- |
+| `Game` | 業務ルールと状態を表すドメインモデル。JPA に依存しない。 |
+| `GameRepositoryPort` | Domain に置く永続化の契約。操作に必要なドメインモデルを受け渡す。 |
+| `GameRecord` | JPA が管理する永続化表現。`@Entity` などのマッピングを定義する。 |
+| `GameJpaRepository` | outbound adapter としてポートを実装し、JPA によるアクセスとドメインモデルへの変換を担当する。 |
+| `GameRepositoryAdapter` | JPA Repository の呼び出しと変換を担当する別のラッパーは設けず、`GameJpaRepository` 側へ統合する。 |
+
+Player の通常 CRUD にも同じ方針を適用する。永続化表現の名前は `XxxRecord` とし、`GameJpaEntity`・`PlayerJpaEntity` はそれぞれ `GameRecord`・`PlayerRecord` に変更する。DB のテーブル名・カラム・制約は維持する。
+
+- ポートのシグネチャは、ドメイン側で必要な操作から決める。Spring Data の継承メソッドと衝突する場合は、実装側のインターフェースや内部メソッド名で調整する。
+- 更新操作に必要な `Game` は Repository が復元して返す。UseCase で `GameSummary` から組み立てない。状態取得などの読み取り専用の射影は、用途に応じて維持する。
+- 保存側のポートは RS-00 では既存の `createGame`・`createPlayer`・`updateStatus` などの契約を維持する。ドメインモデルを受け取る保存契約への移行は [RS-06](refactor/06.md) で行う。
+- トランザクションの範囲は UseCase が管理する。ロック付き取得はポートのメソッド名で明示し、参加・開始は同じゲーム行のロック取得から判定・保存までを同一トランザクションで行う。
+- PostGIS の SQL は outbound adapter 内に置く。`LiveAreaQueryAdapter` などの空間計算は、通常 CRUD と同じ JPA の構成に統合する対象には含めない。
+
 ### 「ぬるぬる動く位置表示」について（参考メモ）
 
 - フードデリバリー等の滑らかな移動表示は、通信頻度ではなく**クライアント側の補間（＋道路スナップ）**で作られている。生データは秒オーダーで疎。

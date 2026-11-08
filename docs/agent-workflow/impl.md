@@ -13,6 +13,7 @@
 4. 層の順序（Domain → UseCase → Adapter → UI）で進める。空間処理はサーバー（PostGIS / 生 SQL）に寄せ、生 SQL は outbound アダプタ内に閉じ込める。
 5. テストスライス（`@WebMvcTest` / `@DataJpaTest` + Testcontainers）を活用する。
 6. `bash scripts/quality-gate.sh` を実行し、成功を確認する。フックの実行結果も完了時に確認される。
+7. 画面の表示や操作に影響する変更では、レビュー前に起動したアプリをブラウザで操作し、仕様の受け入れ条件を確認する。操作・期待結果・実際の結果を `.agent-pipeline/04-test-report.md` に記録する。ブラウザで確認できない場合は、未確認の条件と理由を同じ報告書に記録する。
 
 JPAエンティティの変更は既存のマッピングに合わせ、Kotlinのnull許容型と遅延ロードに注意する。
 

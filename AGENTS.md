@@ -2,6 +2,7 @@
 
 位置情報協力型探索ゲーム。複数プレイヤーが実際に移動して位置を確定し、全員の確定位置から作る凸包の面積が条件を満たすとき、多角形内の対象オブジェクト数を競う。
 タスク実行前に本ファイルと [docs/DESIGN.md](docs/DESIGN.md)（HLD / DB 設計）を参照すること。ドメインの仕様・スキーマ・API は DESIGN.md を一次情報とする。
+実装前に [コンポーネントの責務と境界の命名](docs/responsibilities-and-naming.md) も確認すること。コンポーネントの責務・例外の配置・境界を通る型の命名は同文書に従う。
 
 ## Tech Stack
 
@@ -18,23 +19,15 @@
 
 ## Architecture
 
-Clean Architecture。依存は内側（Domain）に向かう一方向。
+コンポーネントの責務・例外・境界の命名は [コンポーネントの責務と境界の命名](docs/responsibilities-and-naming.md)、Entity と値オブジェクトの区別は [Entity と値オブジェクトの区別](docs/domain-model-and-service.md) に従う。
 
-```text
-UI ─(HTTP)→ Adapter(inbound) → UseCase → Domain ← Adapter(outbound)
-```
-
-- **Domain:** 型定義と純粋ロジック。Spring / JPA / PostGIS / 外部ライブラリに依存しない。ポート（リポジトリ・空間計算）のインターフェースを持つ
-- **UseCase:** ビジネスロジック。Domain のポートに依存し、Adapter の実装には依存しない
-- **Adapter:** Domain のポートを実装する。**inbound** = REST コントローラ（Spring MVC）、**outbound** = 永続化。通常 CRUD は JPA、地理空間は生 SQL（`@Query(nativeQuery = true)` / `JdbcTemplate`）。生 SQL は outbound 内に閉じ込め、Domain / UseCase から PostGIS を隠す
-- **UI:** React + Leaflet（react-leaflet）の SPA（`frontend/`）。HTTP 経由で inbound アダプタ（REST API）を呼ぶ。バックエンドとは別に静的ホスティングへデプロイする（Spring の `resources/static` には置かない）
-
-- adapter 同士は直接呼び合わない。必ず UseCase / ポートを経由する
-- 凸包・面積・内包判定はサーバー（PostGIS）で計算する。クライアントでは計算しない（DRY・改ざん防止）
-
-### DIP
-
-UseCase は Domain 層の抽象インターフェース（ポート）に依存する。Adapter 層の具象を直接 import しない。具象の注入は Spring の DI（`@Configuration` / コンストラクタ注入）で行う。
+- 依存方向は `Adapter(inbound) → UseCase → Domain ← Adapter(outbound)`。
+- Domain は Spring・JPA・PostGIS・外部ライブラリに依存しない。
+- ポートは Domain に置き、outbound adapter が実装する。
+- adapter は inbound（外部からの入力）と outbound（外部へのアクセス）に分ける。
+- adapter 同士は直接呼び合わない。
+- 具象の結線は Spring の DI で行う。
+- 永続化技術と空間計算の方針は [DESIGN.md](docs/DESIGN.md) に従う。
 
 ### Smart / Dumb
 
@@ -87,7 +80,7 @@ frontend/
 | 座標 | Coordinate（lat / lng） | プレイヤー位置・オブジェクト位置を表す緯度経度のペア |
 | 座標参照系 | Crs（Coordinate Reference System） | 座標の基準となる参照系。現状は WGS84（SRID 4326）を採用するが、種別はこれに限定しない |
 | ポーリング | polling | 進行中の状態取得（一定間隔の `GET`） |
-| プレイヤースナップショット | PlayerSnapshot | ゲーム状態内のプレイヤーの読み取り射影（ある時点・最小形）。`GameState.players` の要素。JPA 非依存の Domain 値で、`View` とは呼ばない |
+| プレイヤースナップショット | PlayerSnapshot | ゲーム状態内のプレイヤーの読み取り射影（ある時点・最小形）。`GetGameStateResult.players` の要素。JPA 非依存の Domain 値で、`View` とは呼ばない |
 
 ## Implementation Rules
 
@@ -95,13 +88,24 @@ frontend/
 
 ドメインの意図を表現する。ユビキタス言語に従う。`handleClick` ではなく `confirmLocation`、`DataList` ではなく `GameStateView`。
 
-#### Web 表現（レスポンス）の命名
+関数型の引数は、実行する操作が分かる名前にする。値を参照する関数なら `getJoinedPlayerCount` のように命名し、取得結果の値を表す `joinedCount` と区別する。
 
-レスポンスのボディ全体は `XxxResponse`、その中にネストされる構成要素は `XxxPayload` と命名する。`Dto` は意味が広すぎ、`Response` の中身として `XxxDto` を使うと包含関係が逆に見えて分かりづらい（DTO の一部が Response であるかのように読める）ため、レスポンス構成要素には `Dto` を使わない（例: `ConfigResponse` の構成要素は `AreaPresetPayload`）。Domain モデルと Web 表現を別型として分離する方針自体は維持する。
+#### 境界を通る型の命名
+
+[共通方針の「経路ごとの型名」](docs/responsibilities-and-naming.md#3-経路ごとの型名) に従う。
+
+### コメント・KDoc
+
+コメントは、コードだけでは読み取りにくい理由・制約・契約を伝えるために書く。
+
+- コードの処理順や型を読み上げる説明、AGENTS.md にあるアーキテクチャ規約の繰り返しは書かない。名前で表せる内容は命名で表す。
+- 判定順を固定する理由、同時実行で守る条件、SQL や外部仕様上の制約など、変更時に必要な根拠を残す。
+- KDoc の型名・引数・戻り値・例外は実装に合わせて更新する。一時的な作業状況や決定番号だけの説明は、仕様書・判断ログに記録する。
+- HTTP の仕様は inbound adapter 側にまとめる。UseCase には業務操作の契約を記し、URL や HTTP ステータスの対応を重複記載しない。エンドポイントと UseCase の対応は Controller の呼び出しと参照から追えるようにする。
 
 ### Error Handling
 
-Domain でドメイン例外を定義し、inbound アダプタ（コントローラ）で HTTP ステータスにマッピングする（バリデーション失敗 = 400 / 対象不在 = 404）。
+各コンポーネントが発出する例外の責務は [共通方針](docs/responsibilities-and-naming.md#2-コンポーネントの責務) に従う。HTTP ステータスへの変換は inbound アダプタ（Web 層）で行い、具体的なステータスは対象 API の仕様に従う。
 
 ### Logging
 
