@@ -5,6 +5,7 @@ import com.github.gaomond.topo.domain.model.Coordinate
 import com.github.gaomond.topo.domain.model.Game
 import com.github.gaomond.topo.domain.model.GameStatus
 import com.github.gaomond.topo.domain.model.GameSummary
+import com.github.gaomond.topo.domain.model.Player
 import com.github.gaomond.topo.domain.model.PlayerReading
 import com.github.gaomond.topo.domain.port.GameRepositoryPort
 import com.github.gaomond.topo.domain.port.PlayerRepositoryPort
@@ -24,6 +25,7 @@ class CreateGameUseCaseTest {
             val playerCount: Int,
             val objectType: String,
             val areaThreshold: Double,
+            val creatorPlayerId: UUID?,
         ) : Call
 
         data class CreatePlayer(
@@ -42,14 +44,17 @@ class CreateGameUseCaseTest {
         private val calls: MutableList<Call>,
         private val failOnUpdate: Boolean = false,
     ) : GameRepositoryPort {
-        override fun createGame(
-            gameId: UUID,
-            status: GameStatus,
-            playerCount: Int,
-            objectType: String,
-            areaThreshold: Double,
-        ) {
-            calls.add(Call.CreateGame(gameId, status, playerCount, objectType, areaThreshold))
+        override fun createGame(game: Game) {
+            calls.add(
+                Call.CreateGame(
+                    game.gameId,
+                    game.status,
+                    game.playerCount,
+                    game.objectType.jsonValue,
+                    game.areaThreshold,
+                    game.creatorPlayerId,
+                ),
+            )
         }
 
         override fun updateCreatorPlayerId(
@@ -73,12 +78,8 @@ class CreateGameUseCaseTest {
     private class SpyPlayerRepository(
         private val calls: MutableList<Call>,
     ) : PlayerRepositoryPort {
-        override fun createPlayer(
-            playerId: UUID,
-            gameId: UUID,
-            displayName: String,
-        ) {
-            calls.add(Call.CreatePlayer(playerId, gameId, displayName))
+        override fun createPlayer(player: Player) {
+            calls.add(Call.CreatePlayer(player.playerId, player.gameId, player.displayName))
         }
 
         override fun countByGameId(gameId: UUID): Int = error("作成では呼ばれない")
@@ -121,6 +122,7 @@ class CreateGameUseCaseTest {
 
         assertEquals(GameStatus.WAITING, create.status)
         assertEquals(create.gameId, player.gameId)
+        assertEquals(player.playerId, create.creatorPlayerId)
         assertEquals(player.playerId, update.creatorPlayerId)
         assertEquals(create.gameId, update.gameId)
         assertEquals(create.gameId, result.gameId)
@@ -236,5 +238,21 @@ class CreateGameUseCaseTest {
         assertThrows<IllegalStateException> {
             useCase(calls, failOnUpdate = true).create(validCommand())
         }
+    }
+
+    @Test
+    fun test_createGame_multipleInvalidFields_preservesValidationOrder() {
+        val calls = mutableListOf<Call>()
+        val invalidType =
+            assertThrows<GameValidationException> {
+                useCase(calls).create(validCommand(objectType = "unknown", areaPresetKey = "unknown", playerCount = 2))
+            }
+        assertEquals(GameValidationException.Reason.INVALID_OBJECT_TYPE, invalidType.reason)
+        val invalidPreset =
+            assertThrows<GameValidationException> {
+                useCase(calls).create(validCommand(areaPresetKey = "unknown", playerCount = 2))
+            }
+        assertEquals(GameValidationException.Reason.INVALID_AREA_PRESET, invalidPreset.reason)
+        assertTrue(calls.isEmpty())
     }
 }

@@ -2,9 +2,9 @@ package com.github.gaomond.topo.usecase
 
 import com.github.gaomond.topo.domain.exception.GameValidationException
 import com.github.gaomond.topo.domain.model.AreaPreset
-import com.github.gaomond.topo.domain.model.DisplayName
-import com.github.gaomond.topo.domain.model.GameStatus
+import com.github.gaomond.topo.domain.model.Game
 import com.github.gaomond.topo.domain.model.ObjectType
+import com.github.gaomond.topo.domain.model.Player
 import com.github.gaomond.topo.domain.port.GameRepositoryPort
 import com.github.gaomond.topo.domain.port.PlayerRepositoryPort
 import org.springframework.stereotype.Service
@@ -31,25 +31,15 @@ class CreateGameUseCase(
     fun create(input: CreateGameInput): CreateGameResult {
         val objectType = resolveObjectType(input.objectType)
         val areaPreset = resolveAreaPreset(input.areaPresetKey)
-        validatePlayerCount(input.playerCount)
 
         // 表示名のフォールバックに playerId を使うため、保存前に発番する。
         val gameId = UUID.randomUUID()
         val playerId = UUID.randomUUID()
-        val displayName = DisplayName.resolve(input.displayName, playerId)
+        val game = Game.create(gameId, playerId, input.playerCount, objectType, areaPreset)
+        val creator = Player.create(playerId, gameId, input.displayName)
 
-        gameRepository.createGame(
-            gameId = gameId,
-            status = GameStatus.WAITING,
-            playerCount = input.playerCount,
-            objectType = objectType.jsonValue,
-            areaThreshold = areaPreset.sqm.toDouble(),
-        )
-        playerRepository.createPlayer(
-            playerId = playerId,
-            gameId = gameId,
-            displayName = displayName,
-        )
+        gameRepository.createGame(game)
+        playerRepository.createPlayer(creator)
         gameRepository.updateCreatorPlayerId(gameId = gameId, creatorPlayerId = playerId)
 
         return CreateGameResult(gameId = gameId, playerId = playerId)
@@ -68,18 +58,4 @@ class CreateGameUseCase(
                 GameValidationException.Reason.INVALID_AREA_PRESET,
                 "areaPreset が不正です: $key",
             )
-
-    private fun validatePlayerCount(playerCount: Int) {
-        if (playerCount < MIN_PLAYER_COUNT) {
-            throw GameValidationException(
-                GameValidationException.Reason.INVALID_PLAYER_COUNT,
-                "playerCount は $MIN_PLAYER_COUNT 以上である必要があります: $playerCount",
-            )
-        }
-    }
-
-    private companion object {
-        // 凸包成立に必要な最低点数（3 点）。
-        const val MIN_PLAYER_COUNT = 3
-    }
 }

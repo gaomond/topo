@@ -2,8 +2,12 @@ package com.github.gaomond.topo.adapter.persistence
 
 import com.github.gaomond.topo.adapter.persistence.jpa.GameJpaRepository
 import com.github.gaomond.topo.adapter.persistence.jpa.PlayerJpaRepository
+import com.github.gaomond.topo.domain.model.AreaPreset
 import com.github.gaomond.topo.domain.model.Coordinate
+import com.github.gaomond.topo.domain.model.Game
 import com.github.gaomond.topo.domain.model.GameStatus
+import com.github.gaomond.topo.domain.model.ObjectType
+import com.github.gaomond.topo.domain.model.Player
 import com.github.gaomond.topo.support.PostgisTestContainer
 import jakarta.persistence.EntityManager
 import jakarta.persistence.PersistenceContext
@@ -51,20 +55,15 @@ class LiveLocationPersistenceTest {
 
     private fun seedGame(status: GameStatus = GameStatus.ACTIVE): UUID {
         val gameId = UUID.randomUUID()
-        gameRepository.createGame(
-            gameId = gameId,
-            status = status,
-            playerCount = 3,
-            objectType = "shrine",
-            areaThreshold = 2_000_000.0,
-        )
+        gameRepository.createGame(Game.create(gameId, UUID.randomUUID(), 3, ObjectType.SHRINE, AreaPreset.ALL[1]))
+        gameRepository.updateStatus(gameId, status)
         gameRepository.flush()
         return gameId
     }
 
     private fun seedPlayer(gameId: UUID): UUID {
         val playerId = UUID.randomUUID()
-        playerRepository.createPlayer(playerId, gameId, "プレイヤー")
+        playerRepository.createPlayer(Player.create(playerId, gameId, "プレイヤー"))
         playerRepository.flush()
         return playerId
     }

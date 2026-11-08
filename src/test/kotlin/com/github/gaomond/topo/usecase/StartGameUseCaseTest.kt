@@ -7,6 +7,8 @@ import com.github.gaomond.topo.domain.model.Coordinate
 import com.github.gaomond.topo.domain.model.Game
 import com.github.gaomond.topo.domain.model.GameStatus
 import com.github.gaomond.topo.domain.model.GameSummary
+import com.github.gaomond.topo.domain.model.ObjectType
+import com.github.gaomond.topo.domain.model.Player
 import com.github.gaomond.topo.domain.model.PlayerReading
 import com.github.gaomond.topo.domain.port.GameRepositoryPort
 import com.github.gaomond.topo.domain.port.PlayerRepositoryPort
@@ -24,13 +26,7 @@ class StartGameUseCaseTest {
         private val summary: GameSummary?,
         val updatedStatuses: MutableList<Pair<UUID, GameStatus>> = mutableListOf(),
     ) : GameRepositoryPort {
-        override fun createGame(
-            gameId: UUID,
-            status: GameStatus,
-            playerCount: Int,
-            objectType: String,
-            areaThreshold: Double,
-        ) = error("開始では呼ばれない")
+        override fun createGame(game: Game) = error("開始では呼ばれない")
 
         override fun updateCreatorPlayerId(
             gameId: UUID,
@@ -46,17 +42,16 @@ class StartGameUseCaseTest {
 
         override fun findSummary(gameId: UUID): GameSummary? = error("開始ではロック付き取得を使う")
 
-        override fun findByIdWithLock(gameId: UUID): Game? = summary?.let { Game(gameId, it.status, it.playerCount, it.creatorPlayerId) }
+        override fun findByIdWithLock(gameId: UUID): Game? =
+            summary?.let {
+                Game.restore(gameId, it.status, it.playerCount, it.creatorPlayerId, ObjectType.SHRINE, it.areaThreshold)
+            }
     }
 
     private class StubPlayerRepository(
         private val count: Int?,
     ) : PlayerRepositoryPort {
-        override fun createPlayer(
-            playerId: UUID,
-            gameId: UUID,
-            displayName: String,
-        ) = error("開始では呼ばれない")
+        override fun createPlayer(player: Player) = error("開始では呼ばれない")
 
         override fun countByGameId(gameId: UUID): Int = count ?: error("権限がなければ人数を取得しない")
 

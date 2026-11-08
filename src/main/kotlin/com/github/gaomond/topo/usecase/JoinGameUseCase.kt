@@ -2,7 +2,7 @@ package com.github.gaomond.topo.usecase
 
 import com.github.gaomond.topo.domain.exception.GameJoinNotAllowedException
 import com.github.gaomond.topo.domain.exception.GameNotFoundException
-import com.github.gaomond.topo.domain.model.DisplayName
+import com.github.gaomond.topo.domain.model.Player
 import com.github.gaomond.topo.domain.port.GameRepositoryPort
 import com.github.gaomond.topo.domain.port.PlayerRepositoryPort
 import org.springframework.stereotype.Service
@@ -31,12 +31,8 @@ class JoinGameUseCase(
         game.requireCanJoin { playerRepository.countByGameId(input.gameId) }
 
         val playerId = UUID.randomUUID()
-        val displayName = DisplayName.resolve(input.displayName, playerId)
-        playerRepository.createPlayer(
-            playerId = playerId,
-            gameId = input.gameId,
-            displayName = displayName,
-        )
+        val player = Player.create(playerId, input.gameId, input.displayName)
+        playerRepository.createPlayer(player)
         return JoinGameResult(playerId = playerId)
     }
 }

@@ -2,6 +2,7 @@ package com.github.gaomond.topo.adapter.persistence.jpa
 
 import com.github.gaomond.topo.domain.model.Coordinate
 import com.github.gaomond.topo.domain.model.LiveLocation
+import com.github.gaomond.topo.domain.model.Player
 import com.github.gaomond.topo.domain.model.PlayerReading
 import com.github.gaomond.topo.domain.port.PlayerRepositoryPort
 import org.springframework.data.jpa.repository.Modifying
@@ -40,12 +41,8 @@ interface PlayerJpaRepository :
     ): Int
 
     @Transactional
-    override fun createPlayer(
-        playerId: UUID,
-        gameId: UUID,
-        displayName: String,
-    ) {
-        save(PlayerRecord(id = playerId, gameId = gameId, displayName = displayName))
+    override fun createPlayer(player: Player) {
+        save(PlayerRecord(id = player.playerId, gameId = player.gameId, displayName = player.displayName))
     }
 
     @Transactional(readOnly = true)

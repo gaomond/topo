@@ -2,7 +2,10 @@ package com.github.gaomond.topo.adapter.persistence
 
 import com.github.gaomond.topo.adapter.persistence.jpa.GameJpaRepository
 import com.github.gaomond.topo.adapter.persistence.jpa.PlayerJpaRepository
-import com.github.gaomond.topo.domain.model.GameStatus
+import com.github.gaomond.topo.domain.model.AreaPreset
+import com.github.gaomond.topo.domain.model.Game
+import com.github.gaomond.topo.domain.model.ObjectType
+import com.github.gaomond.topo.domain.model.Player
 import com.github.gaomond.topo.support.PostgisTestContainer
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -47,14 +50,8 @@ class GameCreationPersistenceTest {
         val gameId = UUID.randomUUID()
         val playerId = UUID.randomUUID()
 
-        gameRepository.createGame(
-            gameId = gameId,
-            status = GameStatus.WAITING,
-            playerCount = 3,
-            objectType = "shrine",
-            areaThreshold = 2_000_000.0,
-        )
-        playerRepository.createPlayer(playerId = playerId, gameId = gameId, displayName = "たろう")
+        gameRepository.createGame(Game.create(gameId, UUID.randomUUID(), 3, ObjectType.SHRINE, AreaPreset.ALL[1]))
+        playerRepository.createPlayer(Player.create(playerId = playerId, gameId = gameId, displayName = "たろう"))
         gameRepository.updateCreatorPlayerId(gameId = gameId, creatorPlayerId = playerId)
         gameRepository.flush()
         playerRepository.flush()
@@ -106,9 +103,11 @@ class GameCreationPersistenceTest {
     fun test_createPlayer_withNonExistentGameId_failsByFk() {
         assertThrows<Exception> {
             playerRepository.createPlayer(
-                playerId = UUID.randomUUID(),
-                gameId = UUID.randomUUID(),
-                displayName = "orphan",
+                Player.create(
+                    playerId = UUID.randomUUID(),
+                    gameId = UUID.randomUUID(),
+                    displayName = "orphan",
+                ),
             )
             playerRepository.flush()
         }

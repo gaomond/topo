@@ -7,6 +7,7 @@ import com.github.gaomond.topo.domain.model.Game
 import com.github.gaomond.topo.domain.model.GameStatus
 import com.github.gaomond.topo.domain.model.GameSummary
 import com.github.gaomond.topo.domain.model.LiveLocation
+import com.github.gaomond.topo.domain.model.Player
 import com.github.gaomond.topo.domain.model.PlayerReading
 import com.github.gaomond.topo.domain.model.Presence
 import com.github.gaomond.topo.domain.port.GameRepositoryPort
@@ -28,13 +29,7 @@ class GetGameStateUseCaseTest {
     private class SpyGameRepository(
         private val summary: GameSummary?,
     ) : GameRepositoryPort {
-        override fun createGame(
-            gameId: UUID,
-            status: GameStatus,
-            playerCount: Int,
-            objectType: String,
-            areaThreshold: Double,
-        ) = error("状態取得では呼ばれない")
+        override fun createGame(game: Game) = error("状態取得では呼ばれない")
 
         override fun updateCreatorPlayerId(
             gameId: UUID,
@@ -54,11 +49,7 @@ class GetGameStateUseCaseTest {
     private class StubPlayerRepository(
         private val players: List<PlayerReading>,
     ) : PlayerRepositoryPort {
-        override fun createPlayer(
-            playerId: UUID,
-            gameId: UUID,
-            displayName: String,
-        ) = error("状態取得では呼ばれない")
+        override fun createPlayer(player: Player) = error("状態取得では呼ばれない")
 
         override fun countByGameId(gameId: UUID): Int = error("状態取得では呼ばれない")
 

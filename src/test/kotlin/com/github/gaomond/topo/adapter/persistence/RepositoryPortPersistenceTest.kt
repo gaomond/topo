@@ -1,8 +1,11 @@
 package com.github.gaomond.topo.adapter.persistence
 
+import com.github.gaomond.topo.domain.model.AreaPreset
 import com.github.gaomond.topo.domain.model.Coordinate
 import com.github.gaomond.topo.domain.model.Game
 import com.github.gaomond.topo.domain.model.GameStatus
+import com.github.gaomond.topo.domain.model.ObjectType
+import com.github.gaomond.topo.domain.model.Player
 import com.github.gaomond.topo.domain.port.GameRepositoryPort
 import com.github.gaomond.topo.domain.port.PlayerRepositoryPort
 import com.github.gaomond.topo.support.PostgisTestContainer
@@ -65,7 +68,12 @@ class RepositoryPortPersistenceTest {
         entityManager.clear()
 
         val restored = games.findByIdWithLock(gameId)
-        assertEquals(Game(gameId, GameStatus.WAITING, 3, null), restored)
+        assertEquals(gameId, restored?.gameId)
+        assertEquals(GameStatus.WAITING, restored?.status)
+        assertEquals(3, restored?.playerCount)
+        assertNull(restored?.creatorPlayerId)
+        assertEquals(ObjectType.SHRINE, restored?.objectType)
+        assertEquals(2_000_000.0, restored?.areaThreshold)
         assertEquals(2_000_000.0, games.findSummary(gameId)?.areaThreshold)
         assertNull(games.findByIdWithLock(UUID.randomUUID()))
         assertNull(games.findSummary(UUID.randomUUID()))
@@ -94,7 +102,7 @@ class RepositoryPortPersistenceTest {
     fun test_updateStatus_existingResults_preservesOtherColumnsAndPolygon() {
         val gameId = seedGame()
         val creator = UUID.randomUUID()
-        players.createPlayer(creator, gameId, "作成者")
+        players.createPlayer(Player.create(creator, gameId, "作成者"))
         games.updateCreatorPlayerId(gameId, creator)
         entityManager.flush()
         jdbc.update(
@@ -133,7 +141,7 @@ class RepositoryPortPersistenceTest {
     fun test_updateLiveLocation_confirmedPlayer_preservesFixedLocationAndOtherColumns() {
         val gameId = seedGame()
         val playerId = UUID.randomUUID()
-        players.createPlayer(playerId, gameId, "プレイヤー")
+        players.createPlayer(Player.create(playerId, gameId, "プレイヤー"))
         entityManager.flush()
         jdbc.update(
             "UPDATE player SET fixed_geom = ST_SetSRID(ST_MakePoint(139.0,35.0),4326), confirmed_at = ? WHERE id = ?",
@@ -162,8 +170,26 @@ class RepositoryPortPersistenceTest {
         assertEquals(at, reading.live?.at)
     }
 
+    @Test
+    fun test_findByIdWithLock_savedStates_restoresStoredSettingsAndNonSelectableType() {
+        for (status in GameStatus.entries) {
+            val gameId = seedGame()
+            entityManager.flush()
+            jdbc.update(
+                "UPDATE game SET status = ?::game_status, object_type = 'temple', area_threshold = 123.5 WHERE id = ?",
+                status.name,
+                gameId,
+            )
+            entityManager.clear()
+            val restored = requireNotNull(games.findByIdWithLock(gameId))
+            assertEquals(status, restored.status)
+            assertEquals(ObjectType.TEMPLE, restored.objectType)
+            assertEquals(123.5, restored.areaThreshold)
+        }
+    }
+
     private fun seedGame(): UUID =
         UUID.randomUUID().also { gameId ->
-            games.createGame(gameId, GameStatus.WAITING, 3, "shrine", 2_000_000.0)
+            games.createGame(Game.create(gameId, UUID.randomUUID(), 3, ObjectType.SHRINE, AreaPreset.ALL[1]))
         }
 }

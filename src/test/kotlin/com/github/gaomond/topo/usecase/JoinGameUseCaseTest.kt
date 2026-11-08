@@ -6,6 +6,8 @@ import com.github.gaomond.topo.domain.model.Coordinate
 import com.github.gaomond.topo.domain.model.Game
 import com.github.gaomond.topo.domain.model.GameStatus
 import com.github.gaomond.topo.domain.model.GameSummary
+import com.github.gaomond.topo.domain.model.ObjectType
+import com.github.gaomond.topo.domain.model.Player
 import com.github.gaomond.topo.domain.model.PlayerReading
 import com.github.gaomond.topo.domain.port.GameRepositoryPort
 import com.github.gaomond.topo.domain.port.PlayerRepositoryPort
@@ -28,13 +30,7 @@ class JoinGameUseCaseTest {
     private class SpyGameRepository(
         private val summary: GameSummary?,
     ) : GameRepositoryPort {
-        override fun createGame(
-            gameId: UUID,
-            status: GameStatus,
-            playerCount: Int,
-            objectType: String,
-            areaThreshold: Double,
-        ) = error("参加では呼ばれない")
+        override fun createGame(game: Game) = error("参加では呼ばれない")
 
         override fun updateCreatorPlayerId(
             gameId: UUID,
@@ -48,19 +44,18 @@ class JoinGameUseCaseTest {
 
         override fun findSummary(gameId: UUID): GameSummary? = error("参加ではロック付き取得を使う")
 
-        override fun findByIdWithLock(gameId: UUID): Game? = summary?.let { Game(gameId, it.status, it.playerCount, it.creatorPlayerId) }
+        override fun findByIdWithLock(gameId: UUID): Game? =
+            summary?.let {
+                Game.restore(gameId, it.status, it.playerCount, it.creatorPlayerId, ObjectType.SHRINE, it.areaThreshold)
+            }
     }
 
     private class SpyPlayerRepository(
         private val count: Int,
         val created: MutableList<CreatedPlayer> = mutableListOf(),
     ) : PlayerRepositoryPort {
-        override fun createPlayer(
-            playerId: UUID,
-            gameId: UUID,
-            displayName: String,
-        ) {
-            created.add(CreatedPlayer(playerId, gameId, displayName))
+        override fun createPlayer(player: Player) {
+            created.add(CreatedPlayer(player.playerId, player.gameId, player.displayName))
         }
 
         override fun countByGameId(gameId: UUID): Int = count

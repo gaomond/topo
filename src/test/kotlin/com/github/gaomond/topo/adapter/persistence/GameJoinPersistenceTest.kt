@@ -2,7 +2,11 @@ package com.github.gaomond.topo.adapter.persistence
 
 import com.github.gaomond.topo.adapter.persistence.jpa.GameJpaRepository
 import com.github.gaomond.topo.adapter.persistence.jpa.PlayerJpaRepository
+import com.github.gaomond.topo.domain.model.AreaPreset
+import com.github.gaomond.topo.domain.model.Game
 import com.github.gaomond.topo.domain.model.GameStatus
+import com.github.gaomond.topo.domain.model.ObjectType
+import com.github.gaomond.topo.domain.model.Player
 import com.github.gaomond.topo.support.PostgisTestContainer
 import jakarta.persistence.EntityManager
 import jakarta.persistence.PersistenceContext
@@ -52,13 +56,8 @@ class GameJoinPersistenceTest {
         playerCount: Int = 3,
     ): UUID {
         val gameId = UUID.randomUUID()
-        gameRepository.createGame(
-            gameId = gameId,
-            status = status,
-            playerCount = playerCount,
-            objectType = "shrine",
-            areaThreshold = 2_000_000.0,
-        )
+        gameRepository.createGame(Game.create(gameId, UUID.randomUUID(), playerCount, ObjectType.SHRINE, AreaPreset.ALL[1]))
+        gameRepository.updateStatus(gameId, status)
         gameRepository.flush()
         return gameId
     }
@@ -80,7 +79,7 @@ class GameJoinPersistenceTest {
     fun test_countByGameId_returnsNumberOfPlayers() {
         val gameId = seedGame()
         repeat(2) {
-            playerRepository.createPlayer(UUID.randomUUID(), gameId, "p$it")
+            playerRepository.createPlayer(Player.create(UUID.randomUUID(), gameId, "p$it"))
         }
         playerRepository.flush()
         assertEquals(2, playerRepository.countByGameId(gameId))
@@ -92,9 +91,9 @@ class GameJoinPersistenceTest {
         val gameB = seedGame()
         val first = UUID.randomUUID()
         val second = UUID.randomUUID()
-        playerRepository.createPlayer(first, gameA, "さき")
-        playerRepository.createPlayer(second, gameA, "あと")
-        playerRepository.createPlayer(UUID.randomUUID(), gameB, "べつ")
+        playerRepository.createPlayer(Player.create(first, gameA, "さき"))
+        playerRepository.createPlayer(Player.create(second, gameA, "あと"))
+        playerRepository.createPlayer(Player.create(UUID.randomUUID(), gameB, "べつ"))
         playerRepository.flush()
         // joined_at を明示的に前後させて参加順を保証する。
         jdbcTemplate.update(
@@ -122,8 +121,8 @@ class GameJoinPersistenceTest {
         val gameId = seedGame()
         val confirmedPlayer = UUID.randomUUID()
         val pendingPlayer = UUID.randomUUID()
-        playerRepository.createPlayer(confirmedPlayer, gameId, "かくてい")
-        playerRepository.createPlayer(pendingPlayer, gameId, "みかくてい")
+        playerRepository.createPlayer(Player.create(confirmedPlayer, gameId, "かくてい"))
+        playerRepository.createPlayer(Player.create(pendingPlayer, gameId, "みかくてい"))
         playerRepository.flush()
         jdbcTemplate.update(
             "UPDATE player SET confirmed_at = now() WHERE id = ?",

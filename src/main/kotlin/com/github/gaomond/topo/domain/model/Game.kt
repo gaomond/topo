@@ -2,6 +2,7 @@ package com.github.gaomond.topo.domain.model
 
 import com.github.gaomond.topo.domain.exception.GameJoinNotAllowedException
 import com.github.gaomond.topo.domain.exception.GameStartNotAllowedException
+import com.github.gaomond.topo.domain.exception.GameValidationException
 import com.github.gaomond.topo.domain.exception.NotGameCreatorException
 import java.time.Instant
 import java.util.UUID
@@ -12,11 +13,13 @@ enum class GameStatus {
     COMPLETED,
 }
 
-data class Game(
+class Game private constructor(
     val gameId: UUID,
     val status: GameStatus,
     val playerCount: Int,
     val creatorPlayerId: UUID?,
+    val objectType: ObjectType,
+    val areaThreshold: Double,
 ) {
     // 待機中でなければ人数取得を行わず拒否する。
     fun requireCanJoin(getJoinedPlayerCount: () -> Int) {
@@ -43,7 +46,37 @@ data class Game(
         if (getJoinedPlayerCount() != playerCount) {
             throw GameStartNotAllowedException(gameId, GameStartNotAllowedException.Reason.CAPACITY_NOT_REACHED)
         }
-        return copy(status = GameStatus.ACTIVE)
+        return Game(gameId, GameStatus.ACTIVE, playerCount, creatorPlayerId, objectType, areaThreshold)
+    }
+
+    companion object {
+        private const val MIN_PLAYER_COUNT = 3
+
+        fun create(
+            gameId: UUID,
+            creatorPlayerId: UUID,
+            playerCount: Int,
+            objectType: ObjectType,
+            areaPreset: AreaPreset,
+        ): Game {
+            if (playerCount < MIN_PLAYER_COUNT) {
+                throw GameValidationException(
+                    GameValidationException.Reason.INVALID_PLAYER_COUNT,
+                    "playerCount は $MIN_PLAYER_COUNT 以上である必要があります: $playerCount",
+                )
+            }
+            return Game(gameId, GameStatus.WAITING, playerCount, creatorPlayerId, objectType, areaPreset.sqm.toDouble())
+        }
+
+        /** 保存済みの状態を復元する入口。新規ゲームには [create] を使う。 */
+        fun restore(
+            gameId: UUID,
+            status: GameStatus,
+            playerCount: Int,
+            creatorPlayerId: UUID?,
+            objectType: ObjectType,
+            areaThreshold: Double,
+        ): Game = Game(gameId, status, playerCount, creatorPlayerId, objectType, areaThreshold)
     }
 }
 

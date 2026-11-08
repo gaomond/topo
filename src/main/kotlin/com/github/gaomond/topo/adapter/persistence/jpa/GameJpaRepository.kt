@@ -3,6 +3,7 @@ package com.github.gaomond.topo.adapter.persistence.jpa
 import com.github.gaomond.topo.domain.model.Game
 import com.github.gaomond.topo.domain.model.GameStatus
 import com.github.gaomond.topo.domain.model.GameSummary
+import com.github.gaomond.topo.domain.model.ObjectType
 import com.github.gaomond.topo.domain.port.GameRepositoryPort
 import jakarta.persistence.LockModeType
 import org.springframework.data.jpa.repository.Lock
@@ -27,20 +28,14 @@ interface GameJpaRepository :
     fun findRecordByIdWithLock(gameId: UUID): GameRecord?
 
     @Transactional
-    override fun createGame(
-        gameId: UUID,
-        status: GameStatus,
-        playerCount: Int,
-        objectType: String,
-        areaThreshold: Double,
-    ) {
+    override fun createGame(game: Game) {
         save(
             GameRecord(
-                id = gameId,
-                status = status,
-                playerCount = playerCount,
-                objectType = objectType,
-                areaThreshold = areaThreshold,
+                id = game.gameId,
+                status = game.status,
+                playerCount = game.playerCount,
+                objectType = game.objectType.jsonValue,
+                areaThreshold = game.areaThreshold,
                 creatorPlayerId = null,
             ),
         )
@@ -73,7 +68,15 @@ interface GameJpaRepository :
     @Transactional(propagation = Propagation.MANDATORY)
     override fun findByIdWithLock(gameId: UUID): Game? = findRecordByIdWithLock(gameId)?.toDomain()
 
-    private fun GameRecord.toDomain(): Game = Game(id, status, playerCount, creatorPlayerId)
+    private fun GameRecord.toDomain(): Game =
+        Game.restore(
+            id,
+            status,
+            playerCount,
+            creatorPlayerId,
+            ObjectType.entries.single { it.jsonValue == objectType },
+            areaThreshold,
+        )
 
     private fun GameRecord.toSummary(): GameSummary =
         GameSummary(

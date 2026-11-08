@@ -2,7 +2,11 @@ package com.github.gaomond.topo.adapter.persistence
 
 import com.github.gaomond.topo.adapter.persistence.jpa.GameJpaRepository
 import com.github.gaomond.topo.adapter.persistence.jpa.PlayerJpaRepository
+import com.github.gaomond.topo.domain.model.AreaPreset
+import com.github.gaomond.topo.domain.model.Game
 import com.github.gaomond.topo.domain.model.GameStatus
+import com.github.gaomond.topo.domain.model.ObjectType
+import com.github.gaomond.topo.domain.model.Player
 import com.github.gaomond.topo.support.PostgisTestContainer
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -47,13 +51,8 @@ class LiveAreaQueryPersistenceTest {
 
     private fun seedGame(): UUID {
         val gameId = UUID.randomUUID()
-        gameRepository.createGame(
-            gameId = gameId,
-            status = GameStatus.ACTIVE,
-            playerCount = 5,
-            objectType = "shrine",
-            areaThreshold = 2_000_000.0,
-        )
+        gameRepository.createGame(Game.create(gameId, UUID.randomUUID(), 5, ObjectType.SHRINE, AreaPreset.ALL[1]))
+        gameRepository.updateStatus(gameId, GameStatus.ACTIVE)
         gameRepository.flush()
         return gameId
     }
@@ -64,7 +63,7 @@ class LiveAreaQueryPersistenceTest {
         lng: Double,
     ) {
         val playerId = UUID.randomUUID()
-        playerRepository.createPlayer(playerId, gameId, "プレイヤー")
+        playerRepository.createPlayer(Player.create(playerId, gameId, "プレイヤー"))
         playerRepository.flush()
         jdbcTemplate.update(
             "UPDATE player SET live_lat = ?, live_lng = ?, live_at = now() WHERE id = ?",
@@ -76,7 +75,7 @@ class LiveAreaQueryPersistenceTest {
 
     private fun seedIdlePlayer(gameId: UUID) {
         val playerId = UUID.randomUUID()
-        playerRepository.createPlayer(playerId, gameId, "みそうしん")
+        playerRepository.createPlayer(Player.create(playerId, gameId, "みそうしん"))
         playerRepository.flush()
     }
 

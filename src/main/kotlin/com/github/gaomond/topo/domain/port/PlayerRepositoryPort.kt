@@ -1,6 +1,7 @@
 package com.github.gaomond.topo.domain.port
 
 import com.github.gaomond.topo.domain.model.Coordinate
+import com.github.gaomond.topo.domain.model.Player
 import com.github.gaomond.topo.domain.model.PlayerReading
 import java.time.Instant
 import java.util.UUID
@@ -8,14 +9,8 @@ import java.util.UUID
 interface PlayerRepositoryPort {
     /**
      * プレイヤーを新規作成する。所属ゲームは保存済みであること。
-     *
-     * @param displayName フォールバック解決済みの表示名。
      */
-    fun createPlayer(
-        playerId: UUID,
-        gameId: UUID,
-        displayName: String,
-    )
+    fun createPlayer(player: Player)
 
     fun countByGameId(gameId: UUID): Int
 

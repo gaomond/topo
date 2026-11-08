@@ -3,6 +3,7 @@ package com.github.gaomond.topo.usecase
 import com.github.gaomond.topo.domain.exception.InvalidCoordinateException
 import com.github.gaomond.topo.domain.exception.PlayerNotFoundException
 import com.github.gaomond.topo.domain.model.Coordinate
+import com.github.gaomond.topo.domain.model.Player
 import com.github.gaomond.topo.domain.model.PlayerReading
 import com.github.gaomond.topo.domain.port.PlayerRepositoryPort
 import org.junit.jupiter.api.Test
@@ -26,11 +27,7 @@ class UpdateLiveLocationUseCaseTest {
         private val failure: RuntimeException? = null,
         val calls: MutableList<UpdateCall> = mutableListOf(),
     ) : PlayerRepositoryPort {
-        override fun createPlayer(
-            playerId: UUID,
-            gameId: UUID,
-            displayName: String,
-        ) = error("位置更新では呼ばれない")
+        override fun createPlayer(player: Player) = error("位置更新では呼ばれない")
 
         override fun countByGameId(gameId: UUID): Int = error("位置更新では呼ばれない")
 

@@ -9,16 +9,8 @@ interface GameRepositoryPort {
     /**
      * ゲームを新規作成する。作成者との外部キー循環を避けるため creatorPlayerId は設定せず、
      * 作成者の保存後に [updateCreatorPlayerId] で設定する。結果は未確定（null）とする。
-     *
-     * @param areaThreshold 解決済みの面積閾値（m²）。
      */
-    fun createGame(
-        gameId: UUID,
-        status: GameStatus,
-        playerCount: Int,
-        objectType: String,
-        areaThreshold: Double,
-    )
+    fun createGame(game: Game)
 
     /** 保存済みの作成者をゲームに設定する。対象ゲームは存在すること。 */
     fun updateCreatorPlayerId(
