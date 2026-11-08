@@ -1,14 +1,11 @@
 package com.github.gaomond.topo.adapter.web
 
 /**
- * PUT /api/games/{id}/players/{pid}/location のリクエストボディ（Web 表現・US-07）。
+ * ゲーム ID とプレイヤー ID はパスに指定し、ボディには座標を指定する。
+ * 座標は必須。欠損・デシリアライズ不能な値は 400、範囲外の値も 400 となる。
  *
- * gameId / pid はパス変数から渡す（ボディには含めない）。lat / lng は必須。
- * 非 null Double のため欠損時は Jackson/Kotlin モジュールがデシリアライズに失敗し、
- * Spring 既定の HttpMessageNotReadableException → 400 になる（座標の意味論検証は Domain の Coordinate が担う）。
- *
- * @param lat 緯度（WGS84 / SRID 4326）
- * @param lng 経度（WGS84 / SRID 4326）
+ * @param lat 緯度（-90 以上 90 以下、WGS84 / SRID 4326）。
+ * @param lng 経度（-180 以上 180 以下、WGS84 / SRID 4326）。
  */
 data class UpdateLocationRequest(
     val lat: Double,

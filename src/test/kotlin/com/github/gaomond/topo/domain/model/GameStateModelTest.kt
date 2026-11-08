@@ -6,11 +6,7 @@ import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
-/**
- * US-08 Level 1（Domain）検証。live 位置・暫定面積・生読み取りの Domain 値が値を保持し、
- * null 許容（未送信 live / 3 点未満で currentArea なし）を表現できることを検証する。
- * テスト対象は src/ の [LiveLocation] / [CurrentArea] / [PlayerReading] / [PlayerSnapshot]。
- */
+/** ライブ位置未送信や未計測を null で表現できることを検証する。 */
 class GameStateModelTest {
     @Test
     fun test_liveLocation_holdsCoordinateAndInstant() {

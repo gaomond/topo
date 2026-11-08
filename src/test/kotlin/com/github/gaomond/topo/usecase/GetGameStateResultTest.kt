@@ -5,11 +5,10 @@ import org.junit.jupiter.api.Test
 import java.util.UUID
 import kotlin.test.assertNull
 
-/** 状態取得結果の既存の既定値を移動後も維持する。 */
+/** 未計測の暫定面積を null で表現できることを検証する。 */
 class GetGameStateResultTest {
     @Test
     fun test_getGameStateResult_withoutCurrentArea_defaultsToNull() {
-        // 3 点未満などで currentArea が無い状態を null で表現できる（既定 null）。
         val state =
             GetGameStateResult(
                 gameId = UUID.randomUUID(),

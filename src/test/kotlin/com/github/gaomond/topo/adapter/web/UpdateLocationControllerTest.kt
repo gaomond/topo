@@ -18,11 +18,7 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.put
 import java.util.UUID
 
-/**
- * US-07 Level 3（inbound コントローラ）検証。UseCase は [MockitoBean] で差し替える。
- * 204（ボディなし）/ 404（不在・非所属）/ 400（範囲外・NaN・欠損）マッピングを検証する。
- * テスト対象は src/ の [UpdateLocationController] / [GameApiExceptionHandler] を import。
- */
+/** 更新成功時の空ボディ（204）、不在・非所属の 404、不正入力の 400 を検証する。 */
 @WebMvcTest(controllers = [UpdateLocationController::class])
 @Import(GameApiExceptionHandler::class)
 class UpdateLocationControllerTest {
@@ -90,7 +86,6 @@ class UpdateLocationControllerTest {
     @Test
     fun test_updateLocation_withNaN_returns400() {
         // JSON の NaN トークンは Jackson 既定で非数値として拒否され、パース失敗で 400 になる。
-        // UseCase まで到達しないため呼び出しは発生しない。
         mockMvc
             .put(path()) {
                 contentType = MediaType.APPLICATION_JSON

@@ -2,11 +2,7 @@ package com.github.gaomond.topo.adapter.web
 
 import com.github.gaomond.topo.usecase.StartGameResult
 
-/**
- * POST /api/games/{id}/start のレスポンスボディ（Web 表現・US-06）。
- *
- * 開始後のゲーム ID と状態（"ACTIVE"）を返す（01-spec 1.1）。
- */
+/** 開始成功時の status は "ACTIVE"。 */
 data class StartGameResponse(
     val gameId: String,
     val status: String,

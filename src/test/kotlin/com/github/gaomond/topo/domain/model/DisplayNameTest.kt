@@ -4,10 +4,7 @@ import org.junit.jupiter.api.Test
 import java.util.UUID
 import kotlin.test.assertEquals
 
-/**
- * US-05 Level 1（Domain）検証。displayName フォールバックの純関数を検証する。
- * テスト対象は src/ の [DisplayName] を import（再定義しない）。
- */
+/** 未指定・空白の表示名に共通のフォールバックが適用されることを検証する。 */
 class DisplayNameTest {
     private val playerId = UUID.fromString("abcdef01-2345-6789-abcd-ef0123456789")
 

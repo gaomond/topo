@@ -17,10 +17,8 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * US-08 Level 3（outbound アダプタ）検証。実 PostGIS（Testcontainers）に対し、
- * live 位置の凸包面積（`ST_ConvexHull` + `ST_Area(::geography)`）と頂点列を検証する。
- * 非退化 3 点で正の測地面積、2 点以下で null、一直線 3 点で sqm=0＋線分 hull、未送信の除外、閉環を確認する。
- * テスト対象は src/ の [LiveAreaQueryAdapter] を import（再定義しない）。
+ * 実 PostGIS で測地面積と頂点列を検証する。
+ * 3 点未満の null と共線 3 点の面積 0・線分を区別し、多角形の閉環と座標順を確認する。
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
@@ -60,7 +58,6 @@ class LiveAreaQueryPersistenceTest {
         return gameId
     }
 
-    // live 位置を持つ参加者を 1 人作る（lat/lng を直接投入する）。
     private fun seedLivePlayer(
         gameId: UUID,
         lat: Double,
@@ -77,7 +74,6 @@ class LiveAreaQueryPersistenceTest {
         )
     }
 
-    // live 未送信の参加者を 1 人作る（live_* は NULL のまま）。
     private fun seedIdlePlayer(gameId: UUID) {
         val playerId = UUID.randomUUID()
         playerRepository.createPlayer(playerId, gameId, "みそうしん")
@@ -131,7 +127,7 @@ class LiveAreaQueryPersistenceTest {
         seedLivePlayer(gameId, 35.68, 139.76)
         seedLivePlayer(gameId, 35.69, 139.76)
         seedLivePlayer(gameId, 35.68, 139.77)
-        // 未送信は対象外（凸包対象は live を持つ全参加者・E1）。
+        // 未送信は対象外（在室判定では絞り込まない）。
         seedIdlePlayer(gameId)
 
         val area = adapter().currentLiveArea(gameId)

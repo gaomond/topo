@@ -4,12 +4,9 @@ import com.github.gaomond.topo.usecase.JoinGameInput
 import java.util.UUID
 
 /**
- * POST /api/games/{id}/players のリクエストボディ（Web 表現）。
+ * 参加のリクエストボディ。対象ゲーム ID はパスに指定する。
  *
- * UseCase 入力（[JoinGameInput]）とは別型にし、ここで JSON ↔ UseCase 入力の境界を持つ。
- * gameId はパス変数から渡す（ボディには含めない）。
- *
- * @param displayName 参加者の表示名。任意（未送信/null ならサーバーがフォールバック）
+ * @param displayName 任意。未送信・null・空・空白のみは表示名を補完する。
  */
 data class JoinGameRequest(
     val displayName: String? = null,

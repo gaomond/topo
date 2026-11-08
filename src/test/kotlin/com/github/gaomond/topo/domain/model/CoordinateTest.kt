@@ -4,10 +4,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import kotlin.test.assertEquals
 
-/**
- * US-07 Level 1（Domain）検証。[Coordinate] の不変条件（範囲・NaN・無限）を検証する。
- * テスト対象は src/ の [Coordinate] を import（再定義しない）。
- */
+/** 座標の範囲境界・NaN・無限の拒否を検証する。 */
 class CoordinateTest {
     @Test
     fun test_construct_withValidValue_holdsLatLng() {

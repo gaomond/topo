@@ -12,14 +12,8 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
 
 /**
- * ゲーム状態取得ユースケース（GET /api/games/{id}）。
- *
- * gameId から status / playerCount / players を返す土台に、US-08 で以下を組み立てる:
- * - `players[].online`: [Presence] を live_at と now（[clock]）に適用した在室判定（サーバー計算）。
- * - `currentArea`: **ACTIVE のときのみ** [LiveAreaQueryPort] で live 位置の暫定凸包面積を得る。
- *   WAITING は live 未送信で必然 null、COMPLETED は result 側で currentArea は null。
- *
- * 依存は Domain ポート（と時刻源 [Clock]）のみ（DIP）。PostGIS / JPA 具象を import しない。
+ * 全参加者に共通の基準時刻で在室判定を行う。
+ * 暫定面積の計算は進行中に限り、待機中・完了後には行わない。
  */
 @Service
 class GetGameStateUseCase(
@@ -29,9 +23,9 @@ class GetGameStateUseCase(
     private val clock: Clock,
 ) {
     /**
-     * gameId の現在状態を返す。
+     * ゲームの現在状態を返す。
      *
-     * @throws GameNotFoundException gameId が存在しない（→404。フロント 1.4 の 404 画面）
+     * @throws GameNotFoundException 対象ゲームが存在しない。
      */
     @Transactional(readOnly = true)
     fun getState(input: GetGameStateInput): GetGameStateResult {
@@ -48,12 +42,10 @@ class GetGameStateUseCase(
                     displayName = reading.displayName,
                     confirmed = reading.confirmed,
                     live = reading.live,
-                    // presence は now を要する policy のためここ（UseCase）で計算する。
                     online = Presence.isOnline(reading.live?.at, now),
                 )
             }
 
-        // 進行中メーターの暫定面積は ACTIVE のときだけ計算する（空間クエリの発火も ACTIVE 限定）。
         val currentArea =
             if (summary.status == GameStatus.ACTIVE) liveAreaQuery.currentLiveArea(gameId) else null
 
@@ -63,7 +55,6 @@ class GetGameStateUseCase(
             playerCount = summary.playerCount,
             creatorPlayerId = summary.creatorPlayerId,
             players = players,
-            // 作成時確定の上限面積（US-10 の満杯ライン）。summary 由来の静的値をそのまま載せる。
             areaThreshold = summary.areaThreshold,
             currentArea = currentArea,
         )

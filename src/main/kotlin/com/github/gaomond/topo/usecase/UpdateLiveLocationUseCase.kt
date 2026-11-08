@@ -9,29 +9,18 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
 
 /**
- * ライブ位置更新ユースケース（01-spec 1.1 のサーバー処理・US-07）。
- *
- * 座標を [Coordinate] に構築（不正値→400）→ live_at 時刻を確定 → ポートで一致つき更新 →
- * 更新 0 件なら [PlayerNotFoundException]（404）、を 1 トランザクションで実行する。
- *
- * 状態ガードは設けない（D1 案B）。`game.status` を参照せず、WAITING / ACTIVE / COMPLETED いずれも受理する
- * （副作用なし・冪等。クライアントは ACTIVE の地図画面でのみ送信する）。
- *
- * 依存は Domain ポートのみで JPA 具象・PostGIS に依存しない（DIP / Clean Architecture）。
+ * ゲーム状態に制限を設けず、ライブ位置・記録時刻だけを更新する。
+ * 確定座標やゲームの進行状態は変更しない。同じ座標の再送でも記録時刻は更新する。
  */
 @Service
 class UpdateLiveLocationUseCase(
     private val playerRepository: PlayerRepositoryPort,
 ) {
     /**
-     * ライブ位置を更新する（副作用なし・返り値なし＝204 相当）。
+     * ライブ位置を更新する。
      *
-     * @param gameId   所属ゲーム ID
-     * @param playerId 更新対象 player ID
-     * @param lat      緯度（範囲外 / NaN は 400）
-     * @param lng      経度（範囲外 / NaN は 400）
-     * @throws GameValidationException 座標が意味論的に不正（→400）
-     * @throws PlayerNotFoundException gameId / playerId の組が解決できない（不在 / 非所属。→404）
+     * @throws GameValidationException 座標が範囲外・NaN・無限。
+     * @throws PlayerNotFoundException 対象プレイヤーが不在、または指定ゲームに所属していない。
      */
     @Transactional
     fun update(input: UpdateLiveLocationInput) {
@@ -39,8 +28,7 @@ class UpdateLiveLocationUseCase(
         val playerId = input.playerId
         val lat = input.lat
         val lng = input.lng
-        // Coordinate の不変条件違反（IllegalArgumentException）は 400 経路の GameValidationException に包み直す
-        // （既存 400 経路への一貫化。ハンドラで IllegalArgumentException を広く 400 化しない）。
+        // 座標生成時の違反だけを入力不正へ変換し、他の IllegalArgumentException と区別する。
         val coordinate =
             try {
                 Coordinate(lat = lat, lng = lng)
@@ -51,7 +39,7 @@ class UpdateLiveLocationUseCase(
                 )
             }
 
-        // live_at は「必ず現在時刻へ更新」する（presence の last-seen 素材。TTL 判定は US-08）。
+        // 同じ座標でも在室判定の最終確認時刻を更新する。
         val updated = playerRepository.updateLiveLocation(gameId, playerId, coordinate, Instant.now())
         if (!updated) {
             throw PlayerNotFoundException(gameId, playerId)

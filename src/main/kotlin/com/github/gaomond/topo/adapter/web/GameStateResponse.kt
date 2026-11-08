@@ -5,26 +5,18 @@ import com.github.gaomond.topo.domain.model.LiveLocation
 import com.github.gaomond.topo.domain.model.PlayerSnapshot
 import com.github.gaomond.topo.usecase.GetGameStateResult
 
-/**
- * GET /api/games/{id} のレスポンスボディ（Web 表現）。
- *
- * US-05 の status / playerCount / players に加え、US-08 で各 player の live / online と、
- * 進行中メーター用の [currentArea]（live 凸包の面積・頂点列）を返す。`result`（確定結果）は
- * confirm/集計（US-11/13）まで常に null だが、前方互換のためフィールドを用意して null を返す。
- * UseCase の結果から Web 表現へ変換し、ドメインの型を直接 JSON に公開しない。
- */
+/** ゲーム状態のレスポンス。確定結果 result は現在常に null を返す。 */
 data class GameStateResponse(
     val gameId: String,
     val status: String,
     val playerCount: Int,
-    // 作成者の playerId（フロントの開始ボタン creator 判定用・US-06）。作成直後の一瞬は null。
+    // 作成者未設定なら null。
     val creatorPlayerId: String?,
     val players: List<PlayerPayload>,
-    // 面積成立判定の上限（m²）。作成時確定の静的値（US-10 の面積メーターが満杯ラインに使う）。常に非 null。
+    // 作成時に確定する面積閾値（m²）。
     val areaThreshold: Double,
-    // live 位置の暫定凸包（ACTIVE かつ live 点 3 点以上のときのみ非 null・US-08）。
+    // ACTIVE 以外、ライブ座標 3 点未満、計算結果が空の場合は null。
     val currentArea: CurrentAreaPayload?,
-    // 確定結果。confirm/集計（US-11/13）まで常に null。前方互換のためフィールドは用意する。
     val result: Any? = null,
 ) {
     companion object {
@@ -41,16 +33,13 @@ data class GameStateResponse(
     }
 }
 
-/**
- * 参加者（GameStateResponse の構成要素）。
- */
 data class PlayerPayload(
     val playerId: String,
     val displayName: String,
     val confirmed: Boolean,
-    // 最新ライブ位置（未送信は null・US-08）。
+    // 未送信、または座標・記録時刻が欠けている場合は null。
     val live: LiveLocationPayload?,
-    // live_at の鮮度（TTL 内）による在室判定（サーバー計算・US-08）。
+    // 最新ライブ位置の記録時刻から 10 秒以内なら在室。
     val online: Boolean,
 ) {
     companion object {
@@ -65,9 +54,7 @@ data class PlayerPayload(
     }
 }
 
-/**
- * ライブ位置（PlayerPayload の構成要素・US-08）。`at` は ISO-8601 / Z（`Instant.toString()`）。
- */
+/** ライブ位置の記録時刻 at は ISO-8601 の UTC 表記（末尾 Z）。 */
 data class LiveLocationPayload(
     val lat: Double,
     val lng: Double,
@@ -84,10 +71,10 @@ data class LiveLocationPayload(
 }
 
 /**
- * 進行中メーター（GameStateResponse の構成要素・US-08）。
+ * 暫定凸包の測地面積（sqm、m²）と頂点列。
  *
- * [hull] は凸包頂点列を `[[lat, lng], ...]` の閉環で返す。クライアントは US-09/10 でこれをそのまま描画する
- * （凸包・面積はサーバー計算・クライアント非計算）。
+ * [hull] は `[[lat, lng], ...]` の順で返す。多角形では閉環し、
+ * 退化時は線分または点の頂点列となる。
  */
 data class CurrentAreaPayload(
     val sqm: Double,

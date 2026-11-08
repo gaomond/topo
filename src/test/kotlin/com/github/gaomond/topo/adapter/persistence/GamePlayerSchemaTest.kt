@@ -22,11 +22,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
-/**
- * US-00 スキーマ・永続化の Level 3 検証。
- * 実 PostGIS（Testcontainers）に対し Flyway を適用し、enum/FK/NULL 許容/循環解消/空間型/
- * 上限なし/JPA CRUD を検証する。テスト対象は src/ から import（プロダクションの再定義はしない）。
- */
+/** 実 PostGIS に Flyway を適用し、enum・外部キー・null 許容・空間型と保存を検証する。 */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 class GamePlayerSchemaTest {
@@ -49,8 +45,6 @@ class GamePlayerSchemaTest {
 
     @Autowired
     private lateinit var jdbcTemplate: JdbcTemplate
-
-    // --- ヘルパ: 最小の game / player を生 SQL で作る ---
 
     private fun insertGameRaw(
         id: UUID = UUID.randomUUID(),
@@ -81,8 +75,6 @@ class GamePlayerSchemaTest {
         )
     }
 
-    // --- マイグレーション再現性 ---
-
     @Test
     fun test_flywayMigration_onCleanDb_createsGamePlayerAndEnum() {
         // コンテナ起動＝Flyway 成功。enum 型・テーブルの存在をカタログで確認する。
@@ -107,16 +99,12 @@ class GamePlayerSchemaTest {
         assertEquals(setOf("game", "player"), tables.toSet())
     }
 
-    // --- enum 制約 ---
-
     @Test
     fun test_insertGame_withInvalidStatus_failsByEnumConstraint() {
         assertThrows<DataIntegrityViolationException> {
             insertGameRaw(status = "PAUSED")
         }
     }
-
-    // --- FK 整合 ---
 
     @Test
     fun test_insertPlayer_withNonExistentGameId_failsByFk() {
@@ -137,8 +125,6 @@ class GamePlayerSchemaTest {
             )
         }
     }
-
-    // --- NULL 許容 ---
 
     @Test
     fun test_insertGame_withNullableResultColumns_succeeds() {
@@ -175,17 +161,12 @@ class GamePlayerSchemaTest {
         assertNull(nulls["confirmed_at"])
     }
 
-    // --- 循環解消（1.6 の 3 ステップ）---
-
     @Test
     fun test_createGameThenCreatorThenUpdate_inOrder_resolvesCircularReference() {
-        // 1. game を creator_player_id NULL で作成
         val gameId = UUID.randomUUID()
         insertGameRaw(id = gameId)
-        // 2. 作成者 player を作成（game_id を埋める）
         val creatorId = UUID.randomUUID()
         insertPlayerRaw(id = creatorId, gameId = gameId)
-        // 3. game.creator_player_id を UPDATE
         val updated =
             jdbcTemplate.update(
                 "UPDATE game SET creator_player_id = ? WHERE id = ?",
@@ -202,13 +183,10 @@ class GamePlayerSchemaTest {
         assertEquals(creatorId, storedCreator)
     }
 
-    // --- 空間型 ---
-
     @Test
     fun test_insertSpatialGeoms_with4326PointAndPolygon_storesAndReads() {
         val gameId = UUID.randomUUID()
         insertGameRaw(id = gameId)
-        // polygon_geom（Polygon,4326）を生 SQL で格納
         jdbcTemplate.update(
             "UPDATE game SET polygon_geom = ST_GeomFromText('POLYGON((139.0 35.0,139.1 35.0,139.1 35.1,139.0 35.1,139.0 35.0))', 4326) WHERE id = ?",
             gameId,
@@ -221,7 +199,6 @@ class GamePlayerSchemaTest {
         assertEquals(4326, polygonInfo["srid"])
         assertEquals("POLYGON", polygonInfo["gtype"])
 
-        // fixed_geom（Point,4326）を生 SQL で格納
         val playerId = UUID.randomUUID()
         insertPlayerRaw(id = playerId, gameId = gameId)
         jdbcTemplate.update(
@@ -237,8 +214,6 @@ class GamePlayerSchemaTest {
         assertEquals("POINT", pointInfo["gtype"])
     }
 
-    // --- 上限なし（エッジ）---
-
     @Test
     fun test_insertGame_withLargePlayerCount_isNotRejected() {
         val gameId = UUID.randomUUID()
@@ -251,8 +226,6 @@ class GamePlayerSchemaTest {
             )
         assertEquals(100, stored)
     }
-
-    // --- JPA CRUD ラウンドトリップ ---
 
     @Test
     fun test_saveAndFind_gameEntity_roundTripsNonSpatialColumns() {

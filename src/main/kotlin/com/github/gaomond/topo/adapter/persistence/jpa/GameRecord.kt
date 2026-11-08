@@ -12,14 +12,10 @@ import java.time.Instant
 import java.util.UUID
 
 /**
- * `game` テーブルの JPA 管理の永続化表現（非空間カラムのみ）。
+ * 空間カラム polygon_geom はマッピングせず、PostGIS の生 SQL で扱う。
+ * エンティティにないカラムは ddl-auto=validate の検証対象外となる。
  *
- * 空間カラム `polygon_geom`（Polygon,4326）はマッピングしない。地理空間は US-13 以降に
- * outbound の生 SQL（PostGIS）で扱う方針（DESIGN.md「永続化の構成」）。
- * `ddl-auto=validate` はエンティティに無いカラムを検証しないため、除外しても validate は通る。
- *
- * JPA 管理の永続化表現のため data class は使わず通常 class とし、ID ベースの equals/hashCode を持つ。
- * UUID 主キーはクライアント発番（コンストラクタで確定）であり DB 生成ではないため、id は非 null。
+ * UUID は保存前に発番するため、未保存でも ID は非 null。
  */
 @Entity
 @Table(name = "game")

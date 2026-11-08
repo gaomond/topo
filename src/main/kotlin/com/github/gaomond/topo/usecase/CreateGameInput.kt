@@ -5,18 +5,10 @@ import com.github.gaomond.topo.domain.model.ObjectType
 import java.util.UUID
 
 /**
- * ゲーム作成の UseCase 入力（不変値）。
+ * 未検証の作成入力。種別は [ObjectType.selectableFromJsonValueOrNull]、
+ * 面積プリセットは [AreaPreset.byKey] で解決する。
  *
- * Web 表現（`CreateGameRequest`）とは別型にし、UseCase が受け取る入力を表す。
- * ここでは生の入力値（未検証）を保持し、検証・解決（objectType 妥当性 / areaPreset→sqm）は
- * UseCase が [ObjectType.selectableFromJsonValueOrNull] / [AreaPreset.byKey] を用いて行う。
- *
- * Spring / JPA に依存しない純粋 Kotlin 型。
- *
- * @param objectType     集計対象種別の生文字列（jsonValue。例: "shrine"）
- * @param areaPresetKey  面積プリセットの生 key（例: "medium"）
- * @param playerCount    固定参加人数（3 以上が有効）
- * @param displayName    作成者の表示名（任意。null / 空 / 空白のみはフォールバック対象）
+ * @param displayName null・空・空白のみはフォールバック対象。
  */
 data class CreateGameInput(
     val objectType: String,
@@ -25,14 +17,7 @@ data class CreateGameInput(
     val displayName: String?,
 )
 
-/**
- * ゲーム作成の結果（不変値）。サーバー発番した gameId / playerId を保持する。
- *
- * 招待 URL / 作成者 URL の組み立てはクライアント責務のため、ここでは ID のみを返す。
- *
- * @param gameId   作成されたゲームの ID（共有キー）
- * @param playerId 作成者（creator）の player ID
- */
+/** 作成したゲームと作成者の ID。 */
 data class CreateGameResult(
     val gameId: UUID,
     val playerId: UUID,

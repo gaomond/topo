@@ -9,12 +9,7 @@ import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import java.util.UUID
 
-/**
- * ゲーム参加の inbound アダプタ。POST /api/games/{id}/players を提供する。
- *
- * Web 表現（[JoinGameRequest]）+ パス gameId → UseCase 入力 → UseCase → 201 + [JoinGameResponse]。
- * ドメイン例外（不在→404 / 参加不可→409）のマッピングは [GameApiExceptionHandler] が担う。
- */
+/** リクエストボディを省略した場合も、表示名未指定として参加を受け付ける。 */
 @RestController
 class JoinGameController(
     private val joinGameUseCase: JoinGameUseCase,

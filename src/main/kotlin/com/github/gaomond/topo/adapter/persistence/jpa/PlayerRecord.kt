@@ -8,16 +8,10 @@ import java.time.Instant
 import java.util.UUID
 
 /**
- * `player` テーブルの JPA 管理の永続化表現（非空間カラムのみ）。
+ * 空間カラム fixed_geom はマッピングせず、PostGIS の生 SQL で扱う。
+ * エンティティにないカラムは ddl-auto=validate の検証対象外となる。
  *
- * 空間カラム `fixed_geom`（Point,4326）はマッピングしない。確定座標は US-13 以降に
- * outbound の生 SQL（PostGIS）で扱う。`ddl-auto=validate` はエンティティに無いカラムを
- * 検証しないため、除外しても validate は通る。
- *
- * `game_id` は FK だが、本ストーリーでは @ManyToOne を張らず単純な UUID として保持する
- * （遅延ロードの罠を避け、参照解決は UseCase / 生 SQL に委ねる）。
- *
- * JPA 管理の永続化表現のため data class は使わず通常 class とし、ID ベースの equals/hashCode を持つ。
+ * game_id は UUID として保持し、関連エンティティの遅延ロードを発生させない。
  */
 @Entity
 @Table(name = "player")

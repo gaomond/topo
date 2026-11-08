@@ -42,6 +42,7 @@ import kotlin.time.TimeSource
     JoinGameUseCase::class,
     StartGameUseCase::class,
 )
+// テスト全体のトランザクションを作らず、競合する要求をそれぞれ別トランザクションで実行する。
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class GameMembershipConcurrencyTest {
     companion object {
@@ -143,6 +144,7 @@ class GameMembershipConcurrencyTest {
                             val pid = backendPid()
                             val outcome = runCatching(first)
                             if (outcome.isFailure) status.setRollbackOnly()
+                            // 判定・保存後も終了を待たせ、次の要求がロック待ちになる同期点を作る。
                             firstReady.complete(pid)
                             assertTrue(releaseFirst.await(10, SECONDS))
                             outcome
@@ -160,6 +162,7 @@ class GameMembershipConcurrencyTest {
                     }
                 }
             val secondPid = secondReady.get(5, SECONDS)
+            // 時間経過だけに頼らず、DB が先行トランザクションによる待機を報告したことを確認する。
             assertBlockedBy(secondPid, firstPid)
             releaseFirst.countDown()
             return firstResult.get(5, SECONDS) to secondResult.get(5, SECONDS)

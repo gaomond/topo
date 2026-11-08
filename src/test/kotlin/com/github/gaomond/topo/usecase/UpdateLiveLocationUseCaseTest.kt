@@ -13,11 +13,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/**
- * US-07 Level 2（UseCase）検証。ポートは手書きの spy で差し替える（外部モックライブラリ非依存）。
- * 有効座標で更新ポート呼び出し / 該当 player 無しで 404 / 不正座標で 400 かつポート未呼び出しを検証する。
- * テスト対象は src/ の [UpdateLiveLocationUseCase] を import（再定義しない）。
- */
+/** 不正座標では更新を呼ばず、プレイヤー不在・非所属では拒否することを検証する。 */
 class UpdateLiveLocationUseCaseTest {
     private data class UpdateCall(
         val gameId: UUID,

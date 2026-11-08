@@ -17,11 +17,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/**
- * US-05 Level 2（UseCase）検証。ポートは手書きの spy で差し替える（外部モックライブラリ非依存）。
- * 存在確認 / 状態判定 / 定員判定 / displayName フォールバック / 拒否時未 INSERT を検証する。
- * テスト対象は src/ の [JoinGameUseCase] を import（再定義しない）。
- */
+/** 定員境界と状態による参加拒否、拒否時に参加者を保存しないことを検証する。 */
 class JoinGameUseCaseTest {
     private data class CreatedPlayer(
         val playerId: UUID,

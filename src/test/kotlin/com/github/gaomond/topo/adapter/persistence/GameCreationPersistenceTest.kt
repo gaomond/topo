@@ -18,12 +18,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 
-/**
- * US-04 Level 3（outbound アダプタ）検証。実 PostGIS（Testcontainers）に対し、
- * 創成順序（game INSERT → player INSERT → creator UPDATE）の 3 テーブル操作整合と
- * 途中失敗のロールバックを検証する。テスト対象は src/ の [GameJpaRepository] /
- * [PlayerJpaRepository] を import（再定義しない）。
- */
+/** 外部キー循環を避けるゲーム・作成者の保存順と、対象不在・外部キー違反の検出を検証する。 */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 class GameCreationPersistenceTest {
@@ -52,7 +47,6 @@ class GameCreationPersistenceTest {
         val gameId = UUID.randomUUID()
         val playerId = UUID.randomUUID()
 
-        // 創成順序を UseCase と同順で adapter 経由に実行する。
         gameRepository.createGame(
             gameId = gameId,
             status = GameStatus.WAITING,
@@ -65,7 +59,6 @@ class GameCreationPersistenceTest {
         gameRepository.flush()
         playerRepository.flush()
 
-        // game: WAITING / 結果カラム NULL / creator リンク済み
         val game =
             jdbcTemplate.queryForMap(
                 """
@@ -84,7 +77,6 @@ class GameCreationPersistenceTest {
         assertNull(game["area_valid"])
         assertNull(game["object_count"])
 
-        // player: game_id 埋め・displayName 保存
         val player =
             jdbcTemplate.queryForMap(
                 "SELECT game_id, display_name FROM player WHERE id = ?",
@@ -93,14 +85,12 @@ class GameCreationPersistenceTest {
         assertEquals(gameId, player["game_id"])
         assertEquals("たろう", player["display_name"])
 
-        // US-10: findSummary が area_threshold を射影する（GET リードパスの満杯ラインの供給元）。
         val summary = gameRepository.findSummary(gameId)
         assertEquals(2_000_000.0, summary?.areaThreshold)
     }
 
     @Test
     fun test_updateCreatorPlayerId_forMissingGame_throws() {
-        // 創成 UPDATE の対象 game が存在しない場合は例外（ロールバックのトリガになりうる）。
         val failure =
             assertThrows<DataAccessException> {
                 gameRepository.updateCreatorPlayerId(
@@ -114,7 +104,6 @@ class GameCreationPersistenceTest {
 
     @Test
     fun test_createPlayer_withNonExistentGameId_failsByFk() {
-        // player の game_id FK 違反時は例外になる（途中失敗のトリガ。ロールバックは UseCase の @Transactional 責務）。
         assertThrows<Exception> {
             playerRepository.createPlayer(
                 playerId = UUID.randomUUID(),

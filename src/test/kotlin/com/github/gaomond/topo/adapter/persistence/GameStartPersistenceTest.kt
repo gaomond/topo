@@ -15,11 +15,7 @@ import org.springframework.test.context.DynamicPropertySource
 import java.util.UUID
 import kotlin.test.assertEquals
 
-/**
- * US-06 Level 3（outbound アダプタ）検証。実 PostGIS（Testcontainers）に対し、
- * 開始処理の永続化（updateStatus が status のみ更新 / findSummary の creatorPlayerId 射影）を検証する。
- * テスト対象は src/ の [GameJpaRepository] / [PlayerJpaRepository] を import（再定義しない）。
- */
+/** 開始時の status 部分更新で他カラムを維持し、作成者を読み取れることを検証する。 */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 class GameStartPersistenceTest {
@@ -43,7 +39,6 @@ class GameStartPersistenceTest {
     @PersistenceContext
     private lateinit var entityManager: EntityManager
 
-    // creator を設定した WAITING ゲームを作る（game→player→creator UPDATE の創成順序）。
     private fun seedGameWithCreator(playerCount: Int = 3): Pair<UUID, UUID> {
         val gameId = UUID.randomUUID()
         gameRepository.createGame(
@@ -73,7 +68,6 @@ class GameStartPersistenceTest {
 
         val updated = requireNotNull(gameRepository.findRecordById(gameId))
         assertEquals(GameStatus.ACTIVE, updated.status)
-        // 他カラムは不変。
         assertEquals(3, updated.playerCount)
         assertEquals("shrine", updated.objectType)
         assertEquals(2_000_000.0, updated.areaThreshold)

@@ -3,15 +3,12 @@ package com.github.gaomond.topo.adapter.web
 import com.github.gaomond.topo.usecase.CreateGameInput
 
 /**
- * POST /api/games のリクエストボディ（Web 表現）。
+ * ゲーム作成のリクエストボディ。
  *
- * UseCase 入力（[CreateGameInput]）とは別型にし、ここで JSON ↔ UseCase 入力の境界を持つ。
- * 生の値検証（objectType 妥当性 / areaPreset 妥当性 / playerCount >= 3）は UseCase が担う。
- *
- * @param objectType  集計対象種別（例: "shrine"）。必須
- * @param areaPreset  面積プリセット key（例: "medium"）。必須
- * @param playerCount 固定参加人数。必須
- * @param displayName 作成者の表示名。任意（未送信/null ならサーバーがフォールバック）
+ * @param objectType 選択可能なオブジェクト種別。
+ * @param areaPreset 面積プリセットの key。
+ * @param playerCount 固定参加人数。3 以上。
+ * @param displayName 任意。未送信・null・空・空白のみは表示名を補完する。
  */
 data class CreateGameRequest(
     val objectType: String,

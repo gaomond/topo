@@ -23,11 +23,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/**
- * US-05 / US-08 Level 2（UseCase）検証。状態取得・404・players 射影に加え、
- * US-08 の online（TTL 判定）と currentArea 組み立て（ACTIVE 限定・空間ポート発火）を検証する。
- * ポート・Clock は手書きの stub/spy で固定する。テスト対象は src/ の [GetGameStateUseCase] を import。
- */
+/** 時刻を固定して在室判定を検証し、進行中だけ暫定面積を問い合わせることを確認する。 */
 class GetGameStateUseCaseTest {
     private class SpyGameRepository(
         private val summary: GameSummary?,
@@ -139,7 +135,6 @@ class GetGameStateUseCaseTest {
 
     @Test
     fun `test_getGameState_areaThresholdをsummaryから射影する`() {
-        // US-10: 面積メーターの満杯ラインに使う上限を GET リードパスへ載せる（summary 由来の静的値）。
         val summary = GameSummary(GameStatus.WAITING, 3, creatorPlayerId = null, areaThreshold = 500_000.0)
         val state = useCase(summary).getState(GetGameStateInput(gameId))
         assertEquals(500_000.0, state.areaThreshold)

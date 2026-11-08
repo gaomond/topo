@@ -18,11 +18,7 @@ import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
-/**
- * US-05 Level 3（outbound アダプタ）検証。実 PostGIS（Testcontainers）に対し、
- * 参加判定用の取得系（findSummary / countByGameId / findByGameId）を検証する。
- * テスト対象は src/ の [GameJpaRepository] / [PlayerJpaRepository] を import（再定義しない）。
- */
+/** 参加者数・参加順・確定状態の読み取りを実 DB で検証する。 */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 class GameJoinPersistenceTest {

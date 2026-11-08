@@ -8,14 +8,11 @@ import org.springframework.stereotype.Component
 import java.util.UUID
 
 /**
- * [LiveAreaQueryPort] を PostGIS 生 SQL で実装する outbound アダプタ（US-08 で空間 SQL を初導入）。
+ * SRID 4326 のライブ座標から凸包と測地面積（m²）を求める。
  *
- * `ST_ConvexHull(ST_Collect(live points))` の測地面積（`ST_Area(::geography)`）と凸包頂点列を求める。
- * PostGIS / 生 SQL 依存は本ファイルに閉じ込め、Domain / UseCase へは Domain 値 [CurrentArea] だけを返す
- * （ORM 方針: 空間クエリは outbound の生 SQL に隔離）。
- *
- * 経度/緯度の取り違え防止: 点生成は `ST_MakePoint(lng, lat)`（X=lng, Y=lat）、頂点抽出は
- * `ST_X = lng` / `ST_Y = lat` で対応を明示する。
+ * 点生成は ST_MakePoint(lng, lat)（X=経度、Y=緯度）とし、頂点抽出も同じ対応を使う。
+ * [CurrentArea] の頂点列は ST_DumpPoints の path 順に返す。多角形では閉環し、
+ * 一直線・重複による退化では線分または点となり、測地面積は 0 となる。
  */
 @Component
 class LiveAreaQueryAdapter(
@@ -28,7 +25,7 @@ class LiveAreaQueryAdapter(
     )
 
     override fun currentLiveArea(gameId: UUID): CurrentArea? {
-        // live 点 < 3 は多角形が成立しないため null（E2）。退化の sqm=0 と混同しないよう件数で先にガードする。
+        // 3 点未満の未計測と、退化による面積 0 を区別する。
         val liveCount =
             jdbcTemplate.queryForObject(
                 """
@@ -40,9 +37,7 @@ class LiveAreaQueryAdapter(
             ) ?: 0
         if (liveCount < 3) return null
 
-        // 凸包を作り、測地面積と頂点列（ST_DumpPoints を path 順）を 1 クエリで取得する。
-        // 面積は各行同一値（hull と DumpPoints の直積）なので先頭行から読む。
-        // 退化（一直線/重複）でも ConvexHull は LineString/Point を返し、ST_Area(::geography)=0 + 成立頂点列になる。
+        // 面積は hull と頂点列の直積で各行に重複するため、先頭行の値を使う。
         val vertices =
             jdbcTemplate.query(
                 """

@@ -12,16 +12,10 @@ import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 
 /**
- * ドメイン例外を HTTP ステータスにマッピングする inbound アダプタ。
+ * 入力不正は 400、対象不在は 404、作成者以外の開始は 403、参加・開始不可は 409 とする。
  *
- * CLAUDE.md「Domain でドメイン例外を定義し、inbound で HTTP ステータスにマッピング
- * （バリデーション失敗 = 400 / 対象不在 = 404）」に従う。
- * - [GameValidationException] → 400（US-04: 作成入力の検証 / US-07: 座標の意味論検証）
- * - [GameNotFoundException] → 404（US-05: 不在の gameId）
- * - [PlayerNotFoundException] → 404（US-07: player 不在 / 当該 game への非所属。理由は出し分けない）
- * - [GameJoinNotAllowedException] → 409（US-05: WAITING 以外 / 定員到達。理由は出し分けない）
- * - [NotGameCreatorException] → 403（US-06: 開始をリクエストしたのが作成者でない）
- * - [GameStartNotAllowedException] → 409（US-06: WAITING 以外 / 定員未達。理由は出し分けない）
+ * 入力不正のみ reason を公開する。プレイヤーの不在・非所属、参加・開始不可の個別理由は
+ * レスポンスで出し分けない。
  */
 @RestControllerAdvice
 class GameApiExceptionHandler {
@@ -38,12 +32,10 @@ class GameApiExceptionHandler {
 
     @ExceptionHandler(PlayerNotFoundException::class)
     fun handlePlayerNotFound(ex: PlayerNotFoundException): ProblemDetail =
-        // 不在 / 非所属は区別しない（spec 1.1）。
         ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, "プレイヤーが見つかりません")
 
     @ExceptionHandler(GameJoinNotAllowedException::class)
     fun handleJoinNotAllowed(ex: GameJoinNotAllowedException): ProblemDetail =
-        // 仕様上 409 の理由は出し分けない（reason はレスポンスに含めない）。
         ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "このゲームには参加できません")
 
     @ExceptionHandler(NotGameCreatorException::class)
@@ -52,6 +44,5 @@ class GameApiExceptionHandler {
 
     @ExceptionHandler(GameStartNotAllowedException::class)
     fun handleStartNotAllowed(ex: GameStartNotAllowedException): ProblemDetail =
-        // 仕様上 409 の理由は出し分けない（reason はレスポンスに含めない）。
         ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "このゲームは開始できません")
 }

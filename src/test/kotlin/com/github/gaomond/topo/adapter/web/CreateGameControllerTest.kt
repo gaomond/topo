@@ -17,11 +17,7 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.post
 import java.util.UUID
 
-/**
- * US-04 Level 3（inbound コントローラ）検証。UseCase は [MockitoBean] で差し替える。
- * 201/400 マッピング・レスポンス形（gameId/playerId のみ）を検証する。
- * テスト対象は src/ の [CreateGameController] / [GameApiExceptionHandler] を import。
- */
+/** 作成の 201・400 と、応答に発番 ID を含み URL を含めないことを検証する。 */
 @WebMvcTest(controllers = [CreateGameController::class])
 @Import(GameApiExceptionHandler::class)
 class CreateGameControllerTest {
@@ -52,7 +48,6 @@ class CreateGameControllerTest {
                 content { contentTypeCompatibleWith(MediaType.APPLICATION_JSON) }
                 jsonPath("$.gameId") { value(gameId.toString()) }
                 jsonPath("$.playerId") { value(playerId.toString()) }
-                // レスポンスは gameId / playerId のみ（招待 URL 等は含めない）。
                 jsonPath("$.inviteUrl") { doesNotExist() }
             }
     }

@@ -11,13 +11,8 @@ import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
 
 /**
- * ゲーム参加ユースケース（01-spec 1.1 のサーバー処理）。
- *
- * 存在確認 → status==WAITING 判定 → 参加者数 < playerCount 判定 → player INSERT
- * （playerId 発番・displayName フォールバック確定・game_id・joined_at）を 1 トランザクションで実行する。
- *
- * 依存は Domain ポートのみで JPA 具象・PostGIS に依存しない（DIP / Clean Architecture）。
- * 同じゲームへの参加・開始は、判定と保存が終わるまでゲーム行をロックして直列化する。
+ * 同じゲームへの参加・開始を、ゲーム行のロックで直列化する。
+ * 判定から参加者保存まで同一トランザクションで行い、定員超過を防ぐ。
  */
 @Service
 class JoinGameUseCase(
@@ -25,10 +20,10 @@ class JoinGameUseCase(
     private val playerRepository: PlayerRepositoryPort,
 ) {
     /**
-     * ゲームに参加し、発番した playerId を返す。
+     * ゲームに参加する。
      *
-     * @throws GameNotFoundException       gameId が存在しない（→404）
-     * @throws GameJoinNotAllowedException status が WAITING 以外 / 定員到達（→409）
+     * @throws GameNotFoundException 対象ゲームが存在しない。
+     * @throws GameJoinNotAllowedException 待機中ではない、または定員に達している。
      */
     @Transactional(isolation = Isolation.READ_COMMITTED)
     fun join(input: JoinGameInput): JoinGameResult {

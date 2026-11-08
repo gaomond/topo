@@ -1,17 +1,10 @@
 package com.github.gaomond.topo.domain.model
 
 /**
- * 座標（緯度経度）の値オブジェクト（ユビキタス言語「座標 = Coordinate（lat / lng）」・US-07）。
+ * WGS84 の緯度経度の座標。範囲外・NaN・無限は [IllegalArgumentException] で拒否する。
  *
- * 「地球上に存在し得る座標」だけがインスタンス化できるよう、意味論的バリデーション（範囲・NaN 拒否）を
- * 型の不変条件に閉じ込める（spec 1.2 / D4）。範囲外・NaN・無限は [IllegalArgumentException] で弾き、
- * これを inbound で 400（Bad Request）に写像する。
- *
- * WGS84 / SRID 4326 を採用するが、Crs 種別はこれに限定しない（ユビキタス言語）。
- * Spring / JPA / PostGIS を一切 import しない純 Kotlin。
- *
- * @property lat 緯度（[-90.0, 90.0]）
- * @property lng 経度（[-180.0, 180.0]）
+ * @property lat 緯度（-90.0 以上 90.0 以下）
+ * @property lng 経度（-180.0 以上 180.0 以下）
  */
 data class Coordinate(
     val lat: Double,

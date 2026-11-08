@@ -6,11 +6,8 @@ import org.springframework.web.servlet.config.annotation.CorsRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
 
 /**
- * CORS 許可設定（01-spec 1.3 / DESIGN 4）。
- *
- * フロント（静的ホスト・別オリジン）から /api 配下を呼べるようにする。認証なしのため
- * Credentials なし・オリジン許可のみ。許可オリジンは `app.cors.allowed-origins`
- * （application.properties）から注入し、ハードコードしない。
+ * 静的ホストのフロントエンドから API を呼べるようにする。
+ * 認証情報は許可せず、許可オリジンは app.cors.allowed-origins で指定する。
  */
 @Configuration
 class WebCorsConfig(

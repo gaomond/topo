@@ -12,13 +12,10 @@ import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
 
 /**
- * ゲーム作成ユースケース（01-spec 1.1 のサーバー処理）。
+ * ゲームと作成者を同一トランザクションで保存する。
  *
- * バリデーション → game INSERT（WAITING / 結果 NULL / creator NULL）→ creator player INSERT
- * （game_id・displayName 確定）→ game.creatorPlayerId UPDATE を 1 トランザクションで実行する。
- *
- * 依存は Domain ポート（[GameRepositoryPort] / [PlayerRepositoryPort]）のみで、
- * JPA 具象・PostGIS には依存しない（DIP / Clean Architecture）。
+ * 外部キーの循環を避けるため、ゲーム作成 → 作成者保存 → 作成者 ID の設定の順に行う。
+ * 途中で失敗した場合は全体をロールバックする。
  */
 @Service
 class CreateGameUseCase(
@@ -26,9 +23,9 @@ class CreateGameUseCase(
     private val playerRepository: PlayerRepositoryPort,
 ) {
     /**
-     * ゲームを作成し、発番した gameId / playerId を返す。
+     * ゲームを作成する。
      *
-     * @throws GameValidationException objectType 不正 / areaPreset 不正 / playerCount < 3
+     * @throws GameValidationException 種別・面積プリセットが無効、または参加人数が 3 未満。
      */
     @Transactional
     fun create(input: CreateGameInput): CreateGameResult {
@@ -36,13 +33,11 @@ class CreateGameUseCase(
         val areaPreset = resolveAreaPreset(input.areaPresetKey)
         validatePlayerCount(input.playerCount)
 
-        // playerId を先に発番する。displayName フォールバックが playerId 先頭 8 文字を使うため
-        // （player INSERT より前に確定させる必要がある）。
+        // 表示名のフォールバックに playerId を使うため、保存前に発番する。
         val gameId = UUID.randomUUID()
         val playerId = UUID.randomUUID()
         val displayName = DisplayName.resolve(input.displayName, playerId)
 
-        // 1. game を creatorPlayerId NULL / 結果 NULL / WAITING で作成
         gameRepository.createGame(
             gameId = gameId,
             status = GameStatus.WAITING,
@@ -50,13 +45,11 @@ class CreateGameUseCase(
             objectType = objectType.jsonValue,
             areaThreshold = areaPreset.sqm.toDouble(),
         )
-        // 2. 作成者 player を作成（game_id・displayName を確定）
         playerRepository.createPlayer(
             playerId = playerId,
             gameId = gameId,
             displayName = displayName,
         )
-        // 3. game.creatorPlayerId を作成者 player の id で埋める
         gameRepository.updateCreatorPlayerId(gameId = gameId, creatorPlayerId = playerId)
 
         return CreateGameResult(gameId = gameId, playerId = playerId)

@@ -16,11 +16,7 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.post
 import java.util.UUID
 
-/**
- * US-05 Level 3（inbound コントローラ）検証。UseCase は [MockitoBean] で差し替える。
- * 201/404/409 マッピング・レスポンス形（playerId のみ）を検証する。
- * テスト対象は src/ の [JoinGameController] / [GameApiExceptionHandler] を import。
- */
+/** 参加の 201・404・409 と、参加者 ID の応答を検証する。 */
 @WebMvcTest(controllers = [JoinGameController::class])
 @Import(GameApiExceptionHandler::class)
 class JoinGameControllerTest {

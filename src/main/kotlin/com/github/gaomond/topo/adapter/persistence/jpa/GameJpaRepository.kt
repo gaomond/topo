@@ -12,7 +12,6 @@ import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
 
-/** Game の永続化ポートを実装し、JPA のアクセスとドメインモデルへの変換を担う。 */
 interface GameJpaRepository :
     Repository<GameRecord, UUID>,
     GameRepositoryPort {

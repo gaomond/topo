@@ -21,11 +21,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/**
- * US-07 Level 3（outbound アダプタ）検証。実 PostGIS（Testcontainers）に対し、
- * ライブ位置更新（一致つき UPDATE / 所属不一致で 0 件 / live_at の反映）を検証する。
- * テスト対象は src/ の [PlayerJpaRepository] を import（再定義しない）。
- */
+/** ゲームとプレイヤーの一致条件付き更新、所属不一致時の未更新、記録時刻の反映を検証する。 */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 class LiveLocationPersistenceTest {
@@ -99,7 +95,6 @@ class LiveLocationPersistenceTest {
         val otherGameId = seedGame()
         val playerId = seedPlayer(gameId)
 
-        // playerId は gameId に属するが、otherGameId を指定すると一致せず 0 件。
         val updated =
             playerRepository.updateLiveLocation(otherGameId, playerId, Coordinate(1.0, 2.0), Instant.now())
         entityManager.clear()
@@ -110,7 +105,6 @@ class LiveLocationPersistenceTest {
                 "SELECT live_lat, live_lng FROM player WHERE id = ?",
                 playerId,
             )
-        // 一致しないので live_* は更新されない（NULL のまま）。
         assertNull(row["live_lat"])
         assertNull(row["live_lng"])
     }

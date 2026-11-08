@@ -20,11 +20,7 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import java.util.UUID
 
-/**
- * US-05 Level 3（inbound コントローラ）検証。UseCase は [MockitoBean] で差し替える。
- * 200（状態）/404 マッピング・レスポンス形を検証する。
- * テスト対象は src/ の [GameStateController] / [GameApiExceptionHandler] を import。
- */
+/** 状態取得の 200・404 と、ライブ位置・在室判定・面積の JSON 表現を検証する。 */
 @WebMvcTest(controllers = [GameStateController::class])
 @Import(GameApiExceptionHandler::class)
 class GameStateControllerTest {
@@ -140,7 +136,6 @@ class GameStateControllerTest {
                 jsonPath("$.players[0].live.lng") { value(139.76) }
                 jsonPath("$.players[0].live.at") { value("2026-07-06T12:00:00Z") }
                 jsonPath("$.currentArea.sqm") { value(1234567.0) }
-                // hull は [[lat,lng],...]。先頭頂点の lat/lng を検証する。
                 jsonPath("$.currentArea.hull[0][0]") { value(35.68) }
                 jsonPath("$.currentArea.hull[0][1]") { value(139.76) }
                 jsonPath("$.currentArea.hull.length()") { value(3) }

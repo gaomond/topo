@@ -6,29 +6,19 @@ import com.github.gaomond.topo.domain.exception.NotGameCreatorException
 import java.time.Instant
 import java.util.UUID
 
-/**
- * ゲームの状態（status）。
- *
- * DESIGN.md / DB enum 型 `game_status`（'WAITING' / 'ACTIVE' / 'COMPLETED'）に対応する。
- * enum 名がそのまま DB enum の値・JSON 値と一致するため、変換用フィールドは持たない。
- *
- * 状態遷移ロジック（WAITING → ACTIVE → COMPLETED の条件判定）は本 enum では持たない。
- * 遷移は US-05 / US-06 / US-13 のスコープであり、本ストーリーは「格納できる値の定義」のみを担う。
- */
 enum class GameStatus {
     WAITING,
     ACTIVE,
     COMPLETED,
 }
 
-/** 参加ルールと開始時の状態遷移を担うゲーム。 */
 data class Game(
     val gameId: UUID,
     val status: GameStatus,
     val playerCount: Int,
     val creatorPlayerId: UUID?,
 ) {
-    // 人数は状態や権限で拒否できる場合には取得しない。
+    // 待機中でなければ人数取得を行わず拒否する。
     fun requireCanJoin(getJoinedPlayerCount: () -> Int) {
         if (status != GameStatus.WAITING) {
             throw GameJoinNotAllowedException(gameId, GameJoinNotAllowedException.Reason.NOT_WAITING)
@@ -38,6 +28,8 @@ data class Game(
         }
     }
 
+    // 非作成者へ開始可否を漏らさないよう、状態・人数より先に作成者を判定する。
+    // 人数は権限と状態で拒否されなかった場合にだけ参照する。
     fun start(
         playerId: UUID,
         getJoinedPlayerCount: () -> Int,
@@ -56,17 +48,10 @@ data class Game(
 }
 
 /**
- * ゲーム状態取得に必要なゲームの軽量サマリ（Domain 値）。
+ * ゲーム状態取得用の読み取り射影。
  *
- * ポート [com.github.gaomond.topo.domain.port.GameRepositoryPort.findSummary] が返す。
- * JPA エンティティを UseCase に露出させないため、読み取りに必要なカラムのみに射影する。
- *
- * @param status          現在の状態（WAITING 判定用）
- * @param playerCount     固定参加人数（定員判定用）
- * @param creatorPlayerId 作成者の playerId（開始 API の creator 判定=403 / GET 露出用）。
- *                        創成順序上、作成直後の一瞬は NULL のため nullable を維持する。
- * @param areaThreshold   面積成立判定の上限（m²）。作成時に確定（DB `area_threshold`・NOT NULL）。
- *                        US-10 の面積メーターが「満杯ライン」に使うため GET のリードパスへ射影する。
+ * @param creatorPlayerId 作成者の ID。作成者設定前は null。
+ * @param areaThreshold 作成時に確定する面積閾値（m²）。
  */
 data class GameSummary(
     val status: GameStatus,
@@ -76,16 +61,11 @@ data class GameSummary(
 )
 
 /**
- * 参加者のスナップショット（ある時点の読み取り射影）。Spring / JPA 非依存。
+ * 在室判定を含む参加者のスナップショット。
  *
- * `online`（presence）は now を要する policy のため repo では算出せず、UseCase が [live] の時刻から計算する
- * （facts=repo の [PlayerReading] / policy=usecase の [PlayerSnapshot] を分離）。
+ * 在室判定は基準時刻を必要とするため、取得した [PlayerReading] から UseCase で計算する。
  *
- * @param playerId    プレイヤー ID
- * @param displayName 確定済み表示名（常に非 null）
- * @param confirmed   現在地を確定済みか（confirmedAt != null）
- * @param live        最新ライブ位置（未送信は null・US-08）
- * @param online      live_at の鮮度（TTL 内）による在室判定（サーバー計算・US-08）
+ * @param live 最新ライブ位置。未送信または座標・記録時刻が欠けている場合は null。
  */
 data class PlayerSnapshot(
     val playerId: UUID,
@@ -96,15 +76,12 @@ data class PlayerSnapshot(
 )
 
 /**
- * 参加者の生読み取り（facts）。repo が返す presence 未計算の射影。
+ * 在室判定前の参加者の読み取り射影。
  *
- * online（TTL 判定）は now を要する policy のため含めない。UseCase が本値に [Presence] を適用して
- * [PlayerSnapshot] を組み立てる（プレースホルダ online=false の footgun を避けるための型分割）。
+ * 時刻に依存する [Presence] の判定を未計算のまま online=false と表さないよう、
+ * [PlayerSnapshot] と型を分ける。
  *
- * @param playerId    プレイヤー ID
- * @param displayName 確定済み表示名（常に非 null）
- * @param confirmed   現在地を確定済みか（confirmedAt != null）
- * @param live        最新ライブ位置（未送信は null）
+ * @param live 最新ライブ位置。未送信または座標・記録時刻が欠けている場合は null。
  */
 data class PlayerReading(
     val playerId: UUID,
@@ -113,29 +90,19 @@ data class PlayerReading(
     val live: LiveLocation?,
 )
 
-/**
- * 最新ライブ位置（ユビキタス言語「ライブ位置 = liveLocation」・US-07/08）。
- *
- * プレイヤーの現在地 1 点（[coordinate]）と、それを記録した時刻（[at]）を持つ。
- * [at] は presence（在室判定）の last-seen 素材でもある。純 Kotlin。
- *
- * @param coordinate 緯度経度
- * @param at         記録時刻（live_at）
- */
+/** 最新ライブ位置。記録時刻 [at] は在室判定の最終確認時刻にも使う。 */
 data class LiveLocation(
     val coordinate: Coordinate,
     val at: Instant,
 )
 
 /**
- * live 位置の暫定凸包の面積と頂点列（US-08 進行中メーター）。
+ * ライブ位置の暫定凸包の面積と頂点列。
  *
- * 3 点未満で凸包が多角形として成立しないケースは「そもそも本型を作らない（null）」で表現し、
- * 退化（一直線・重複で面積ゼロ）の `sqm = 0` とは区別する。凸包・面積はサーバー（PostGIS）計算で、
- * クライアントは [hull] をそのまま描画する（DRY・改ざん防止）。純 Kotlin。
+ * 3 点未満の未計測は null で表し、一直線・重複による退化面積 0 と区別する。
  *
- * @param sqm  凸包の測地面積（m²・`ST_Area(::geography)`）。退化時は 0。
- * @param hull 凸包の頂点列（順序付き閉環）。退化時は成立する頂点列（線分・点）をそのまま持つ。
+ * @param sqm 凸包の測地面積（m²）。退化時は 0。
+ * @param hull 順序付きの凸包頂点列。多角形では閉環し、退化時は線分または点を持つ。
  */
 data class CurrentArea(
     val sqm: Double,

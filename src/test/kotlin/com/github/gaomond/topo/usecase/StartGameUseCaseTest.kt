@@ -18,11 +18,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/**
- * US-06 Level 2（UseCase）検証。ポートは手書きの spy で差し替える（外部モックライブラリ非依存）。
- * 存在確認 / creator 判定（403）/ 状態・定員判定（409）/ ACTIVE 更新 / 拒否時未更新・冪等性を検証する。
- * テスト対象は src/ の [StartGameUseCase] を import（再定義しない）。
- */
+/** 作成者判定を状態・人数判定より優先し、拒否時に状態を保存しないことを検証する。 */
 class StartGameUseCaseTest {
     private class SpyGameRepository(
         private val summary: GameSummary?,
@@ -114,7 +110,7 @@ class StartGameUseCaseTest {
 
     @Test
     fun test_start_withNullCreatorPlayerId_throwsNotGameCreator() {
-        // creator 未設定（作成直後の一瞬）は誰であれ非作成者扱い。
+        // 作成者未設定なら、どのプレイヤーも開始できない。
         val gameRepo = SpyGameRepository(GameSummary(GameStatus.WAITING, 3, creatorPlayerId = null, areaThreshold = 2_000_000.0))
         assertThrows<NotGameCreatorException> {
             StartGameUseCase(gameRepo, StubPlayerRepository(3)).start(StartGameInput(gameId, creator))
@@ -132,7 +128,7 @@ class StartGameUseCaseTest {
 
     @Test
     fun test_start_withActiveStatus_throwsStartNotAllowed() {
-        // 2 回目の開始相当（冪等性）: 既に ACTIVE なので 409。
+        // 開始済みのゲームに対する再実行は拒否する。
         val gameRepo = SpyGameRepository(GameSummary(GameStatus.ACTIVE, 3, creatorPlayerId = creator, areaThreshold = 2_000_000.0))
         assertThrows<GameStartNotAllowedException> {
             StartGameUseCase(gameRepo, StubPlayerRepository(3)).start(StartGameInput(gameId, creator))
@@ -151,7 +147,7 @@ class StartGameUseCaseTest {
 
     @Test
     fun test_start_withNonCreatorAndUnderCapacity_prefersForbiddenOverConflict() {
-        // 権限（403）を状態・定員（409）より先に評価する（リスク1 の確定順序）。
+        // 非作成者に定員未達を漏らさず、作成者でないことを優先して拒否する。
         val gameRepo = SpyGameRepository(GameSummary(GameStatus.WAITING, 3, creatorPlayerId = creator, areaThreshold = 2_000_000.0))
         val stranger = UUID.randomUUID()
         assertThrows<NotGameCreatorException> {

@@ -11,7 +11,6 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
 import java.util.UUID
 
-/** Player の永続化ポートを実装し、JPA のアクセスとドメイン値への変換を担う。 */
 interface PlayerJpaRepository :
     Repository<PlayerRecord, UUID>,
     PlayerRepositoryPort {

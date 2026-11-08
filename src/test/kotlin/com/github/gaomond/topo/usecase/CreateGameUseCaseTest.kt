@@ -15,14 +15,8 @@ import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/**
- * US-04 Level 2（UseCase）検証。ポートは手書きの spy で差し替える（外部モックライブラリ非依存）。
- * 創成順序・バリデーション・displayName フォールバック・プリセット解決を検証する。
- * テスト対象は src/ の [CreateGameUseCase] を import（再定義しない）。
- */
+/** 外部キー循環を避ける保存順、入力拒否、表示名補完、途中失敗の伝播を検証する。 */
 class CreateGameUseCaseTest {
-    // --- 呼び出しを記録する手書き spy ポート ---
-
     private sealed interface Call {
         data class CreateGame(
             val gameId: UUID,
@@ -71,7 +65,6 @@ class CreateGameUseCaseTest {
             status: GameStatus,
         ) = error("作成では呼ばれない")
 
-        // 作成では参加系の取得は使わない。
         override fun findSummary(gameId: UUID): GameSummary? = error("作成では呼ばれない")
 
         override fun findByIdWithLock(gameId: UUID): Game? = error("作成では呼ばれない")
@@ -116,8 +109,6 @@ class CreateGameUseCaseTest {
         displayName: String? = "たろう",
     ) = CreateGameInput(objectType, areaPresetKey, playerCount, displayName)
 
-    // --- 正常系: 創成順序 ---
-
     @Test
     fun test_createGame_withValidInput_persistsGameThenCreatorThenUpdatesCreatorId() {
         val calls = mutableListOf<Call>()
@@ -128,14 +119,10 @@ class CreateGameUseCaseTest {
         val player = calls[1] as Call.CreatePlayer
         val update = calls[2] as Call.UpdateCreator
 
-        // game は WAITING で作成される。
         assertEquals(GameStatus.WAITING, create.status)
-        // player は同一 game に紐づく。
         assertEquals(create.gameId, player.gameId)
-        // creator_player_id は作成した player の id で埋まる。
         assertEquals(player.playerId, update.creatorPlayerId)
         assertEquals(create.gameId, update.gameId)
-        // 戻り値の gameId / playerId が永続化した値と一致する。
         assertEquals(create.gameId, result.gameId)
         assertEquals(player.playerId, result.playerId)
     }
@@ -146,8 +133,6 @@ class CreateGameUseCaseTest {
         val result = useCase(calls).create(validCommand())
         assertTrue(result.gameId != result.playerId)
     }
-
-    // --- プリセット解決 ---
 
     @Test
     fun test_createGame_eachPreset_resolvesToExpectedAreaThreshold() {
@@ -167,8 +152,6 @@ class CreateGameUseCaseTest {
         assertEquals("shrine", (calls[0] as Call.CreateGame).objectType)
     }
 
-    // --- バリデーション ---
-
     @Test
     fun test_createGame_withInvalidObjectType_throwsValidationException() {
         val calls = mutableListOf<Call>()
@@ -182,7 +165,7 @@ class CreateGameUseCaseTest {
 
     @Test
     fun test_createGame_withNonSelectableObjectType_throwsValidationException() {
-        // enum には存在するが SELECTABLE 外は 400（検証範囲＝SELECTABLE のみ）。
+        // enum に存在しても選択可能な種別でなければ拒否する。
         val calls = mutableListOf<Call>()
         val ex =
             assertThrows<GameValidationException> {
@@ -222,8 +205,6 @@ class CreateGameUseCaseTest {
         assertEquals(3, (calls[0] as Call.CreateGame).playerCount)
     }
 
-    // --- displayName フォールバック（D6 案A） ---
-
     @Test
     fun test_createGame_withDisplayName_persistsAsIs() {
         val calls = mutableListOf<Call>()
@@ -248,8 +229,6 @@ class CreateGameUseCaseTest {
             assertEquals(player.playerId.toString().take(8), player.displayName, "blank=[$blank]")
         }
     }
-
-    // --- 途中失敗の伝播（Tx ロールバックは Level 3 で検証） ---
 
     @Test
     fun test_createGame_whenCreatorUpdateFails_propagatesException() {

@@ -18,11 +18,7 @@ import org.springframework.test.web.servlet.options
 import org.springframework.test.web.servlet.post
 import java.util.UUID
 
-/**
- * US-04 Level 3（CORS）検証。許可オリジン（application.properties: localhost:5173）からの
- * プリフライト（OPTIONS）が通り、未許可オリジンは拒否されることを確認する。
- * テスト対象は src/ の [WebCorsConfig] を import。
- */
+/** 許可オリジンからのプリフライトを受け付け、未許可オリジンを拒否することを検証する。 */
 @WebMvcTest(controllers = [CreateGameController::class])
 @Import(WebCorsConfig::class)
 class CreateGameCorsTest {
