@@ -47,11 +47,13 @@ class StartGameUseCaseTest {
             updatedStatuses.add(gameId to status)
         }
 
-        override fun findSummary(gameId: UUID): GameSummary? = summary
+        override fun findSummary(gameId: UUID): GameSummary? = error("開始ではロック付き取得を使う")
+
+        override fun findSummaryWithLock(gameId: UUID): GameSummary? = summary
     }
 
     private class StubPlayerRepository(
-        private val count: Int,
+        private val count: Int?,
     ) : PlayerRepositoryPort {
         override fun createPlayer(
             playerId: UUID,
@@ -59,7 +61,7 @@ class StartGameUseCaseTest {
             displayName: String,
         ) = error("開始では呼ばれない")
 
-        override fun countByGameId(gameId: UUID): Int = count
+        override fun countByGameId(gameId: UUID): Int = count ?: error("権限がなければ人数を取得しない")
 
         override fun findByGameId(gameId: UUID): List<PlayerReading> = error("開始では呼ばれない")
 
@@ -154,6 +156,15 @@ class StartGameUseCaseTest {
         assertThrows<NotGameCreatorException> {
             StartGameUseCase(gameRepo, StubPlayerRepository(count = 1)).start(gameId, stranger)
         }
+    }
+
+    @Test
+    fun test_start_withNonCreatorAndActiveStatus_prefersForbiddenOverConflict() {
+        val gameRepo = SpyGameRepository(GameSummary(GameStatus.ACTIVE, 3, creatorPlayerId = creator, areaThreshold = 2_000_000.0))
+        assertThrows<NotGameCreatorException> {
+            StartGameUseCase(gameRepo, StubPlayerRepository(count = null)).start(gameId, UUID.randomUUID())
+        }
+        assertTrue(gameRepo.updatedStatuses.isEmpty())
     }
 
     @Test

@@ -1,5 +1,8 @@
 package com.github.gaomond.topo.domain.model
 
+import com.github.gaomond.topo.domain.exception.GameJoinNotAllowedException
+import com.github.gaomond.topo.domain.exception.GameStartNotAllowedException
+import com.github.gaomond.topo.domain.exception.NotGameCreatorException
 import java.time.Instant
 import java.util.UUID
 
@@ -16,6 +19,40 @@ enum class GameStatus {
     WAITING,
     ACTIVE,
     COMPLETED,
+}
+
+/** 参加ルールと開始時の状態遷移を担うゲーム。 */
+data class Game(
+    val gameId: UUID,
+    val status: GameStatus,
+    val playerCount: Int,
+    val creatorPlayerId: UUID?,
+) {
+    // 人数は状態や権限で拒否できる場合には取得しない。
+    fun requireCanJoin(joinedCount: () -> Int) {
+        if (status != GameStatus.WAITING) {
+            throw GameJoinNotAllowedException(gameId, GameJoinNotAllowedException.Reason.NOT_WAITING)
+        }
+        if (joinedCount() >= playerCount) {
+            throw GameJoinNotAllowedException(gameId, GameJoinNotAllowedException.Reason.CAPACITY_REACHED)
+        }
+    }
+
+    fun start(
+        playerId: UUID,
+        joinedCount: () -> Int,
+    ): Game {
+        if (creatorPlayerId != playerId) {
+            throw NotGameCreatorException(gameId)
+        }
+        if (status != GameStatus.WAITING) {
+            throw GameStartNotAllowedException(gameId, GameStartNotAllowedException.Reason.NOT_WAITING)
+        }
+        if (joinedCount() != playerCount) {
+            throw GameStartNotAllowedException(gameId, GameStartNotAllowedException.Reason.CAPACITY_NOT_REACHED)
+        }
+        return copy(status = GameStatus.ACTIVE)
+    }
 }
 
 /**
@@ -36,7 +73,9 @@ data class GameSummary(
     val playerCount: Int,
     val creatorPlayerId: UUID?,
     val areaThreshold: Double,
-)
+) {
+    fun toGame(gameId: UUID): Game = Game(gameId, status, playerCount, creatorPlayerId)
+}
 
 /**
  * ゲームの現在状態（Domain ビュー）。GET /api/games/{id} が返す土台。

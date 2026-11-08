@@ -3,11 +3,11 @@ package com.github.gaomond.topo.usecase
 import com.github.gaomond.topo.domain.exception.GameNotFoundException
 import com.github.gaomond.topo.domain.exception.GameStartNotAllowedException
 import com.github.gaomond.topo.domain.exception.NotGameCreatorException
-import com.github.gaomond.topo.domain.model.GameStatus
 import com.github.gaomond.topo.domain.model.StartGameResult
 import com.github.gaomond.topo.domain.port.GameRepositoryPort
 import com.github.gaomond.topo.domain.port.PlayerRepositoryPort
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Isolation
 import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
 
@@ -36,36 +36,15 @@ class StartGameUseCase(
      * @throws NotGameCreatorException      リクエスト元が作成者でない（→403）
      * @throws GameStartNotAllowedException status が WAITING 以外 / 定員未達（→409）
      */
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     fun start(
         gameId: UUID,
         playerId: UUID,
     ): StartGameResult {
-        val summary =
-            gameRepository.findSummary(gameId)
-                ?: throw GameNotFoundException(gameId)
+        val summary = gameRepository.findSummaryWithLock(gameId) ?: throw GameNotFoundException(gameId)
+        val startedGame = summary.toGame(gameId).start(playerId) { playerRepository.countByGameId(gameId) }
 
-        // 権限（403）を状態・定員（409）より先に評価する。
-        if (summary.creatorPlayerId != playerId) {
-            throw NotGameCreatorException(gameId)
-        }
-
-        if (summary.status != GameStatus.WAITING) {
-            // ACTIVE / COMPLETED は開始不可。2 回目の開始はここで 409（冪等性）。
-            throw GameStartNotAllowedException(
-                gameId,
-                GameStartNotAllowedException.Reason.NOT_WAITING,
-            )
-        }
-
-        if (playerRepository.countByGameId(gameId) != summary.playerCount) {
-            throw GameStartNotAllowedException(
-                gameId,
-                GameStartNotAllowedException.Reason.CAPACITY_NOT_REACHED,
-            )
-        }
-
-        gameRepository.updateStatus(gameId, GameStatus.ACTIVE)
-        return StartGameResult(gameId = gameId, status = GameStatus.ACTIVE)
+        gameRepository.updateStatus(gameId, startedGame.status)
+        return StartGameResult(gameId = gameId, status = startedGame.status)
     }
 }

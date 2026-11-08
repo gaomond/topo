@@ -58,4 +58,7 @@ interface GameRepositoryPort {
      * JPA エンティティは露出させず、Domain 値 [GameSummary] に射影して返す（US-05: 参加・状態取得 / US-06: 開始）。
      */
     fun findSummary(gameId: UUID): GameSummary?
+
+    /** 呼び出し元の書き込みトランザクションが終わるまでゲーム行をロックする。不在なら null。 */
+    fun findSummaryWithLock(gameId: UUID): GameSummary?
 }

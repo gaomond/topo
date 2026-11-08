@@ -50,7 +50,9 @@ class JoinGameUseCaseTest {
             status: GameStatus,
         ) = error("参加では呼ばれない")
 
-        override fun findSummary(gameId: UUID): GameSummary? = summary
+        override fun findSummary(gameId: UUID): GameSummary? = error("参加ではロック付き取得を使う")
+
+        override fun findSummaryWithLock(gameId: UUID): GameSummary? = summary
     }
 
     private class SpyPlayerRepository(

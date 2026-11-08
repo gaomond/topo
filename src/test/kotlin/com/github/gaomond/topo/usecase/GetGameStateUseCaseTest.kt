@@ -50,6 +50,8 @@ class GetGameStateUseCaseTest {
         ) = error("状態取得では呼ばれない")
 
         override fun findSummary(gameId: UUID): GameSummary? = summary
+
+        override fun findSummaryWithLock(gameId: UUID): GameSummary? = error("状態取得では呼ばれない")
     }
 
     private class StubPlayerRepository(

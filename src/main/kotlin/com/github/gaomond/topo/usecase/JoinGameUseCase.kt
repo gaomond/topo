@@ -3,12 +3,12 @@ package com.github.gaomond.topo.usecase
 import com.github.gaomond.topo.domain.exception.GameJoinNotAllowedException
 import com.github.gaomond.topo.domain.exception.GameNotFoundException
 import com.github.gaomond.topo.domain.model.DisplayName
-import com.github.gaomond.topo.domain.model.GameStatus
 import com.github.gaomond.topo.domain.model.JoinGameCommand
 import com.github.gaomond.topo.domain.model.JoinGameResult
 import com.github.gaomond.topo.domain.port.GameRepositoryPort
 import com.github.gaomond.topo.domain.port.PlayerRepositoryPort
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Isolation
 import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
 
@@ -19,7 +19,7 @@ import java.util.UUID
  * （playerId 発番・displayName フォールバック確定・game_id・joined_at）を 1 トランザクションで実行する。
  *
  * 依存は Domain ポートのみで JPA 具象・PostGIS に依存しない（DIP / Clean Architecture）。
- * 同時参加の競合（定員 off-by-one）は MVP では厳密制御しない（`@Transactional` 内チェックで許容）。
+ * 同じゲームへの参加・開始は、判定と保存が終わるまでゲーム行をロックして直列化する。
  */
 @Service
 class JoinGameUseCase(
@@ -32,25 +32,11 @@ class JoinGameUseCase(
      * @throws GameNotFoundException       gameId が存在しない（→404）
      * @throws GameJoinNotAllowedException status が WAITING 以外 / 定員到達（→409）
      */
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     fun join(command: JoinGameCommand): JoinGameResult {
-        val summary =
-            gameRepository.findSummary(command.gameId)
-                ?: throw GameNotFoundException(command.gameId)
-
-        if (summary.status != GameStatus.WAITING) {
-            throw GameJoinNotAllowedException(
-                command.gameId,
-                GameJoinNotAllowedException.Reason.NOT_WAITING,
-            )
-        }
-
-        if (playerRepository.countByGameId(command.gameId) >= summary.playerCount) {
-            throw GameJoinNotAllowedException(
-                command.gameId,
-                GameJoinNotAllowedException.Reason.CAPACITY_REACHED,
-            )
-        }
+        val summary = gameRepository.findSummaryWithLock(command.gameId) ?: throw GameNotFoundException(command.gameId)
+        val game = summary.toGame(command.gameId)
+        game.requireCanJoin { playerRepository.countByGameId(command.gameId) }
 
         val playerId = UUID.randomUUID()
         val displayName = DisplayName.resolve(command.displayName, playerId)

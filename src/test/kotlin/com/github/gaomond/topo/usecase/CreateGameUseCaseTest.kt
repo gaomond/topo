@@ -73,6 +73,8 @@ class CreateGameUseCaseTest {
 
         // 作成では参加系の取得は使わない。
         override fun findSummary(gameId: UUID): GameSummary? = error("作成では呼ばれない")
+
+        override fun findSummaryWithLock(gameId: UUID): GameSummary? = error("作成では呼ばれない")
     }
 
     private class SpyPlayerRepository(

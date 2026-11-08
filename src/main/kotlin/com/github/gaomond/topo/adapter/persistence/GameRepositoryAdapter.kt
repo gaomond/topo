@@ -6,6 +6,8 @@ import com.github.gaomond.topo.domain.model.GameStatus
 import com.github.gaomond.topo.domain.model.GameSummary
 import com.github.gaomond.topo.domain.port.GameRepositoryPort
 import org.springframework.stereotype.Component
+import org.springframework.transaction.annotation.Propagation
+import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
 
 /**
@@ -63,16 +65,16 @@ class GameRepositoryAdapter(
         gameRepository.save(game)
     }
 
-    override fun findSummary(gameId: UUID): GameSummary? =
-        gameRepository
-            .findById(gameId)
-            .map {
-                GameSummary(
-                    status = it.status,
-                    playerCount = it.playerCount,
-                    creatorPlayerId = it.creatorPlayerId,
-                    // 作成時に書き込み済みの上限面積を GET リードパスへ射影する（US-10 の満杯ライン）。
-                    areaThreshold = it.areaThreshold,
-                )
-            }.orElse(null)
+    override fun findSummary(gameId: UUID): GameSummary? = gameRepository.findById(gameId).orElse(null)?.toSummary()
+
+    @Transactional(propagation = Propagation.MANDATORY)
+    override fun findSummaryWithLock(gameId: UUID): GameSummary? = gameRepository.findByIdWithLock(gameId)?.toSummary()
+
+    private fun GameJpaEntity.toSummary() =
+        GameSummary(
+            status = status,
+            playerCount = playerCount,
+            creatorPlayerId = creatorPlayerId,
+            areaThreshold = areaThreshold,
+        )
 }
