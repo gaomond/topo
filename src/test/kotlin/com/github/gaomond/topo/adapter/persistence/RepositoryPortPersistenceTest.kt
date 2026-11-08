@@ -103,7 +103,7 @@ class RepositoryPortPersistenceTest {
         val gameId = seedGame()
         val creator = UUID.randomUUID()
         players.createPlayer(Player.create(creator, gameId, "作成者"))
-        games.updateCreatorPlayerId(gameId, creator)
+        games.updateCreatorPlayerId(Game.create(gameId, creator, 3, ObjectType.SHRINE, AreaPreset.ALL[1]))
         entityManager.flush()
         jdbc.update(
             """
@@ -116,7 +116,7 @@ class RepositoryPortPersistenceTest {
         val before = jdbc.queryForMap("SELECT *, ST_AsText(polygon_geom) AS polygon FROM game WHERE id = ?", gameId)
         entityManager.clear()
 
-        games.updateStatus(gameId, GameStatus.ACTIVE)
+        games.updateStatus(Game.restore(gameId, GameStatus.ACTIVE, 99, null, ObjectType.TEMPLE, 123.5))
         entityManager.flush()
         entityManager.clear()
 
@@ -188,8 +188,76 @@ class RepositoryPortPersistenceTest {
         }
     }
 
+    @Test
+    fun test_updateCreatorPlayerId_differentModelFields_changesOnlyCreator() {
+        val gameId = seedGame()
+        val creator = UUID.randomUUID()
+        players.createPlayer(Player.create(creator, gameId, "作成者"))
+        entityManager.flush()
+        jdbc.update(
+            "UPDATE game SET area_sqm = 12.5, area_valid = true, object_count = 7, " +
+                "polygon_geom = ST_GeomFromText('POLYGON((0 0,1 0,0 1,0 0))',4326) WHERE id = ?",
+            gameId,
+        )
+        val before = jdbc.queryForMap("SELECT *, ST_AsText(polygon_geom) AS polygon FROM game WHERE id = ?", gameId)
+        entityManager.clear()
+
+        games.updateCreatorPlayerId(Game.restore(gameId, GameStatus.COMPLETED, 99, creator, ObjectType.TEMPLE, 123.5))
+        entityManager.flush()
+        entityManager.clear()
+
+        val after = jdbc.queryForMap("SELECT *, ST_AsText(polygon_geom) AS polygon FROM game WHERE id = ?", gameId)
+        assertEquals(creator, after["creator_player_id"])
+        for (column in listOf(
+            "status",
+            "player_count",
+            "object_type",
+            "area_threshold",
+            "created_at",
+            "area_sqm",
+            "area_valid",
+            "object_count",
+            "polygon",
+        )) {
+            assertEquals(before[column], after[column], column)
+        }
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    fun test_updateCreatorPlayerId_nullCreator_rejectsWithoutChangingSavedGame() {
+        val transaction = TransactionTemplate(transactions)
+        val gameId = requireNotNull(transaction.execute { seedGame() })
+        try {
+            val before = transaction.execute { jdbc.queryForMap("SELECT * FROM game WHERE id = ?", gameId) }
+            val failure =
+                assertThrows<DataAccessException> {
+                    transaction.executeWithoutResult {
+                        games.updateCreatorPlayerId(Game.restore(gameId, GameStatus.ACTIVE, 99, null, ObjectType.TEMPLE, 123.5))
+                    }
+                }
+            kotlin.test.assertIs<IllegalStateException>(failure.mostSpecificCause)
+            val after = transaction.execute { jdbc.queryForMap("SELECT * FROM game WHERE id = ?", gameId) }
+            assertEquals(before, after)
+        } finally {
+            transaction.executeWithoutResult { jdbc.update("DELETE FROM game WHERE id = ?", gameId) }
+        }
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    fun test_updateStatus_missingGame_rejectsWithoutCreatingGame() {
+        val gameId = UUID.randomUUID()
+        val failure =
+            assertThrows<DataAccessException> {
+                games.updateStatus(Game.restore(gameId, GameStatus.ACTIVE, 3, null, ObjectType.SHRINE, 123.5))
+            }
+        kotlin.test.assertIs<IllegalStateException>(failure.mostSpecificCause)
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM game WHERE id = ?", Int::class.java, gameId))
+    }
+
     private fun seedGame(): UUID =
         UUID.randomUUID().also { gameId ->
-            games.createGame(Game.create(gameId, UUID.randomUUID(), 3, ObjectType.SHRINE, AreaPreset.ALL[1]))
+            games.createWithoutCreator(Game.create(gameId, UUID.randomUUID(), 3, ObjectType.SHRINE, AreaPreset.ALL[1]))
         }
 }

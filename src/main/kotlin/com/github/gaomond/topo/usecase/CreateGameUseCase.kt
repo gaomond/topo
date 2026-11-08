@@ -38,9 +38,9 @@ class CreateGameUseCase(
         val game = Game.create(gameId, playerId, input.playerCount, objectType, areaPreset)
         val creator = Player.create(playerId, gameId, input.displayName)
 
-        gameRepository.createGame(game)
+        gameRepository.createWithoutCreator(game)
         playerRepository.createPlayer(creator)
-        gameRepository.updateCreatorPlayerId(gameId = gameId, creatorPlayerId = playerId)
+        gameRepository.updateCreatorPlayerId(game)
 
         return CreateGameResult(gameId = gameId, playerId = playerId)
     }

@@ -50,9 +50,9 @@ class GameCreationPersistenceTest {
         val gameId = UUID.randomUUID()
         val playerId = UUID.randomUUID()
 
-        gameRepository.createGame(Game.create(gameId, UUID.randomUUID(), 3, ObjectType.SHRINE, AreaPreset.ALL[1]))
+        gameRepository.createWithoutCreator(Game.create(gameId, UUID.randomUUID(), 3, ObjectType.SHRINE, AreaPreset.ALL[1]))
         playerRepository.createPlayer(Player.create(playerId = playerId, gameId = gameId, displayName = "たろう"))
-        gameRepository.updateCreatorPlayerId(gameId = gameId, creatorPlayerId = playerId)
+        gameRepository.updateCreatorPlayerId(Game.create(gameId, playerId, 3, ObjectType.SHRINE, AreaPreset.ALL[1]))
         gameRepository.flush()
         playerRepository.flush()
 
@@ -91,8 +91,7 @@ class GameCreationPersistenceTest {
         val failure =
             assertThrows<DataAccessException> {
                 gameRepository.updateCreatorPlayerId(
-                    gameId = UUID.randomUUID(),
-                    creatorPlayerId = UUID.randomUUID(),
+                    Game.create(UUID.randomUUID(), UUID.randomUUID(), 3, ObjectType.SHRINE, AreaPreset.ALL[1]),
                 )
             }
         // Spring Data proxy が永続化例外へ翻訳し、対象不在の原因を保持する。

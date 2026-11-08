@@ -1,7 +1,6 @@
 package com.github.gaomond.topo.adapter.persistence.jpa
 
 import com.github.gaomond.topo.domain.model.Game
-import com.github.gaomond.topo.domain.model.GameStatus
 import com.github.gaomond.topo.domain.model.GameSummary
 import com.github.gaomond.topo.domain.model.ObjectType
 import com.github.gaomond.topo.domain.port.GameRepositoryPort
@@ -28,7 +27,7 @@ interface GameJpaRepository :
     fun findRecordByIdWithLock(gameId: UUID): GameRecord?
 
     @Transactional
-    override fun createGame(game: Game) {
+    override fun createWithoutCreator(game: Game) {
         save(
             GameRecord(
                 id = game.gameId,
@@ -42,23 +41,20 @@ interface GameJpaRepository :
     }
 
     @Transactional
-    override fun updateCreatorPlayerId(
-        gameId: UUID,
-        creatorPlayerId: UUID,
-    ) {
+    override fun updateCreatorPlayerId(game: Game) {
+        val creatorPlayerId = checkNotNull(game.creatorPlayerId) { "作成者IDが設定されていません: ${game.gameId}" }
+        val gameId = game.gameId
         val record = findRecordById(gameId) ?: error("creatorPlayerId 更新対象の game が存在しません: $gameId")
         record.creatorPlayerId = creatorPlayerId
         save(record)
     }
 
     @Transactional
-    override fun updateStatus(
-        gameId: UUID,
-        status: GameStatus,
-    ) {
+    override fun updateStatus(game: Game) {
+        val gameId = game.gameId
         val record = findRecordById(gameId) ?: error("status 更新対象の game が存在しません: $gameId")
         // 取得済みの他カラムと空間カラムを維持し、status のみを変更する。
-        record.status = status
+        record.status = game.status
         save(record)
     }
 

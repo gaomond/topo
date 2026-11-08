@@ -29,17 +29,11 @@ class GetGameStateUseCaseTest {
     private class SpyGameRepository(
         private val summary: GameSummary?,
     ) : GameRepositoryPort {
-        override fun createGame(game: Game) = error("状態取得では呼ばれない")
+        override fun createWithoutCreator(game: Game) = error("状態取得では呼ばれない")
 
-        override fun updateCreatorPlayerId(
-            gameId: UUID,
-            creatorPlayerId: UUID,
-        ) = error("状態取得では呼ばれない")
+        override fun updateCreatorPlayerId(game: Game) = error("状態取得では呼ばれない")
 
-        override fun updateStatus(
-            gameId: UUID,
-            status: GameStatus,
-        ) = error("状態取得では呼ばれない")
+        override fun updateStatus(game: Game) = error("状態取得では呼ばれない")
 
         override fun findSummary(gameId: UUID): GameSummary? = summary
 

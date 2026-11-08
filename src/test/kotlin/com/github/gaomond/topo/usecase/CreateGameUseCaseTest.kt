@@ -44,7 +44,10 @@ class CreateGameUseCaseTest {
         private val calls: MutableList<Call>,
         private val failOnUpdate: Boolean = false,
     ) : GameRepositoryPort {
-        override fun createGame(game: Game) {
+        private var createdGame: Game? = null
+
+        override fun createWithoutCreator(game: Game) {
+            createdGame = game
             calls.add(
                 Call.CreateGame(
                     game.gameId,
@@ -57,18 +60,13 @@ class CreateGameUseCaseTest {
             )
         }
 
-        override fun updateCreatorPlayerId(
-            gameId: UUID,
-            creatorPlayerId: UUID,
-        ) {
+        override fun updateCreatorPlayerId(game: Game) {
+            kotlin.test.assertSame(createdGame, game)
             if (failOnUpdate) throw IllegalStateException("update failed")
-            calls.add(Call.UpdateCreator(gameId, creatorPlayerId))
+            calls.add(Call.UpdateCreator(game.gameId, requireNotNull(game.creatorPlayerId)))
         }
 
-        override fun updateStatus(
-            gameId: UUID,
-            status: GameStatus,
-        ) = error("作成では呼ばれない")
+        override fun updateStatus(game: Game) = error("作成では呼ばれない")
 
         override fun findSummary(gameId: UUID): GameSummary? = error("作成では呼ばれない")
 

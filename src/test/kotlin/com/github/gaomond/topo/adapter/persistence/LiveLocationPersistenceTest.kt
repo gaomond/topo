@@ -55,8 +55,8 @@ class LiveLocationPersistenceTest {
 
     private fun seedGame(status: GameStatus = GameStatus.ACTIVE): UUID {
         val gameId = UUID.randomUUID()
-        gameRepository.createGame(Game.create(gameId, UUID.randomUUID(), 3, ObjectType.SHRINE, AreaPreset.ALL[1]))
-        gameRepository.updateStatus(gameId, status)
+        gameRepository.createWithoutCreator(Game.create(gameId, UUID.randomUUID(), 3, ObjectType.SHRINE, AreaPreset.ALL[1]))
+        gameRepository.updateStatus(Game.restore(gameId, status, 99, null, ObjectType.TEMPLE, 123.5))
         gameRepository.flush()
         return gameId
     }

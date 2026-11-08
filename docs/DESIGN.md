@@ -202,7 +202,7 @@ Player の通常 CRUD にも同じ方針を適用する。永続化表現の名�
 
 - ポートのシグネチャは、ドメイン側で必要な操作から決める。Spring Data の継承メソッドと衝突する場合は、実装側のインターフェースや内部メソッド名で調整する。
 - 更新操作に必要な `Game` は Repository が復元して返す。UseCase で `GameSummary` から組み立てない。状態取得などの読み取り専用の射影は、用途に応じて維持する。
-- 保存側のポートは RS-00 では既存の `createGame`・`createPlayer`・`updateStatus` などの契約を維持する。ゲーム作成に必要なモデルと作成契約は [RS-04](refactor/04.md) で移行し、開始・ライブ位置などに残る保存契約の統一は [RS-06](refactor/06.md) で行う。ゲームと作成者の保存順序・トランザクションはUseCaseが管理する。
+- 保存側のポートは RS-00 では既存の `createGame`・`createPlayer`・`updateStatus` などの契約を維持する。ゲーム作成に必要なモデルと作成契約は [RS-04](refactor/04.md) で移行し、[RS-06](refactor/06.md) で作成ポートを `createWithoutCreator(game)` に改名して初回の作成者ID未設定保存を明示する。DomainのGameは作成者IDを保持したまま渡す。Gameの状態更新・作成者IDの紐付けもモデル入力に揃え、ライブ位置は型付き座標による部分更新を維持する。ゲームと作成者の保存順序・トランザクションはUseCaseが管理する。
 - トランザクションの範囲は UseCase が管理する。ロック付き取得はポートのメソッド名で明示し、参加・開始は同じゲーム行のロック取得から判定・保存までを同一トランザクションで行う。
 - PostGIS の SQL は outbound adapter 内に置く。`LiveAreaQueryAdapter` などの空間計算は、通常 CRUD と同じ JPA の構成に統合する対象には含めない。
 

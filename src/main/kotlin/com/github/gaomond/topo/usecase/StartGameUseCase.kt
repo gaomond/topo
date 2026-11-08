@@ -32,7 +32,7 @@ class StartGameUseCase(
         val game = gameRepository.findByIdWithLock(gameId) ?: throw GameNotFoundException(gameId)
         val startedGame = game.start(playerId) { playerRepository.countByGameId(gameId) }
 
-        gameRepository.updateStatus(gameId, startedGame.status)
+        gameRepository.updateStatus(startedGame)
         return StartGameResult(gameId = gameId, status = startedGame.status)
     }
 }

@@ -63,17 +63,14 @@ class GameCreationTransactionTest {
             failure: FailurePoint,
         ): GameRepositoryPort =
             object : GameRepositoryPort by repository {
-                override fun createGame(game: Game) {
+                override fun createWithoutCreator(game: Game) {
                     failure.gameId = game.gameId
-                    repository.createGame(game)
+                    repository.createWithoutCreator(game)
                     repository.flush()
                 }
 
-                override fun updateCreatorPlayerId(
-                    gameId: UUID,
-                    creatorPlayerId: UUID,
-                ) {
-                    repository.updateCreatorPlayerId(gameId, creatorPlayerId)
+                override fun updateCreatorPlayerId(game: Game) {
+                    repository.updateCreatorPlayerId(game)
                     repository.flush()
                     if (failure.stage == "link") error("紐付け後の失敗")
                 }

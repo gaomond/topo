@@ -51,8 +51,8 @@ class LiveAreaQueryPersistenceTest {
 
     private fun seedGame(): UUID {
         val gameId = UUID.randomUUID()
-        gameRepository.createGame(Game.create(gameId, UUID.randomUUID(), 5, ObjectType.SHRINE, AreaPreset.ALL[1]))
-        gameRepository.updateStatus(gameId, GameStatus.ACTIVE)
+        gameRepository.createWithoutCreator(Game.create(gameId, UUID.randomUUID(), 5, ObjectType.SHRINE, AreaPreset.ALL[1]))
+        gameRepository.updateStatus(Game.restore(gameId, GameStatus.ACTIVE, 99, null, ObjectType.TEMPLE, 123.5))
         gameRepository.flush()
         return gameId
     }

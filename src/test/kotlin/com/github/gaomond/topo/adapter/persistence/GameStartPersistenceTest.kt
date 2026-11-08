@@ -45,12 +45,12 @@ class GameStartPersistenceTest {
 
     private fun seedGameWithCreator(playerCount: Int = 3): Pair<UUID, UUID> {
         val gameId = UUID.randomUUID()
-        gameRepository.createGame(Game.create(gameId, UUID.randomUUID(), playerCount, ObjectType.SHRINE, AreaPreset.ALL[1]))
+        gameRepository.createWithoutCreator(Game.create(gameId, UUID.randomUUID(), playerCount, ObjectType.SHRINE, AreaPreset.ALL[1]))
         gameRepository.flush()
         val creatorPlayerId = UUID.randomUUID()
         playerRepository.createPlayer(Player.create(creatorPlayerId, gameId, "さくせいしゃ"))
         playerRepository.flush()
-        gameRepository.updateCreatorPlayerId(gameId, creatorPlayerId)
+        gameRepository.updateCreatorPlayerId(Game.create(gameId, creatorPlayerId, playerCount, ObjectType.SHRINE, AreaPreset.ALL[1]))
         gameRepository.flush()
         entityManager.clear()
         return gameId to creatorPlayerId
@@ -60,7 +60,7 @@ class GameStartPersistenceTest {
     fun test_updateStatus_changesOnlyStatusColumn() {
         val (gameId, creatorPlayerId) = seedGameWithCreator(playerCount = 3)
 
-        gameRepository.updateStatus(gameId, GameStatus.ACTIVE)
+        gameRepository.updateStatus(Game.restore(gameId, GameStatus.ACTIVE, 99, null, ObjectType.TEMPLE, 123.5))
         gameRepository.flush()
         entityManager.clear()
 

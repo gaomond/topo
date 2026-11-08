@@ -56,8 +56,8 @@ class GameJoinPersistenceTest {
         playerCount: Int = 3,
     ): UUID {
         val gameId = UUID.randomUUID()
-        gameRepository.createGame(Game.create(gameId, UUID.randomUUID(), playerCount, ObjectType.SHRINE, AreaPreset.ALL[1]))
-        gameRepository.updateStatus(gameId, status)
+        gameRepository.createWithoutCreator(Game.create(gameId, UUID.randomUUID(), playerCount, ObjectType.SHRINE, AreaPreset.ALL[1]))
+        gameRepository.updateStatus(Game.restore(gameId, status, 99, null, ObjectType.TEMPLE, 123.5))
         gameRepository.flush()
         return gameId
     }

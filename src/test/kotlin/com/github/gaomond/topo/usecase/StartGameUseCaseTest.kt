@@ -26,18 +26,15 @@ class StartGameUseCaseTest {
         private val summary: GameSummary?,
         val updatedStatuses: MutableList<Pair<UUID, GameStatus>> = mutableListOf(),
     ) : GameRepositoryPort {
-        override fun createGame(game: Game) = error("開始では呼ばれない")
+        val updatedGames = mutableListOf<Game>()
 
-        override fun updateCreatorPlayerId(
-            gameId: UUID,
-            creatorPlayerId: UUID,
-        ) = error("開始では呼ばれない")
+        override fun createWithoutCreator(game: Game) = error("開始では呼ばれない")
 
-        override fun updateStatus(
-            gameId: UUID,
-            status: GameStatus,
-        ) {
-            updatedStatuses.add(gameId to status)
+        override fun updateCreatorPlayerId(game: Game) = error("開始では呼ばれない")
+
+        override fun updateStatus(game: Game) {
+            updatedStatuses.add(game.gameId to game.status)
+            updatedGames.add(game)
         }
 
         override fun findSummary(gameId: UUID): GameSummary? = error("開始ではロック付き取得を使う")
@@ -82,6 +79,11 @@ class StartGameUseCaseTest {
         assertEquals(GameStatus.ACTIVE, result.status)
         assertEquals(gameId, result.gameId)
         assertEquals(listOf(gameId to GameStatus.ACTIVE), gameRepo.updatedStatuses)
+        val saved = gameRepo.updatedGames.single()
+        assertEquals(creator, saved.creatorPlayerId)
+        assertEquals(3, saved.playerCount)
+        assertEquals(ObjectType.SHRINE, saved.objectType)
+        assertEquals(2_000_000.0, saved.areaThreshold)
     }
 
     @Test

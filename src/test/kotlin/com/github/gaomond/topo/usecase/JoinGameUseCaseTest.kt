@@ -30,17 +30,11 @@ class JoinGameUseCaseTest {
     private class SpyGameRepository(
         private val summary: GameSummary?,
     ) : GameRepositoryPort {
-        override fun createGame(game: Game) = error("参加では呼ばれない")
+        override fun createWithoutCreator(game: Game) = error("参加では呼ばれない")
 
-        override fun updateCreatorPlayerId(
-            gameId: UUID,
-            creatorPlayerId: UUID,
-        ) = error("参加では呼ばれない")
+        override fun updateCreatorPlayerId(game: Game) = error("参加では呼ばれない")
 
-        override fun updateStatus(
-            gameId: UUID,
-            status: GameStatus,
-        ) = error("参加では呼ばれない")
+        override fun updateStatus(game: Game) = error("参加では呼ばれない")
 
         override fun findSummary(gameId: UUID): GameSummary? = error("参加ではロック付き取得を使う")
 
