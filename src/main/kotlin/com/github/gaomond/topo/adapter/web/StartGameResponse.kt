@@ -1,6 +1,6 @@
 package com.github.gaomond.topo.adapter.web
 
-import com.github.gaomond.topo.domain.model.StartGameResult
+import com.github.gaomond.topo.usecase.StartGameResult
 
 /**
  * POST /api/games/{id}/start のレスポンスボディ（Web 表現・US-06）。

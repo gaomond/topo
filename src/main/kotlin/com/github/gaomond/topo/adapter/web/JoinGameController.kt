@@ -12,7 +12,7 @@ import java.util.UUID
 /**
  * ゲーム参加の inbound アダプタ。POST /api/games/{id}/players を提供する。
  *
- * Web 表現（[JoinGameRequest]）+ パス gameId → ドメイン入力 → UseCase → 201 + [JoinGameResponse]。
+ * Web 表現（[JoinGameRequest]）+ パス gameId → UseCase 入力 → UseCase → 201 + [JoinGameResponse]。
  * ドメイン例外（不在→404 / 参加不可→409）のマッピングは [GameApiExceptionHandler] が担う。
  */
 @RestController
@@ -25,8 +25,8 @@ class JoinGameController(
         @PathVariable id: UUID,
         @RequestBody(required = false) request: JoinGameRequest?,
     ): JoinGameResponse {
-        val command = (request ?: JoinGameRequest()).toCommand(id)
-        val result = joinGameUseCase.join(command)
+        val input = (request ?: JoinGameRequest()).toInput(id)
+        val result = joinGameUseCase.join(input)
         return JoinGameResponse.from(result)
     }
 }

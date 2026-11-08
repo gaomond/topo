@@ -1,11 +1,13 @@
-package com.github.gaomond.topo.domain.model
+package com.github.gaomond.topo.usecase
 
+import com.github.gaomond.topo.domain.model.AreaPreset
+import com.github.gaomond.topo.domain.model.ObjectType
 import java.util.UUID
 
 /**
- * ゲーム作成のドメイン入力（不変値）。
+ * ゲーム作成の UseCase 入力（不変値）。
  *
- * Web 表現（`CreateGameRequest`）とは別型にし、UseCase が受け取るドメイン入力を表す。
+ * Web 表現（`CreateGameRequest`）とは別型にし、UseCase が受け取る入力を表す。
  * ここでは生の入力値（未検証）を保持し、検証・解決（objectType 妥当性 / areaPreset→sqm）は
  * UseCase が [ObjectType.selectableFromJsonValueOrNull] / [AreaPreset.byKey] を用いて行う。
  *
@@ -16,7 +18,7 @@ import java.util.UUID
  * @param playerCount    固定参加人数（3 以上が有効）
  * @param displayName    作成者の表示名（任意。null / 空 / 空白のみはフォールバック対象）
  */
-data class GameCreationCommand(
+data class CreateGameInput(
     val objectType: String,
     val areaPresetKey: String,
     val playerCount: Int,
@@ -31,7 +33,7 @@ data class GameCreationCommand(
  * @param gameId   作成されたゲームの ID（共有キー）
  * @param playerId 作成者（creator）の player ID
  */
-data class GameCreationResult(
+data class CreateGameResult(
     val gameId: UUID,
     val playerId: UUID,
 )

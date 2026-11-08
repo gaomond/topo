@@ -1,5 +1,6 @@
-package com.github.gaomond.topo.domain.model
+package com.github.gaomond.topo.usecase
 
+import com.github.gaomond.topo.domain.model.GameStatus
 import java.util.UUID
 
 /**

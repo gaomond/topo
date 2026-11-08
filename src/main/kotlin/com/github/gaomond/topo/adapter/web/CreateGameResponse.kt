@@ -1,6 +1,6 @@
 package com.github.gaomond.topo.adapter.web
 
-import com.github.gaomond.topo.domain.model.GameCreationResult
+import com.github.gaomond.topo.usecase.CreateGameResult
 
 /**
  * POST /api/games のレスポンスボディ（Web 表現）。
@@ -12,7 +12,7 @@ data class CreateGameResponse(
     val playerId: String,
 ) {
     companion object {
-        fun from(result: GameCreationResult): CreateGameResponse =
+        fun from(result: CreateGameResult): CreateGameResponse =
             CreateGameResponse(
                 gameId = result.gameId.toString(),
                 playerId = result.playerId.toString(),

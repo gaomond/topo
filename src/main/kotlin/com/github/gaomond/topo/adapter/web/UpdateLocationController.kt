@@ -1,5 +1,6 @@
 package com.github.gaomond.topo.adapter.web
 
+import com.github.gaomond.topo.usecase.UpdateLiveLocationInput
 import com.github.gaomond.topo.usecase.UpdateLiveLocationUseCase
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.PathVariable
@@ -27,6 +28,6 @@ class UpdateLocationController(
         @PathVariable pid: UUID,
         @RequestBody request: UpdateLocationRequest,
     ) {
-        updateLiveLocationUseCase.update(id, pid, request.lat, request.lng)
+        updateLiveLocationUseCase.update(UpdateLiveLocationInput(id, pid, request.lat, request.lng))
     }
 }

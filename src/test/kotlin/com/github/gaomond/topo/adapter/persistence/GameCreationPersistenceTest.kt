@@ -9,18 +9,20 @@ import org.junit.jupiter.api.assertThrows
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase
+import org.springframework.dao.DataAccessException
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import java.util.UUID
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 import kotlin.test.assertNull
 
 /**
  * US-04 Level 3（outbound アダプタ）検証。実 PostGIS（Testcontainers）に対し、
  * 創成順序（game INSERT → player INSERT → creator UPDATE）の 3 テーブル操作整合と
- * 途中失敗のロールバックを検証する。テスト対象は src/ の [GameRepositoryAdapter] /
- * [PlayerRepositoryAdapter] を import（再定義しない）。
+ * 途中失敗のロールバックを検証する。テスト対象は src/ の [GameJpaRepository] /
+ * [PlayerJpaRepository] を import（再定義しない）。
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
@@ -45,25 +47,21 @@ class GameCreationPersistenceTest {
     @Autowired
     private lateinit var jdbcTemplate: JdbcTemplate
 
-    private fun gameAdapter() = GameRepositoryAdapter(gameRepository)
-
-    private fun playerAdapter() = PlayerRepositoryAdapter(playerRepository)
-
     @Test
     fun test_createGame_viaAdapters_insertsGamePlayerAndLinksCreatorId() {
         val gameId = UUID.randomUUID()
         val playerId = UUID.randomUUID()
 
         // 創成順序を UseCase と同順で adapter 経由に実行する。
-        gameAdapter().createGame(
+        gameRepository.createGame(
             gameId = gameId,
             status = GameStatus.WAITING,
             playerCount = 3,
             objectType = "shrine",
             areaThreshold = 2_000_000.0,
         )
-        playerAdapter().createPlayer(playerId = playerId, gameId = gameId, displayName = "たろう")
-        gameAdapter().updateCreatorPlayerId(gameId = gameId, creatorPlayerId = playerId)
+        playerRepository.createPlayer(playerId = playerId, gameId = gameId, displayName = "たろう")
+        gameRepository.updateCreatorPlayerId(gameId = gameId, creatorPlayerId = playerId)
         gameRepository.flush()
         playerRepository.flush()
 
@@ -96,26 +94,29 @@ class GameCreationPersistenceTest {
         assertEquals("たろう", player["display_name"])
 
         // US-10: findSummary が area_threshold を射影する（GET リードパスの満杯ラインの供給元）。
-        val summary = gameAdapter().findSummary(gameId)
+        val summary = gameRepository.findSummary(gameId)
         assertEquals(2_000_000.0, summary?.areaThreshold)
     }
 
     @Test
     fun test_updateCreatorPlayerId_forMissingGame_throws() {
         // 創成 UPDATE の対象 game が存在しない場合は例外（ロールバックのトリガになりうる）。
-        assertThrows<IllegalStateException> {
-            gameAdapter().updateCreatorPlayerId(
-                gameId = UUID.randomUUID(),
-                creatorPlayerId = UUID.randomUUID(),
-            )
-        }
+        val failure =
+            assertThrows<DataAccessException> {
+                gameRepository.updateCreatorPlayerId(
+                    gameId = UUID.randomUUID(),
+                    creatorPlayerId = UUID.randomUUID(),
+                )
+            }
+        // Spring Data proxy が永続化例外へ翻訳し、対象不在の原因を保持する。
+        assertIs<IllegalStateException>(failure.mostSpecificCause)
     }
 
     @Test
     fun test_createPlayer_withNonExistentGameId_failsByFk() {
         // player の game_id FK 違反時は例外になる（途中失敗のトリガ。ロールバックは UseCase の @Transactional 責務）。
         assertThrows<Exception> {
-            playerAdapter().createPlayer(
+            playerRepository.createPlayer(
                 playerId = UUID.randomUUID(),
                 gameId = UUID.randomUUID(),
                 displayName = "orphan",

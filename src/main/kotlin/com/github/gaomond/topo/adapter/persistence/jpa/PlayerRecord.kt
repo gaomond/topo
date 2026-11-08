@@ -8,7 +8,7 @@ import java.time.Instant
 import java.util.UUID
 
 /**
- * `player` テーブルの JPA エンティティ（非空間カラムのみ）。
+ * `player` テーブルの JPA 管理の永続化表現（非空間カラムのみ）。
  *
  * 空間カラム `fixed_geom`（Point,4326）はマッピングしない。確定座標は US-13 以降に
  * outbound の生 SQL（PostGIS）で扱う。`ddl-auto=validate` はエンティティに無いカラムを
@@ -17,11 +17,11 @@ import java.util.UUID
  * `game_id` は FK だが、本ストーリーでは @ManyToOne を張らず単純な UUID として保持する
  * （遅延ロードの罠を避け、参照解決は UseCase / 生 SQL に委ねる）。
  *
- * JPA エンティティのため data class は使わず通常 class とし、ID ベースの equals/hashCode を持つ。
+ * JPA 管理の永続化表現のため data class は使わず通常 class とし、ID ベースの equals/hashCode を持つ。
  */
 @Entity
 @Table(name = "player")
-class PlayerJpaEntity(
+class PlayerRecord(
     @Id
     @Column(name = "id", nullable = false)
     val id: UUID,
@@ -44,11 +44,11 @@ class PlayerJpaEntity(
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
-        if (other !is PlayerJpaEntity) return false
+        if (other !is PlayerRecord) return false
         return id == other.id
     }
 
     override fun hashCode(): Int = javaClass.hashCode()
 
-    override fun toString(): String = "PlayerJpaEntity(id=$id, gameId=$gameId)"
+    override fun toString(): String = "PlayerRecord(id=$id, gameId=$gameId)"
 }

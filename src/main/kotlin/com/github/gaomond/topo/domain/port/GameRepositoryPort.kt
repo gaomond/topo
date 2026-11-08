@@ -1,5 +1,6 @@
 package com.github.gaomond.topo.domain.port
 
+import com.github.gaomond.topo.domain.model.Game
 import com.github.gaomond.topo.domain.model.GameStatus
 import com.github.gaomond.topo.domain.model.GameSummary
 import java.util.UUID
@@ -7,7 +8,7 @@ import java.util.UUID
 /**
  * `game` の永続化ポート（Domain 抽象）。
  *
- * UseCase はこのポートに依存し、JPA 具象（`GameJpaRepository` / `GameJpaEntity`）を import しない（DIP）。
+ * UseCase はこのポートに依存し、JPA 具象（`GameJpaRepository` / `GameRecord`）を import しない（DIP）。
  * 実装は adapter(outbound) 側で JPA リポジトリに適合させる。
  */
 interface GameRepositoryPort {
@@ -52,13 +53,13 @@ interface GameRepositoryPort {
     )
 
     /**
-     * 参加・開始判定に必要なゲームサマリ（status / playerCount / creatorPlayerId）を取得する。
+     * ゲーム状態取得用の読み取りサマリを取得する。
      * 存在しなければ null。
      *
-     * JPA エンティティは露出させず、Domain 値 [GameSummary] に射影して返す（US-05: 参加・状態取得 / US-06: 開始）。
+     * 永続化表現は露出させず、Domain 値 [GameSummary] を返す。参加・開始の操作には [findByIdWithLock] を使う。
      */
     fun findSummary(gameId: UUID): GameSummary?
 
-    /** 呼び出し元の書き込みトランザクションが終わるまでゲーム行をロックする。不在なら null。 */
-    fun findSummaryWithLock(gameId: UUID): GameSummary?
+    /** ゲーム行をロックし、操作用の [Game] を復元して返す。不在なら null。書き込みトランザクションを必須とし、その終了までロックを保持する。 */
+    fun findByIdWithLock(gameId: UUID): Game?
 }

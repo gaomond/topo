@@ -21,7 +21,7 @@ import kotlin.test.assertNull
 /**
  * US-05 Level 3（outbound アダプタ）検証。実 PostGIS（Testcontainers）に対し、
  * 参加判定用の取得系（findSummary / countByGameId / findByGameId）を検証する。
- * テスト対象は src/ の [GameRepositoryAdapter] / [PlayerRepositoryAdapter] を import（再定義しない）。
+ * テスト対象は src/ の [GameJpaRepository] / [PlayerJpaRepository] を import（再定義しない）。
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
@@ -51,16 +51,12 @@ class GameJoinPersistenceTest {
     @PersistenceContext
     private lateinit var entityManager: EntityManager
 
-    private fun gameAdapter() = GameRepositoryAdapter(gameRepository)
-
-    private fun playerAdapter() = PlayerRepositoryAdapter(playerRepository)
-
     private fun seedGame(
         status: GameStatus = GameStatus.WAITING,
         playerCount: Int = 3,
     ): UUID {
         val gameId = UUID.randomUUID()
-        gameAdapter().createGame(
+        gameRepository.createGame(
             gameId = gameId,
             status = status,
             playerCount = playerCount,
@@ -74,24 +70,24 @@ class GameJoinPersistenceTest {
     @Test
     fun test_findSummary_withExistingGame_returnsStatusAndPlayerCount() {
         val gameId = seedGame(status = GameStatus.ACTIVE, playerCount = 4)
-        val summary = gameAdapter().findSummary(gameId)
+        val summary = gameRepository.findSummary(gameId)
         assertEquals(GameStatus.ACTIVE, summary?.status)
         assertEquals(4, summary?.playerCount)
     }
 
     @Test
     fun test_findSummary_withUnknownId_returnsNull() {
-        assertNull(gameAdapter().findSummary(UUID.randomUUID()))
+        assertNull(gameRepository.findSummary(UUID.randomUUID()))
     }
 
     @Test
     fun test_countByGameId_returnsNumberOfPlayers() {
         val gameId = seedGame()
         repeat(2) {
-            playerAdapter().createPlayer(UUID.randomUUID(), gameId, "p$it")
+            playerRepository.createPlayer(UUID.randomUUID(), gameId, "p$it")
         }
         playerRepository.flush()
-        assertEquals(2, playerAdapter().countByGameId(gameId))
+        assertEquals(2, playerRepository.countByGameId(gameId))
     }
 
     @Test
@@ -100,9 +96,9 @@ class GameJoinPersistenceTest {
         val gameB = seedGame()
         val first = UUID.randomUUID()
         val second = UUID.randomUUID()
-        playerAdapter().createPlayer(first, gameA, "さき")
-        playerAdapter().createPlayer(second, gameA, "あと")
-        playerAdapter().createPlayer(UUID.randomUUID(), gameB, "べつ")
+        playerRepository.createPlayer(first, gameA, "さき")
+        playerRepository.createPlayer(second, gameA, "あと")
+        playerRepository.createPlayer(UUID.randomUUID(), gameB, "べつ")
         playerRepository.flush()
         // joined_at を明示的に前後させて参加順を保証する。
         jdbcTemplate.update(
@@ -117,7 +113,7 @@ class GameJoinPersistenceTest {
         )
         entityManager.clear()
 
-        val players = playerAdapter().findByGameId(gameA)
+        val players = playerRepository.findByGameId(gameA)
 
         assertEquals(2, players.size)
         assertEquals(first, players[0].playerId)
@@ -130,8 +126,8 @@ class GameJoinPersistenceTest {
         val gameId = seedGame()
         val confirmedPlayer = UUID.randomUUID()
         val pendingPlayer = UUID.randomUUID()
-        playerAdapter().createPlayer(confirmedPlayer, gameId, "かくてい")
-        playerAdapter().createPlayer(pendingPlayer, gameId, "みかくてい")
+        playerRepository.createPlayer(confirmedPlayer, gameId, "かくてい")
+        playerRepository.createPlayer(pendingPlayer, gameId, "みかくてい")
         playerRepository.flush()
         jdbcTemplate.update(
             "UPDATE player SET confirmed_at = now() WHERE id = ?",
@@ -139,7 +135,7 @@ class GameJoinPersistenceTest {
         )
         entityManager.clear()
 
-        val players = playerAdapter().findByGameId(gameId).associateBy { it.playerId }
+        val players = playerRepository.findByGameId(gameId).associateBy { it.playerId }
 
         assertEquals(true, players[confirmedPlayer]?.confirmed)
         assertEquals(false, players[pendingPlayer]?.confirmed)

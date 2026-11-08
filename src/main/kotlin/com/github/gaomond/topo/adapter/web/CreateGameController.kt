@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RestController
 /**
  * ゲーム作成の inbound アダプタ。POST /api/games を提供する。
  *
- * Web 表現（[CreateGameRequest]）→ ドメイン入力 → UseCase 呼び出し → 201 + [CreateGameResponse]。
+ * Web 表現（[CreateGameRequest]）→ UseCase 入力 → UseCase 呼び出し → 201 + [CreateGameResponse]。
  * ドメイン例外（`GameValidationException`）の 400 マッピングは [GameApiExceptionHandler] が担う。
  */
 @RestController
@@ -22,7 +22,7 @@ class CreateGameController(
     fun createGame(
         @RequestBody request: CreateGameRequest,
     ): CreateGameResponse {
-        val result = createGameUseCase.create(request.toCommand())
+        val result = createGameUseCase.create(request.toInput())
         return CreateGameResponse.from(result)
     }
 }

@@ -2,6 +2,7 @@ package com.github.gaomond.topo.adapter.web
 
 import com.github.gaomond.topo.domain.exception.GameValidationException
 import com.github.gaomond.topo.domain.exception.PlayerNotFoundException
+import com.github.gaomond.topo.usecase.UpdateLiveLocationInput
 import com.github.gaomond.topo.usecase.UpdateLiveLocationUseCase
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
@@ -46,12 +47,12 @@ class UpdateLocationControllerTest {
                 status { isNoContent() }
                 content { string("") }
             }
-        verify(updateLiveLocationUseCase).update(gameId, playerId, 35.68, 139.76)
+        verify(updateLiveLocationUseCase).update(UpdateLiveLocationInput(gameId, playerId, 35.68, 139.76))
     }
 
     @Test
     fun test_updateLocation_whenPlayerNotFound_returns404() {
-        whenever(updateLiveLocationUseCase.update(any(), any(), any(), any()))
+        whenever(updateLiveLocationUseCase.update(any()))
             .thenThrow(PlayerNotFoundException(gameId, playerId))
         mockMvc
             .put(path()) {
@@ -62,7 +63,7 @@ class UpdateLocationControllerTest {
 
     @Test
     fun test_updateLocation_whenLatOutOfRange_returns400() {
-        whenever(updateLiveLocationUseCase.update(any(), any(), any(), any()))
+        whenever(updateLiveLocationUseCase.update(any()))
             .thenThrow(
                 GameValidationException(GameValidationException.Reason.INVALID_COORDINATE, "lat が範囲外"),
             )
@@ -75,7 +76,7 @@ class UpdateLocationControllerTest {
 
     @Test
     fun test_updateLocation_whenLngOutOfRange_returns400() {
-        whenever(updateLiveLocationUseCase.update(any(), any(), any(), any()))
+        whenever(updateLiveLocationUseCase.update(any()))
             .thenThrow(
                 GameValidationException(GameValidationException.Reason.INVALID_COORDINATE, "lng が範囲外"),
             )
@@ -95,7 +96,7 @@ class UpdateLocationControllerTest {
                 contentType = MediaType.APPLICATION_JSON
                 content = """{"lat":NaN,"lng":139.0}"""
             }.andExpect { status { isBadRequest() } }
-        verify(updateLiveLocationUseCase, never()).update(any(), any(), any(), any())
+        verify(updateLiveLocationUseCase, never()).update(any())
     }
 
     @Test
@@ -106,6 +107,6 @@ class UpdateLocationControllerTest {
                 contentType = MediaType.APPLICATION_JSON
                 content = """{"lat":35.0}"""
             }.andExpect { status { isBadRequest() } }
-        verify(updateLiveLocationUseCase, never()).update(any(), any(), any(), any())
+        verify(updateLiveLocationUseCase, never()).update(any())
     }
 }

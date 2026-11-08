@@ -1,7 +1,7 @@
 package com.github.gaomond.topo.adapter.web
 
 import com.github.gaomond.topo.config.WebCorsConfig
-import com.github.gaomond.topo.domain.model.GameCreationResult
+import com.github.gaomond.topo.usecase.CreateGameResult
 import com.github.gaomond.topo.usecase.CreateGameUseCase
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
@@ -50,7 +50,7 @@ class CreateGameCorsTest {
     @Test
     fun test_postGames_fromAllowedOrigin_hasCorsAllowOriginHeader() {
         whenever(createGameUseCase.create(any()))
-            .thenReturn(GameCreationResult(UUID.randomUUID(), UUID.randomUUID()))
+            .thenReturn(CreateGameResult(UUID.randomUUID(), UUID.randomUUID()))
         mockMvc
             .post("/api/games") {
                 header(HttpHeaders.ORIGIN, allowedOrigin)

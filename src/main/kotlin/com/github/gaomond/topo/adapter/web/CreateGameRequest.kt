@@ -1,11 +1,11 @@
 package com.github.gaomond.topo.adapter.web
 
-import com.github.gaomond.topo.domain.model.GameCreationCommand
+import com.github.gaomond.topo.usecase.CreateGameInput
 
 /**
  * POST /api/games のリクエストボディ（Web 表現）。
  *
- * Domain 入力（[GameCreationCommand]）とは別型にし、ここで JSON ↔ ドメイン入力の境界を持つ。
+ * UseCase 入力（[CreateGameInput]）とは別型にし、ここで JSON ↔ UseCase 入力の境界を持つ。
  * 生の値検証（objectType 妥当性 / areaPreset 妥当性 / playerCount >= 3）は UseCase が担う。
  *
  * @param objectType  集計対象種別（例: "shrine"）。必須
@@ -19,8 +19,8 @@ data class CreateGameRequest(
     val playerCount: Int,
     val displayName: String? = null,
 ) {
-    fun toCommand(): GameCreationCommand =
-        GameCreationCommand(
+    fun toInput(): CreateGameInput =
+        CreateGameInput(
             objectType = objectType,
             areaPresetKey = areaPreset,
             playerCount = playerCount,

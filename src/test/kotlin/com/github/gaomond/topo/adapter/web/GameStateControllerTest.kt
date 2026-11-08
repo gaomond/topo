@@ -3,10 +3,10 @@ package com.github.gaomond.topo.adapter.web
 import com.github.gaomond.topo.domain.exception.GameNotFoundException
 import com.github.gaomond.topo.domain.model.Coordinate
 import com.github.gaomond.topo.domain.model.CurrentArea
-import com.github.gaomond.topo.domain.model.GameState
 import com.github.gaomond.topo.domain.model.GameStatus
 import com.github.gaomond.topo.domain.model.LiveLocation
 import com.github.gaomond.topo.domain.model.PlayerSnapshot
+import com.github.gaomond.topo.usecase.GetGameStateResult
 import com.github.gaomond.topo.usecase.GetGameStateUseCase
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
@@ -41,7 +41,7 @@ class GameStateControllerTest {
         val p1 = UUID.randomUUID()
         val p2 = UUID.randomUUID()
         whenever(getGameStateUseCase.getState(any())).thenReturn(
-            GameState(
+            GetGameStateResult(
                 gameId = gameId,
                 status = GameStatus.WAITING,
                 playerCount = 3,
@@ -75,7 +75,7 @@ class GameStateControllerTest {
     fun test_getGame_responseIncludesCreatorPlayerId() {
         val creator = UUID.randomUUID()
         whenever(getGameStateUseCase.getState(any())).thenReturn(
-            GameState(
+            GetGameStateResult(
                 gameId = gameId,
                 status = GameStatus.WAITING,
                 playerCount = 3,
@@ -106,7 +106,7 @@ class GameStateControllerTest {
         val p1 = UUID.randomUUID()
         val at = java.time.Instant.parse("2026-07-06T12:00:00Z")
         whenever(getGameStateUseCase.getState(any())).thenReturn(
-            GameState(
+            GetGameStateResult(
                 gameId = gameId,
                 status = GameStatus.ACTIVE,
                 playerCount = 3,
@@ -151,7 +151,7 @@ class GameStateControllerTest {
     fun `test_getGame_live未送信player_liveはnull_onlineはfalse`() {
         val p1 = UUID.randomUUID()
         whenever(getGameStateUseCase.getState(any())).thenReturn(
-            GameState(
+            GetGameStateResult(
                 gameId = gameId,
                 status = GameStatus.ACTIVE,
                 playerCount = 3,
@@ -175,7 +175,7 @@ class GameStateControllerTest {
     fun `test_getGame_currentAreaがnull_JSONでcurrentAreaがnull`() {
         val p1 = UUID.randomUUID()
         whenever(getGameStateUseCase.getState(any())).thenReturn(
-            GameState(
+            GetGameStateResult(
                 gameId = gameId,
                 status = GameStatus.ACTIVE,
                 playerCount = 3,
@@ -198,7 +198,7 @@ class GameStateControllerTest {
     fun `test_getGame_resultは常にnull`() {
         val p1 = UUID.randomUUID()
         whenever(getGameStateUseCase.getState(any())).thenReturn(
-            GameState(gameId, GameStatus.WAITING, 3, p1, listOf(PlayerSnapshot(p1, "たろう", confirmed = false)), 2_000_000.0),
+            GetGameStateResult(gameId, GameStatus.WAITING, 3, p1, listOf(PlayerSnapshot(p1, "たろう", confirmed = false)), 2_000_000.0),
         )
 
         mockMvc

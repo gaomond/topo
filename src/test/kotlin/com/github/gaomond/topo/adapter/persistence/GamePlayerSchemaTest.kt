@@ -1,9 +1,9 @@
 package com.github.gaomond.topo.adapter.persistence
 
-import com.github.gaomond.topo.adapter.persistence.jpa.GameJpaEntity
 import com.github.gaomond.topo.adapter.persistence.jpa.GameJpaRepository
-import com.github.gaomond.topo.adapter.persistence.jpa.PlayerJpaEntity
+import com.github.gaomond.topo.adapter.persistence.jpa.GameRecord
 import com.github.gaomond.topo.adapter.persistence.jpa.PlayerJpaRepository
+import com.github.gaomond.topo.adapter.persistence.jpa.PlayerRecord
 import com.github.gaomond.topo.domain.model.GameStatus
 import com.github.gaomond.topo.support.PostgisTestContainer
 import org.junit.jupiter.api.Test
@@ -260,7 +260,7 @@ class GamePlayerSchemaTest {
         val createdAt = Instant.now().truncatedTo(ChronoUnit.MILLIS)
         val saved =
             gameRepository.save(
-                GameJpaEntity(
+                GameRecord(
                     id = id,
                     status = GameStatus.ACTIVE,
                     playerCount = 3,
@@ -275,7 +275,7 @@ class GamePlayerSchemaTest {
             )
         gameRepository.flush()
 
-        val found = gameRepository.findById(saved.id).orElseThrow()
+        val found = requireNotNull(gameRepository.findRecordById(saved.id))
         assertEquals(GameStatus.ACTIVE, found.status)
         assertEquals(3, found.playerCount)
         assertEquals("shrine", found.objectType)
@@ -290,7 +290,7 @@ class GamePlayerSchemaTest {
     fun test_saveAndFind_playerEntity_roundTripsNonSpatialColumns() {
         val gameId = UUID.randomUUID()
         gameRepository.save(
-            GameJpaEntity(
+            GameRecord(
                 id = gameId,
                 status = GameStatus.WAITING,
                 playerCount = 3,
@@ -301,7 +301,7 @@ class GamePlayerSchemaTest {
         val playerId = UUID.randomUUID()
         val savedPlayer =
             playerRepository.save(
-                PlayerJpaEntity(
+                PlayerRecord(
                     id = playerId,
                     gameId = gameId,
                     displayName = "alice",
@@ -312,7 +312,7 @@ class GamePlayerSchemaTest {
             )
         playerRepository.flush()
 
-        val found = playerRepository.findById(savedPlayer.id).orElseThrow()
+        val found = requireNotNull(playerRepository.findRecordById(savedPlayer.id))
         assertEquals(gameId, found.gameId)
         assertEquals("alice", found.displayName)
         assertEquals(35.68, found.liveLat)

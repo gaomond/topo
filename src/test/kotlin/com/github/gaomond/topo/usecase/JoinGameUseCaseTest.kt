@@ -3,9 +3,9 @@ package com.github.gaomond.topo.usecase
 import com.github.gaomond.topo.domain.exception.GameJoinNotAllowedException
 import com.github.gaomond.topo.domain.exception.GameNotFoundException
 import com.github.gaomond.topo.domain.model.Coordinate
+import com.github.gaomond.topo.domain.model.Game
 import com.github.gaomond.topo.domain.model.GameStatus
 import com.github.gaomond.topo.domain.model.GameSummary
-import com.github.gaomond.topo.domain.model.JoinGameCommand
 import com.github.gaomond.topo.domain.model.PlayerReading
 import com.github.gaomond.topo.domain.port.GameRepositoryPort
 import com.github.gaomond.topo.domain.port.PlayerRepositoryPort
@@ -52,7 +52,7 @@ class JoinGameUseCaseTest {
 
         override fun findSummary(gameId: UUID): GameSummary? = error("参加ではロック付き取得を使う")
 
-        override fun findSummaryWithLock(gameId: UUID): GameSummary? = summary
+        override fun findByIdWithLock(gameId: UUID): Game? = summary?.let { Game(gameId, it.status, it.playerCount, it.creatorPlayerId) }
     }
 
     private class SpyPlayerRepository(
@@ -94,7 +94,7 @@ class JoinGameUseCaseTest {
             useCase(
                 GameSummary(GameStatus.WAITING, playerCount = 3, creatorPlayerId = null, areaThreshold = 2_000_000.0),
                 playerRepo = playerRepo,
-            ).join(JoinGameCommand(gameId, displayName = "じろう"))
+            ).join(JoinGameInput(gameId, displayName = "じろう"))
 
         assertEquals(1, playerRepo.created.size)
         val created = playerRepo.created[0]
@@ -107,7 +107,7 @@ class JoinGameUseCaseTest {
     fun test_join_withUnknownGameId_throwsNotFound() {
         val playerRepo = SpyPlayerRepository(count = 0)
         assertThrows<GameNotFoundException> {
-            useCase(summary = null, playerRepo = playerRepo).join(JoinGameCommand(gameId))
+            useCase(summary = null, playerRepo = playerRepo).join(JoinGameInput(gameId))
         }
         assertTrue(playerRepo.created.isEmpty(), "不在時は INSERT しない")
     }
@@ -117,7 +117,7 @@ class JoinGameUseCaseTest {
         val playerRepo = SpyPlayerRepository(count = 0)
         assertThrows<GameJoinNotAllowedException> {
             useCase(GameSummary(GameStatus.ACTIVE, 3, creatorPlayerId = null, areaThreshold = 2_000_000.0), playerRepo = playerRepo)
-                .join(JoinGameCommand(gameId))
+                .join(JoinGameInput(gameId))
         }
         assertTrue(playerRepo.created.isEmpty())
     }
@@ -127,7 +127,7 @@ class JoinGameUseCaseTest {
         val playerRepo = SpyPlayerRepository(count = 0)
         assertThrows<GameJoinNotAllowedException> {
             useCase(GameSummary(GameStatus.COMPLETED, 3, creatorPlayerId = null, areaThreshold = 2_000_000.0), playerRepo = playerRepo)
-                .join(JoinGameCommand(gameId))
+                .join(JoinGameInput(gameId))
         }
         assertTrue(playerRepo.created.isEmpty())
     }
@@ -138,7 +138,7 @@ class JoinGameUseCaseTest {
         val playerRepo = SpyPlayerRepository(count = 3)
         assertThrows<GameJoinNotAllowedException> {
             useCase(GameSummary(GameStatus.WAITING, 3, creatorPlayerId = null, areaThreshold = 2_000_000.0), playerRepo = playerRepo)
-                .join(JoinGameCommand(gameId))
+                .join(JoinGameInput(gameId))
         }
         assertTrue(playerRepo.created.isEmpty())
     }
@@ -148,7 +148,7 @@ class JoinGameUseCaseTest {
         for (blank in listOf(null, "", "   ", "\t")) {
             val playerRepo = SpyPlayerRepository(count = 0)
             useCase(GameSummary(GameStatus.WAITING, 3, creatorPlayerId = null, areaThreshold = 2_000_000.0), playerRepo = playerRepo)
-                .join(JoinGameCommand(gameId, displayName = blank))
+                .join(JoinGameInput(gameId, displayName = blank))
             val created = playerRepo.created[0]
             assertEquals(created.playerId.toString().take(8), created.displayName, "blank=[$blank]")
         }
@@ -158,7 +158,7 @@ class JoinGameUseCaseTest {
     fun test_join_withDisplayName_persistsTrimmed() {
         val playerRepo = SpyPlayerRepository(count = 0)
         useCase(GameSummary(GameStatus.WAITING, 3, creatorPlayerId = null, areaThreshold = 2_000_000.0), playerRepo = playerRepo)
-            .join(JoinGameCommand(gameId, displayName = "  はなこ  "))
+            .join(JoinGameInput(gameId, displayName = "  はなこ  "))
         assertEquals("はなこ", playerRepo.created[0].displayName)
     }
 
@@ -168,7 +168,7 @@ class JoinGameUseCaseTest {
         val playerRepo = SpyPlayerRepository(count = 2)
         val result =
             useCase(GameSummary(GameStatus.WAITING, 3, creatorPlayerId = null, areaThreshold = 2_000_000.0), playerRepo = playerRepo)
-                .join(JoinGameCommand(gameId))
+                .join(JoinGameInput(gameId))
         assertNull(playerRepo.created.getOrNull(1))
         assertEquals(playerRepo.created[0].playerId, result.playerId)
     }

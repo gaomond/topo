@@ -3,8 +3,6 @@ package com.github.gaomond.topo.usecase
 import com.github.gaomond.topo.domain.exception.GameValidationException
 import com.github.gaomond.topo.domain.model.AreaPreset
 import com.github.gaomond.topo.domain.model.DisplayName
-import com.github.gaomond.topo.domain.model.GameCreationCommand
-import com.github.gaomond.topo.domain.model.GameCreationResult
 import com.github.gaomond.topo.domain.model.GameStatus
 import com.github.gaomond.topo.domain.model.ObjectType
 import com.github.gaomond.topo.domain.port.GameRepositoryPort
@@ -33,22 +31,22 @@ class CreateGameUseCase(
      * @throws GameValidationException objectType 不正 / areaPreset 不正 / playerCount < 3
      */
     @Transactional
-    fun create(command: GameCreationCommand): GameCreationResult {
-        val objectType = resolveObjectType(command.objectType)
-        val areaPreset = resolveAreaPreset(command.areaPresetKey)
-        validatePlayerCount(command.playerCount)
+    fun create(input: CreateGameInput): CreateGameResult {
+        val objectType = resolveObjectType(input.objectType)
+        val areaPreset = resolveAreaPreset(input.areaPresetKey)
+        validatePlayerCount(input.playerCount)
 
         // playerId を先に発番する。displayName フォールバックが playerId 先頭 8 文字を使うため
         // （player INSERT より前に確定させる必要がある）。
         val gameId = UUID.randomUUID()
         val playerId = UUID.randomUUID()
-        val displayName = DisplayName.resolve(command.displayName, playerId)
+        val displayName = DisplayName.resolve(input.displayName, playerId)
 
         // 1. game を creatorPlayerId NULL / 結果 NULL / WAITING で作成
         gameRepository.createGame(
             gameId = gameId,
             status = GameStatus.WAITING,
-            playerCount = command.playerCount,
+            playerCount = input.playerCount,
             objectType = objectType.jsonValue,
             areaThreshold = areaPreset.sqm.toDouble(),
         )
@@ -61,7 +59,7 @@ class CreateGameUseCase(
         // 3. game.creatorPlayerId を作成者 player の id で埋める
         gameRepository.updateCreatorPlayerId(gameId = gameId, creatorPlayerId = playerId)
 
-        return GameCreationResult(gameId = gameId, playerId = playerId)
+        return CreateGameResult(gameId = gameId, playerId = playerId)
     }
 
     private fun resolveObjectType(value: String): ObjectType =

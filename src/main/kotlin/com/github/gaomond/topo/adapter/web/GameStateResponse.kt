@@ -1,9 +1,9 @@
 package com.github.gaomond.topo.adapter.web
 
 import com.github.gaomond.topo.domain.model.CurrentArea
-import com.github.gaomond.topo.domain.model.GameState
 import com.github.gaomond.topo.domain.model.LiveLocation
 import com.github.gaomond.topo.domain.model.PlayerSnapshot
+import com.github.gaomond.topo.usecase.GetGameStateResult
 
 /**
  * GET /api/games/{id} のレスポンスボディ（Web 表現）。
@@ -11,7 +11,7 @@ import com.github.gaomond.topo.domain.model.PlayerSnapshot
  * US-05 の status / playerCount / players に加え、US-08 で各 player の live / online と、
  * 進行中メーター用の [currentArea]（live 凸包の面積・頂点列）を返す。`result`（確定結果）は
  * confirm/集計（US-11/13）まで常に null だが、前方互換のためフィールドを用意して null を返す。
- * 命名は CLAUDE.md 規約（body 全体 = XxxResponse、構成要素 = XxxPayload）に従う。
+ * UseCase の結果から Web 表現へ変換し、ドメインの型を直接 JSON に公開しない。
  */
 data class GameStateResponse(
     val gameId: String,
@@ -28,7 +28,7 @@ data class GameStateResponse(
     val result: Any? = null,
 ) {
     companion object {
-        fun from(state: GameState): GameStateResponse =
+        fun from(state: GetGameStateResult): GameStateResponse =
             GameStateResponse(
                 gameId = state.gameId.toString(),
                 status = state.status.name,

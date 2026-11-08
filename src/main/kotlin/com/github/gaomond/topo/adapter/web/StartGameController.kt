@@ -1,5 +1,6 @@
 package com.github.gaomond.topo.adapter.web
 
+import com.github.gaomond.topo.usecase.StartGameInput
 import com.github.gaomond.topo.usecase.StartGameUseCase
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -23,7 +24,7 @@ class StartGameController(
         @PathVariable id: UUID,
         @RequestBody request: StartGameRequest,
     ): StartGameResponse {
-        val result = startGameUseCase.start(id, request.playerId)
+        val result = startGameUseCase.start(StartGameInput(id, request.playerId))
         return StartGameResponse.from(result)
     }
 }

@@ -1,20 +1,86 @@
 package com.github.gaomond.topo.adapter.persistence.jpa
 
+import com.github.gaomond.topo.domain.model.Game
+import com.github.gaomond.topo.domain.model.GameStatus
+import com.github.gaomond.topo.domain.model.GameSummary
+import com.github.gaomond.topo.domain.port.GameRepositoryPort
 import jakarta.persistence.LockModeType
-import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Lock
 import org.springframework.data.jpa.repository.Query
+import org.springframework.data.repository.Repository
+import org.springframework.transaction.annotation.Propagation
+import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
 
-/**
- * `game` の通常 CRUD リポジトリ（非空間カラム）。
- *
- * 空間クエリ（凸包・測地面積・範囲内 COUNT）は US-13 以降に outbound の生 SQL で追加する。
- * Domain ポート（リポジトリ抽象）は UseCase が登場する US-02 で導入し、本リポジトリを
- * 実装に降格させる方針（現段階では YAGNI のため抽象を前倒ししない）。
- */
-interface GameJpaRepository : JpaRepository<GameJpaEntity, UUID> {
+/** Game の永続化ポートを実装し、JPA のアクセスとドメインモデルへの変換を担う。 */
+interface GameJpaRepository :
+    Repository<GameRecord, UUID>,
+    GameRepositoryPort {
+    fun <S : GameRecord> save(record: S): S
+
+    fun flush()
+
+    @Query("select game from GameRecord game where game.id = :gameId")
+    fun findRecordById(gameId: UUID): GameRecord?
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select game from GameJpaEntity game where game.id = :gameId")
-    fun findByIdWithLock(gameId: UUID): GameJpaEntity?
+    @Query("select game from GameRecord game where game.id = :gameId")
+    fun findRecordByIdWithLock(gameId: UUID): GameRecord?
+
+    @Transactional
+    override fun createGame(
+        gameId: UUID,
+        status: GameStatus,
+        playerCount: Int,
+        objectType: String,
+        areaThreshold: Double,
+    ) {
+        save(
+            GameRecord(
+                id = gameId,
+                status = status,
+                playerCount = playerCount,
+                objectType = objectType,
+                areaThreshold = areaThreshold,
+                creatorPlayerId = null,
+            ),
+        )
+    }
+
+    @Transactional
+    override fun updateCreatorPlayerId(
+        gameId: UUID,
+        creatorPlayerId: UUID,
+    ) {
+        val record = findRecordById(gameId) ?: error("creatorPlayerId 更新対象の game が存在しません: $gameId")
+        record.creatorPlayerId = creatorPlayerId
+        save(record)
+    }
+
+    @Transactional
+    override fun updateStatus(
+        gameId: UUID,
+        status: GameStatus,
+    ) {
+        val record = findRecordById(gameId) ?: error("status 更新対象の game が存在しません: $gameId")
+        // 取得済みの他カラムと空間カラムを維持し、status のみを変更する。
+        record.status = status
+        save(record)
+    }
+
+    @Transactional(readOnly = true)
+    override fun findSummary(gameId: UUID): GameSummary? = findRecordById(gameId)?.toSummary()
+
+    @Transactional(propagation = Propagation.MANDATORY)
+    override fun findByIdWithLock(gameId: UUID): Game? = findRecordByIdWithLock(gameId)?.toDomain()
+
+    private fun GameRecord.toDomain(): Game = Game(id, status, playerCount, creatorPlayerId)
+
+    private fun GameRecord.toSummary(): GameSummary =
+        GameSummary(
+            status = status,
+            playerCount = playerCount,
+            creatorPlayerId = creatorPlayerId,
+            areaThreshold = areaThreshold,
+        )
 }

@@ -2,7 +2,7 @@ package com.github.gaomond.topo.usecase
 
 import com.github.gaomond.topo.domain.exception.GameValidationException
 import com.github.gaomond.topo.domain.model.Coordinate
-import com.github.gaomond.topo.domain.model.GameCreationCommand
+import com.github.gaomond.topo.domain.model.Game
 import com.github.gaomond.topo.domain.model.GameStatus
 import com.github.gaomond.topo.domain.model.GameSummary
 import com.github.gaomond.topo.domain.model.PlayerReading
@@ -74,7 +74,7 @@ class CreateGameUseCaseTest {
         // 作成では参加系の取得は使わない。
         override fun findSummary(gameId: UUID): GameSummary? = error("作成では呼ばれない")
 
-        override fun findSummaryWithLock(gameId: UUID): GameSummary? = error("作成では呼ばれない")
+        override fun findByIdWithLock(gameId: UUID): Game? = error("作成では呼ばれない")
     }
 
     private class SpyPlayerRepository(
@@ -114,7 +114,7 @@ class CreateGameUseCaseTest {
         areaPresetKey: String = "medium",
         playerCount: Int = 3,
         displayName: String? = "たろう",
-    ) = GameCreationCommand(objectType, areaPresetKey, playerCount, displayName)
+    ) = CreateGameInput(objectType, areaPresetKey, playerCount, displayName)
 
     // --- 正常系: 創成順序 ---
 

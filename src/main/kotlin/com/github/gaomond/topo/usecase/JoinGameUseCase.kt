@@ -3,8 +3,6 @@ package com.github.gaomond.topo.usecase
 import com.github.gaomond.topo.domain.exception.GameJoinNotAllowedException
 import com.github.gaomond.topo.domain.exception.GameNotFoundException
 import com.github.gaomond.topo.domain.model.DisplayName
-import com.github.gaomond.topo.domain.model.JoinGameCommand
-import com.github.gaomond.topo.domain.model.JoinGameResult
 import com.github.gaomond.topo.domain.port.GameRepositoryPort
 import com.github.gaomond.topo.domain.port.PlayerRepositoryPort
 import org.springframework.stereotype.Service
@@ -33,16 +31,15 @@ class JoinGameUseCase(
      * @throws GameJoinNotAllowedException status が WAITING 以外 / 定員到達（→409）
      */
     @Transactional(isolation = Isolation.READ_COMMITTED)
-    fun join(command: JoinGameCommand): JoinGameResult {
-        val summary = gameRepository.findSummaryWithLock(command.gameId) ?: throw GameNotFoundException(command.gameId)
-        val game = summary.toGame(command.gameId)
-        game.requireCanJoin { playerRepository.countByGameId(command.gameId) }
+    fun join(input: JoinGameInput): JoinGameResult {
+        val game = gameRepository.findByIdWithLock(input.gameId) ?: throw GameNotFoundException(input.gameId)
+        game.requireCanJoin { playerRepository.countByGameId(input.gameId) }
 
         val playerId = UUID.randomUUID()
-        val displayName = DisplayName.resolve(command.displayName, playerId)
+        val displayName = DisplayName.resolve(input.displayName, playerId)
         playerRepository.createPlayer(
             playerId = playerId,
-            gameId = command.gameId,
+            gameId = input.gameId,
             displayName = displayName,
         )
         return JoinGameResult(playerId = playerId)

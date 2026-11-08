@@ -1,7 +1,6 @@
 package com.github.gaomond.topo.usecase
 
 import com.github.gaomond.topo.domain.exception.GameNotFoundException
-import com.github.gaomond.topo.domain.model.GameState
 import com.github.gaomond.topo.domain.model.GameStatus
 import com.github.gaomond.topo.domain.model.PlayerSnapshot
 import com.github.gaomond.topo.domain.model.Presence
@@ -11,7 +10,6 @@ import com.github.gaomond.topo.domain.port.PlayerRepositoryPort
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
-import java.util.UUID
 
 /**
  * ゲーム状態取得ユースケース（GET /api/games/{id}）。
@@ -36,7 +34,8 @@ class GetGameStateUseCase(
      * @throws GameNotFoundException gameId が存在しない（→404。フロント 1.4 の 404 画面）
      */
     @Transactional(readOnly = true)
-    fun getState(gameId: UUID): GameState {
+    fun getState(input: GetGameStateInput): GetGameStateResult {
+        val gameId = input.gameId
         val summary =
             gameRepository.findSummary(gameId)
                 ?: throw GameNotFoundException(gameId)
@@ -58,7 +57,7 @@ class GetGameStateUseCase(
         val currentArea =
             if (summary.status == GameStatus.ACTIVE) liveAreaQuery.currentLiveArea(gameId) else null
 
-        return GameState(
+        return GetGameStateResult(
             gameId = gameId,
             status = summary.status,
             playerCount = summary.playerCount,

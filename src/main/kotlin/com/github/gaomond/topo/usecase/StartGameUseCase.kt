@@ -3,13 +3,11 @@ package com.github.gaomond.topo.usecase
 import com.github.gaomond.topo.domain.exception.GameNotFoundException
 import com.github.gaomond.topo.domain.exception.GameStartNotAllowedException
 import com.github.gaomond.topo.domain.exception.NotGameCreatorException
-import com.github.gaomond.topo.domain.model.StartGameResult
 import com.github.gaomond.topo.domain.port.GameRepositoryPort
 import com.github.gaomond.topo.domain.port.PlayerRepositoryPort
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Isolation
 import org.springframework.transaction.annotation.Transactional
-import java.util.UUID
 
 /**
  * ゲーム開始ユースケース（01-spec 1.1 のサーバー処理・US-06）。
@@ -37,12 +35,11 @@ class StartGameUseCase(
      * @throws GameStartNotAllowedException status が WAITING 以外 / 定員未達（→409）
      */
     @Transactional(isolation = Isolation.READ_COMMITTED)
-    fun start(
-        gameId: UUID,
-        playerId: UUID,
-    ): StartGameResult {
-        val summary = gameRepository.findSummaryWithLock(gameId) ?: throw GameNotFoundException(gameId)
-        val startedGame = summary.toGame(gameId).start(playerId) { playerRepository.countByGameId(gameId) }
+    fun start(input: StartGameInput): StartGameResult {
+        val gameId = input.gameId
+        val playerId = input.playerId
+        val game = gameRepository.findByIdWithLock(gameId) ?: throw GameNotFoundException(gameId)
+        val startedGame = game.start(playerId) { playerRepository.countByGameId(gameId) }
 
         gameRepository.updateStatus(gameId, startedGame.status)
         return StartGameResult(gameId = gameId, status = startedGame.status)

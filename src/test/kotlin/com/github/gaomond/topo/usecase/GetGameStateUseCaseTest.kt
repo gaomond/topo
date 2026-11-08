@@ -3,6 +3,7 @@ package com.github.gaomond.topo.usecase
 import com.github.gaomond.topo.domain.exception.GameNotFoundException
 import com.github.gaomond.topo.domain.model.Coordinate
 import com.github.gaomond.topo.domain.model.CurrentArea
+import com.github.gaomond.topo.domain.model.Game
 import com.github.gaomond.topo.domain.model.GameStatus
 import com.github.gaomond.topo.domain.model.GameSummary
 import com.github.gaomond.topo.domain.model.LiveLocation
@@ -51,7 +52,7 @@ class GetGameStateUseCaseTest {
 
         override fun findSummary(gameId: UUID): GameSummary? = summary
 
-        override fun findSummaryWithLock(gameId: UUID): GameSummary? = error("状態取得では呼ばれない")
+        override fun findByIdWithLock(gameId: UUID): Game? = error("状態取得では呼ばれない")
     }
 
     private class StubPlayerRepository(
@@ -113,7 +114,7 @@ class GetGameStateUseCaseTest {
             useCase(
                 GameSummary(GameStatus.WAITING, 3, creatorPlayerId = null, areaThreshold = 2_000_000.0),
                 players,
-            ).getState(gameId)
+            ).getState(GetGameStateInput(gameId))
 
         assertEquals(gameId, state.gameId)
         assertEquals(GameStatus.WAITING, state.status)
@@ -123,13 +124,16 @@ class GetGameStateUseCaseTest {
 
     @Test
     fun test_getGameState_withUnknownGameId_throwsNotFound() {
-        assertThrows<GameNotFoundException> { useCase(summary = null).getState(gameId) }
+        assertThrows<GameNotFoundException> { useCase(summary = null).getState(GetGameStateInput(gameId)) }
     }
 
     @Test
     fun test_getGameState_returnsCreatorPlayerIdFromSummary() {
         val creator = UUID.randomUUID()
-        val state = useCase(GameSummary(GameStatus.WAITING, 3, creatorPlayerId = creator, areaThreshold = 2_000_000.0)).getState(gameId)
+        val state =
+            useCase(
+                GameSummary(GameStatus.WAITING, 3, creatorPlayerId = creator, areaThreshold = 2_000_000.0),
+            ).getState(GetGameStateInput(gameId))
         assertEquals(creator, state.creatorPlayerId)
     }
 
@@ -137,7 +141,7 @@ class GetGameStateUseCaseTest {
     fun `test_getGameState_areaThresholdをsummaryから射影する`() {
         // US-10: 面積メーターの満杯ラインに使う上限を GET リードパスへ載せる（summary 由来の静的値）。
         val summary = GameSummary(GameStatus.WAITING, 3, creatorPlayerId = null, areaThreshold = 500_000.0)
-        val state = useCase(summary).getState(gameId)
+        val state = useCase(summary).getState(GetGameStateInput(gameId))
         assertEquals(500_000.0, state.areaThreshold)
     }
 
@@ -148,7 +152,7 @@ class GetGameStateUseCaseTest {
             useCase(
                 GameSummary(GameStatus.WAITING, 3, creatorPlayerId = null, areaThreshold = 2_000_000.0),
                 players,
-            ).getState(gameId)
+            ).getState(GetGameStateInput(gameId))
 
         assertTrue(state.players[0].confirmed)
         assertFalse(state.players[1].confirmed)
@@ -162,7 +166,7 @@ class GetGameStateUseCaseTest {
             useCase(
                 GameSummary(GameStatus.ACTIVE, 3, creatorPlayerId = null, areaThreshold = 2_000_000.0),
                 liveArea = liveArea,
-            ).getState(gameId)
+            ).getState(GetGameStateInput(gameId))
 
         assertEquals(area, state.currentArea)
         assertEquals(1, liveArea.callCount)
@@ -175,7 +179,7 @@ class GetGameStateUseCaseTest {
             useCase(
                 GameSummary(GameStatus.WAITING, 3, creatorPlayerId = null, areaThreshold = 2_000_000.0),
                 liveArea = liveArea,
-            ).getState(gameId)
+            ).getState(GetGameStateInput(gameId))
 
         assertNull(state.currentArea)
         assertEquals(0, liveArea.callCount, "WAITING では空間クエリを発火しない")
@@ -188,7 +192,7 @@ class GetGameStateUseCaseTest {
             useCase(
                 GameSummary(GameStatus.COMPLETED, 3, creatorPlayerId = null, areaThreshold = 2_000_000.0),
                 liveArea = liveArea,
-            ).getState(gameId)
+            ).getState(GetGameStateInput(gameId))
 
         assertNull(state.currentArea)
         assertEquals(0, liveArea.callCount)
@@ -201,7 +205,7 @@ class GetGameStateUseCaseTest {
             useCase(
                 GameSummary(GameStatus.ACTIVE, 3, null, areaThreshold = 2_000_000.0),
                 listOf(reading("たろう", live = live)),
-            ).getState(gameId)
+            ).getState(GetGameStateInput(gameId))
 
         assertTrue(state.players[0].online)
         assertEquals(live, state.players[0].live)
@@ -214,7 +218,7 @@ class GetGameStateUseCaseTest {
             useCase(
                 GameSummary(GameStatus.ACTIVE, 3, null, areaThreshold = 2_000_000.0),
                 listOf(reading("たろう", live = live)),
-            ).getState(gameId)
+            ).getState(GetGameStateInput(gameId))
 
         assertFalse(state.players[0].online)
     }
@@ -225,7 +229,7 @@ class GetGameStateUseCaseTest {
             useCase(
                 GameSummary(GameStatus.ACTIVE, 3, null, areaThreshold = 2_000_000.0),
                 listOf(reading("たろう", live = null)),
-            ).getState(gameId)
+            ).getState(GetGameStateInput(gameId))
 
         assertFalse(state.players[0].online)
         assertNull(state.players[0].live)

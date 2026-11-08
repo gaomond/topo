@@ -1,6 +1,6 @@
 package com.github.gaomond.topo.adapter.web
 
-import com.github.gaomond.topo.domain.model.JoinGameResult
+import com.github.gaomond.topo.usecase.JoinGameResult
 
 /**
  * POST /api/games/{id}/players のレスポンスボディ（Web 表現）。

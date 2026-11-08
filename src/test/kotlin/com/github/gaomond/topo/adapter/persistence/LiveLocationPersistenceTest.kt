@@ -24,7 +24,7 @@ import kotlin.test.assertTrue
 /**
  * US-07 Level 3（outbound アダプタ）検証。実 PostGIS（Testcontainers）に対し、
  * ライブ位置更新（一致つき UPDATE / 所属不一致で 0 件 / live_at の反映）を検証する。
- * テスト対象は src/ の [PlayerRepositoryAdapter] を import（再定義しない）。
+ * テスト対象は src/ の [PlayerJpaRepository] を import（再定義しない）。
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
@@ -53,13 +53,9 @@ class LiveLocationPersistenceTest {
     @PersistenceContext
     private lateinit var entityManager: EntityManager
 
-    private fun gameAdapter() = GameRepositoryAdapter(gameRepository)
-
-    private fun playerAdapter() = PlayerRepositoryAdapter(playerRepository)
-
     private fun seedGame(status: GameStatus = GameStatus.ACTIVE): UUID {
         val gameId = UUID.randomUUID()
-        gameAdapter().createGame(
+        gameRepository.createGame(
             gameId = gameId,
             status = status,
             playerCount = 3,
@@ -72,7 +68,7 @@ class LiveLocationPersistenceTest {
 
     private fun seedPlayer(gameId: UUID): UUID {
         val playerId = UUID.randomUUID()
-        playerAdapter().createPlayer(playerId, gameId, "プレイヤー")
+        playerRepository.createPlayer(playerId, gameId, "プレイヤー")
         playerRepository.flush()
         return playerId
     }
@@ -84,7 +80,7 @@ class LiveLocationPersistenceTest {
         val at = Instant.parse("2026-07-04T12:00:00Z")
 
         val updated =
-            playerAdapter().updateLiveLocation(gameId, playerId, Coordinate(35.68, 139.76), at)
+            playerRepository.updateLiveLocation(gameId, playerId, Coordinate(35.68, 139.76), at)
         entityManager.clear()
 
         assertTrue(updated)
@@ -105,7 +101,7 @@ class LiveLocationPersistenceTest {
 
         // playerId は gameId に属するが、otherGameId を指定すると一致せず 0 件。
         val updated =
-            playerAdapter().updateLiveLocation(otherGameId, playerId, Coordinate(1.0, 2.0), Instant.now())
+            playerRepository.updateLiveLocation(otherGameId, playerId, Coordinate(1.0, 2.0), Instant.now())
         entityManager.clear()
 
         assertFalse(updated)
@@ -123,7 +119,7 @@ class LiveLocationPersistenceTest {
     fun test_updateLiveLocation_withUnknownPlayer_updatesZeroRows() {
         val gameId = seedGame()
         val updated =
-            playerAdapter().updateLiveLocation(gameId, UUID.randomUUID(), Coordinate(1.0, 2.0), Instant.now())
+            playerRepository.updateLiveLocation(gameId, UUID.randomUUID(), Coordinate(1.0, 2.0), Instant.now())
         assertFalse(updated)
     }
 
@@ -132,10 +128,10 @@ class LiveLocationPersistenceTest {
         val gameId = seedGame()
         val playerId = seedPlayer(gameId)
         val at = Instant.parse("2026-07-04T12:00:00Z")
-        playerAdapter().updateLiveLocation(gameId, playerId, Coordinate(35.68, 139.76), at)
+        playerRepository.updateLiveLocation(gameId, playerId, Coordinate(35.68, 139.76), at)
         entityManager.clear()
 
-        val reading = playerAdapter().findByGameId(gameId).single()
+        val reading = playerRepository.findByGameId(gameId).single()
 
         assertEquals(35.68, reading.live?.coordinate?.lat)
         assertEquals(139.76, reading.live?.coordinate?.lng)
@@ -148,7 +144,7 @@ class LiveLocationPersistenceTest {
         seedPlayer(gameId)
         entityManager.clear()
 
-        val reading = playerAdapter().findByGameId(gameId).single()
+        val reading = playerRepository.findByGameId(gameId).single()
 
         assertNull(reading.live)
     }
@@ -159,7 +155,7 @@ class LiveLocationPersistenceTest {
         val playerId = seedPlayer(gameId)
         val at = Instant.parse("2026-07-04T09:30:00Z")
 
-        playerAdapter().updateLiveLocation(gameId, playerId, Coordinate(10.0, 20.0), at)
+        playerRepository.updateLiveLocation(gameId, playerId, Coordinate(10.0, 20.0), at)
         entityManager.clear()
 
         val storedAt =

@@ -7,7 +7,6 @@ import com.github.gaomond.topo.domain.port.PlayerRepositoryPort
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
-import java.util.UUID
 
 /**
  * ライブ位置更新ユースケース（01-spec 1.1 のサーバー処理・US-07）。
@@ -35,12 +34,11 @@ class UpdateLiveLocationUseCase(
      * @throws PlayerNotFoundException gameId / playerId の組が解決できない（不在 / 非所属。→404）
      */
     @Transactional
-    fun update(
-        gameId: UUID,
-        playerId: UUID,
-        lat: Double,
-        lng: Double,
-    ) {
+    fun update(input: UpdateLiveLocationInput) {
+        val gameId = input.gameId
+        val playerId = input.playerId
+        val lat = input.lat
+        val lng = input.lng
         // Coordinate の不変条件違反（IllegalArgumentException）は 400 経路の GameValidationException に包み直す
         // （既存 400 経路への一貫化。ハンドラで IllegalArgumentException を広く 400 化しない）。
         val coordinate =

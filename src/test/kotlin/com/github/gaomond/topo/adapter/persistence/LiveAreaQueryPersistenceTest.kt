@@ -49,7 +49,7 @@ class LiveAreaQueryPersistenceTest {
 
     private fun seedGame(): UUID {
         val gameId = UUID.randomUUID()
-        GameRepositoryAdapter(gameRepository).createGame(
+        gameRepository.createGame(
             gameId = gameId,
             status = GameStatus.ACTIVE,
             playerCount = 5,
@@ -67,7 +67,7 @@ class LiveAreaQueryPersistenceTest {
         lng: Double,
     ) {
         val playerId = UUID.randomUUID()
-        PlayerRepositoryAdapter(playerRepository).createPlayer(playerId, gameId, "プレイヤー")
+        playerRepository.createPlayer(playerId, gameId, "プレイヤー")
         playerRepository.flush()
         jdbcTemplate.update(
             "UPDATE player SET live_lat = ?, live_lng = ?, live_at = now() WHERE id = ?",
@@ -80,7 +80,7 @@ class LiveAreaQueryPersistenceTest {
     // live 未送信の参加者を 1 人作る（live_* は NULL のまま）。
     private fun seedIdlePlayer(gameId: UUID) {
         val playerId = UUID.randomUUID()
-        PlayerRepositoryAdapter(playerRepository).createPlayer(playerId, gameId, "みそうしん")
+        playerRepository.createPlayer(playerId, gameId, "みそうしん")
         playerRepository.flush()
     }
 

@@ -4,7 +4,7 @@ import com.github.gaomond.topo.domain.exception.GameNotFoundException
 import com.github.gaomond.topo.domain.exception.GameStartNotAllowedException
 import com.github.gaomond.topo.domain.exception.NotGameCreatorException
 import com.github.gaomond.topo.domain.model.GameStatus
-import com.github.gaomond.topo.domain.model.StartGameResult
+import com.github.gaomond.topo.usecase.StartGameResult
 import com.github.gaomond.topo.usecase.StartGameUseCase
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
@@ -37,7 +37,7 @@ class StartGameControllerTest {
 
     @Test
     fun test_postStart_withCreator_returns200AndActiveStatus() {
-        whenever(startGameUseCase.start(any(), any()))
+        whenever(startGameUseCase.start(any()))
             .thenReturn(StartGameResult(gameId, GameStatus.ACTIVE))
 
         mockMvc
@@ -54,7 +54,7 @@ class StartGameControllerTest {
 
     @Test
     fun test_postStart_withUnknownGameId_returns404() {
-        whenever(startGameUseCase.start(any(), any())).thenThrow(GameNotFoundException(gameId))
+        whenever(startGameUseCase.start(any())).thenThrow(GameNotFoundException(gameId))
         mockMvc
             .post("/api/games/$gameId/start") {
                 contentType = MediaType.APPLICATION_JSON
@@ -64,7 +64,7 @@ class StartGameControllerTest {
 
     @Test
     fun test_postStart_withNonCreator_returns403() {
-        whenever(startGameUseCase.start(any(), any())).thenThrow(NotGameCreatorException(gameId))
+        whenever(startGameUseCase.start(any())).thenThrow(NotGameCreatorException(gameId))
         mockMvc
             .post("/api/games/$gameId/start") {
                 contentType = MediaType.APPLICATION_JSON
@@ -74,7 +74,7 @@ class StartGameControllerTest {
 
     @Test
     fun test_postStart_whenUnderCapacity_returns409() {
-        whenever(startGameUseCase.start(any(), any())).thenThrow(
+        whenever(startGameUseCase.start(any())).thenThrow(
             GameStartNotAllowedException(gameId, GameStartNotAllowedException.Reason.CAPACITY_NOT_REACHED),
         )
         mockMvc
@@ -86,7 +86,7 @@ class StartGameControllerTest {
 
     @Test
     fun test_postStart_whenNotWaiting_returns409() {
-        whenever(startGameUseCase.start(any(), any())).thenThrow(
+        whenever(startGameUseCase.start(any())).thenThrow(
             GameStartNotAllowedException(gameId, GameStartNotAllowedException.Reason.NOT_WAITING),
         )
         mockMvc

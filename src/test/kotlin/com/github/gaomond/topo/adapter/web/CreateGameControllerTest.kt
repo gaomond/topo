@@ -1,8 +1,8 @@
 package com.github.gaomond.topo.adapter.web
 
 import com.github.gaomond.topo.domain.exception.GameValidationException
-import com.github.gaomond.topo.domain.model.GameCreationCommand
-import com.github.gaomond.topo.domain.model.GameCreationResult
+import com.github.gaomond.topo.usecase.CreateGameInput
+import com.github.gaomond.topo.usecase.CreateGameResult
 import com.github.gaomond.topo.usecase.CreateGameUseCase
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
@@ -41,7 +41,7 @@ class CreateGameControllerTest {
         val gameId = UUID.randomUUID()
         val playerId = UUID.randomUUID()
         whenever(createGameUseCase.create(any()))
-            .thenReturn(GameCreationResult(gameId = gameId, playerId = playerId))
+            .thenReturn(CreateGameResult(gameId = gameId, playerId = playerId))
 
         mockMvc
             .post("/api/games") {
@@ -60,7 +60,7 @@ class CreateGameControllerTest {
     @Test
     fun test_postGames_withoutDisplayName_returns201() {
         whenever(createGameUseCase.create(any()))
-            .thenReturn(GameCreationResult(UUID.randomUUID(), UUID.randomUUID()))
+            .thenReturn(CreateGameResult(UUID.randomUUID(), UUID.randomUUID()))
         mockMvc
             .post("/api/games") {
                 contentType = MediaType.APPLICATION_JSON
@@ -112,9 +112,9 @@ class CreateGameControllerTest {
     fun test_postGames_passesRequestFieldsToUseCaseAsCommand() {
         whenever(
             createGameUseCase.create(
-                eq(GameCreationCommand("shrine", "medium", 3, "たろう")),
+                eq(CreateGameInput("shrine", "medium", 3, "たろう")),
             ),
-        ).thenReturn(GameCreationResult(UUID.randomUUID(), UUID.randomUUID()))
+        ).thenReturn(CreateGameResult(UUID.randomUUID(), UUID.randomUUID()))
 
         mockMvc
             .post("/api/games") {

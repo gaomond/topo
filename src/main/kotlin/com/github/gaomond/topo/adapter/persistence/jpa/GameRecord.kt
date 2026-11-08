@@ -12,18 +12,18 @@ import java.time.Instant
 import java.util.UUID
 
 /**
- * `game` テーブルの JPA エンティティ（非空間カラムのみ）。
+ * `game` テーブルの JPA 管理の永続化表現（非空間カラムのみ）。
  *
  * 空間カラム `polygon_geom`（Polygon,4326）はマッピングしない。地理空間は US-13 以降に
- * outbound の生 SQL（PostGIS）で扱う方針（CLAUDE.md「PostGIS を Domain/UseCase から隠す」）。
+ * outbound の生 SQL（PostGIS）で扱う方針（DESIGN.md「永続化の構成」）。
  * `ddl-auto=validate` はエンティティに無いカラムを検証しないため、除外しても validate は通る。
  *
- * JPA エンティティのため data class は使わず通常 class とし、ID ベースの equals/hashCode を持つ。
+ * JPA 管理の永続化表現のため data class は使わず通常 class とし、ID ベースの equals/hashCode を持つ。
  * UUID 主キーはクライアント発番（コンストラクタで確定）であり DB 生成ではないため、id は非 null。
  */
 @Entity
 @Table(name = "game")
-class GameJpaEntity(
+class GameRecord(
     @Id
     @Column(name = "id", nullable = false)
     val id: UUID,
@@ -55,11 +55,11 @@ class GameJpaEntity(
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
-        if (other !is GameJpaEntity) return false
+        if (other !is GameRecord) return false
         return id == other.id
     }
 
     override fun hashCode(): Int = javaClass.hashCode()
 
-    override fun toString(): String = "GameJpaEntity(id=$id, status=$status)"
+    override fun toString(): String = "GameRecord(id=$id, status=$status)"
 }

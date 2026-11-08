@@ -2,15 +2,16 @@ package com.github.gaomond.topo.adapter.persistence
 
 import com.github.gaomond.topo.domain.exception.GameJoinNotAllowedException
 import com.github.gaomond.topo.domain.exception.GameStartNotAllowedException
-import com.github.gaomond.topo.domain.model.GameCreationCommand
-import com.github.gaomond.topo.domain.model.GameCreationResult
 import com.github.gaomond.topo.domain.model.GameStatus
-import com.github.gaomond.topo.domain.model.JoinGameCommand
 import com.github.gaomond.topo.domain.port.GameRepositoryPort
 import com.github.gaomond.topo.domain.port.PlayerRepositoryPort
 import com.github.gaomond.topo.support.PostgisTestContainer
+import com.github.gaomond.topo.usecase.CreateGameInput
+import com.github.gaomond.topo.usecase.CreateGameResult
 import com.github.gaomond.topo.usecase.CreateGameUseCase
+import com.github.gaomond.topo.usecase.JoinGameInput
 import com.github.gaomond.topo.usecase.JoinGameUseCase
+import com.github.gaomond.topo.usecase.StartGameInput
 import com.github.gaomond.topo.usecase.StartGameUseCase
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -37,8 +38,6 @@ import kotlin.time.TimeSource
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Import(
-    GameRepositoryAdapter::class,
-    PlayerRepositoryAdapter::class,
     CreateGameUseCase::class,
     JoinGameUseCase::class,
     StartGameUseCase::class,
@@ -109,18 +108,18 @@ class GameMembershipConcurrencyTest {
         assertGame(game, GameStatus.WAITING)
     }
 
-    private fun gameWithOneSlot(): GameCreationResult = createGame.create(GameCreationCommand("shrine", "small", 3, null)).also { join(it) }
+    private fun gameWithOneSlot(): CreateGameResult = createGame.create(CreateGameInput("shrine", "small", 3, null)).also { join(it) }
 
-    private fun join(game: GameCreationResult) {
-        joinGame.join(JoinGameCommand(game.gameId))
+    private fun join(game: CreateGameResult) {
+        joinGame.join(JoinGameInput(game.gameId))
     }
 
-    private fun start(game: GameCreationResult) {
-        startGame.start(game.gameId, game.playerId)
+    private fun start(game: CreateGameResult) {
+        startGame.start(StartGameInput(game.gameId, game.playerId))
     }
 
     private fun assertGame(
-        game: GameCreationResult,
+        game: CreateGameResult,
         status: GameStatus,
     ) {
         assertEquals(3, players.countByGameId(game.gameId))

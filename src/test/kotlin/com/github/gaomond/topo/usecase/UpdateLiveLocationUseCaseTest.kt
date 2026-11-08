@@ -57,7 +57,7 @@ class UpdateLiveLocationUseCaseTest {
     @Test
     fun test_update_withValidCoordinate_callsUpdatePortWithCoordinate() {
         val repo = SpyPlayerRepository(updateResult = true)
-        UpdateLiveLocationUseCase(repo).update(gameId, playerId, lat = 35.68, lng = 139.76)
+        UpdateLiveLocationUseCase(repo).update(UpdateLiveLocationInput(gameId, playerId, lat = 35.68, lng = 139.76))
 
         assertEquals(1, repo.calls.size)
         val call = repo.calls.single()
@@ -70,7 +70,7 @@ class UpdateLiveLocationUseCaseTest {
     fun test_update_whenPlayerNotUpdated_throwsPlayerNotFound() {
         val repo = SpyPlayerRepository(updateResult = false)
         assertThrows<PlayerNotFoundException> {
-            UpdateLiveLocationUseCase(repo).update(gameId, playerId, lat = 35.0, lng = 139.0)
+            UpdateLiveLocationUseCase(repo).update(UpdateLiveLocationInput(gameId, playerId, lat = 35.0, lng = 139.0))
         }
     }
 
@@ -79,7 +79,7 @@ class UpdateLiveLocationUseCaseTest {
         val repo = SpyPlayerRepository()
         val ex =
             assertThrows<GameValidationException> {
-                UpdateLiveLocationUseCase(repo).update(gameId, playerId, lat = 999.0, lng = 139.0)
+                UpdateLiveLocationUseCase(repo).update(UpdateLiveLocationInput(gameId, playerId, lat = 999.0, lng = 139.0))
             }
         assertEquals(GameValidationException.Reason.INVALID_COORDINATE, ex.reason)
         assertTrue(repo.calls.isEmpty(), "不正座標では更新ポートを呼ばない")
@@ -89,7 +89,7 @@ class UpdateLiveLocationUseCaseTest {
     fun test_update_withNaN_throwsValidationAndSkipsPort() {
         val repo = SpyPlayerRepository()
         assertThrows<GameValidationException> {
-            UpdateLiveLocationUseCase(repo).update(gameId, playerId, lat = Double.NaN, lng = 139.0)
+            UpdateLiveLocationUseCase(repo).update(UpdateLiveLocationInput(gameId, playerId, lat = Double.NaN, lng = 139.0))
         }
         assertNull(repo.calls.getOrNull(0))
     }
