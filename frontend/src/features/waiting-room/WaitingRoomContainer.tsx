@@ -153,6 +153,7 @@ export function WaitingRoomContainer({
     // （保持・公開のみ。友達ドット/面積メーターの描画は US-09/10）。
     return (
       <GeoTrackingContainer
+        key={`${gameId}:${playerId}`}
         gameId={gameId ?? ""}
         playerId={playerId}
         api={resolvedApi}

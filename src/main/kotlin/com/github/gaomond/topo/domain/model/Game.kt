@@ -1,5 +1,6 @@
 package com.github.gaomond.topo.domain.model
 
+import com.github.gaomond.topo.domain.exception.GameConfirmationNotAllowedException
 import com.github.gaomond.topo.domain.exception.GameJoinNotAllowedException
 import com.github.gaomond.topo.domain.exception.GameStartNotAllowedException
 import com.github.gaomond.topo.domain.exception.GameValidationException
@@ -47,6 +48,10 @@ class Game private constructor(
             throw GameStartNotAllowedException(gameId, GameStartNotAllowedException.Reason.CAPACITY_NOT_REACHED)
         }
         return Game(gameId, GameStatus.ACTIVE, playerCount, creatorPlayerId, objectType, areaThreshold)
+    }
+
+    fun requireCanConfirm() {
+        if (status != GameStatus.ACTIVE) throw GameConfirmationNotAllowedException(gameId)
     }
 
     companion object {

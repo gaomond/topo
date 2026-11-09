@@ -10,7 +10,7 @@ import { FitBoundsController } from "./FitBoundsController";
 import type { Coordinate, LiveMarker } from "./geoState";
 import { HullPolygon } from "./HullPolygon";
 import { LiveMarkers } from "./LiveMarkers";
-import { selfIcon } from "./mapMarkers";
+import { confirmedIcon, selfIcon } from "./mapMarkers";
 import { OverviewButton } from "./OverviewButton";
 
 // OSM 標準タイル。本番常用ポリシー対応・プロバイダ差し替えは将来論点（US-02 スコープ外）。
@@ -26,6 +26,7 @@ const INITIAL_ZOOM = 5;
 export type MapViewProps = {
   // 未測位は null。座標は DESIGN.md の { lat, lng }（WGS84）。自分は watchPosition のリアルタイム値（F1）。
   selfLocation: Coordinate | null;
+  confirmedLocation?: Coordinate | null;
   // 友達ドット（他プレイヤーの live 位置）。自分除外・live=null 除外済みで Smart から渡る。
   friends?: LiveMarker[];
   // 凸包の頂点（サーバー提供・[lat,lng] 閉環）。null は形が未成立（描かない）。
@@ -40,6 +41,7 @@ export type MapViewProps = {
 
 export function MapView({
   selfLocation,
+  confirmedLocation = null,
   friends = [],
   hull = null,
   degenerate = false,
@@ -52,6 +54,7 @@ export function MapView({
     if (selfLocation !== null) {
       result.push([selfLocation.lat, selfLocation.lng]);
     }
+    if (confirmedLocation !== null) result.push([confirmedLocation.lat, confirmedLocation.lng]);
     for (const friend of friends) {
       result.push([friend.coordinate.lat, friend.coordinate.lng]);
     }
@@ -61,7 +64,7 @@ export function MapView({
       }
     }
     return result;
-  }, [selfLocation, friends, hull]);
+  }, [selfLocation, friends, hull, confirmedLocation]);
 
   return (
     <>
@@ -78,6 +81,13 @@ export function MapView({
         {selfLocation !== null && (
           // 自分ピン（self）。友達ドットとは色/形で区別される。
           <Marker position={[selfLocation.lat, selfLocation.lng]} icon={selfIcon} title="現在地" />
+        )}
+        {confirmedLocation !== null && (
+          <Marker
+            position={[confirmedLocation.lat, confirmedLocation.lng]}
+            icon={confirmedIcon}
+            title="確定位置"
+          />
         )}
         <FitBoundsController points={points} overviewNonce={overviewNonce} />
       </MapContainer>

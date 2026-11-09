@@ -70,6 +70,7 @@ frontend/
 | オブジェクト種別 | objectType | `shrine` / `temple` / `school` / `convenience_store` / `park` / `station` |
 | ライブ位置 | liveLocation | プレイヤーの最新現在地。高頻度更新・友達ドット表示用。副作用なし |
 | 友達ドット | live marker | 地図上に表示する他プレイヤーのライブ位置マーカー |
+| 確定位置 | ConfirmedLocation | プレイヤーが確定した座標と確定時刻の値 |
 | 確定 | confirm | プレイヤーが現在地を1点確定する操作 |
 | 凸包 | ConvexHull（`ST_ConvexHull`） | 全員の確定位置から作る多角形 |
 | 面積 | area（areaSqm） | 凸包の実面積（m²）。`ST_Area(geography)` で測地面積を取得 |

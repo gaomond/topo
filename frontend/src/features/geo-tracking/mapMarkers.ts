@@ -67,3 +67,10 @@ export function liveMarkerIcon(online: boolean, displayName: string): L.DivIcon 
     iconAnchor: [6, 6],
   });
 }
+
+export const confirmedIcon = L.divIcon({
+  className: "confirmed-marker",
+  html: '<span style="display:block;width:26px;height:26px;border-radius:50%;background:#15803d;border:3px solid white;color:white;text-align:center;line-height:20px;font-weight:bold;box-shadow:0 1px 5px #333">✓</span>',
+  iconSize: [26, 26],
+  iconAnchor: [13, 13],
+});

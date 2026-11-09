@@ -48,6 +48,17 @@ class StartGameUseCaseTest {
     private class StubPlayerRepository(
         private val count: Int?,
     ) : PlayerRepositoryPort {
+        override fun findByGameIdAndPlayerId(
+            gameId: UUID,
+            playerId: UUID,
+        ): Player? = error("この操作では呼ばれない")
+
+        override fun confirmLocation(
+            gameId: UUID,
+            playerId: UUID,
+            location: com.github.gaomond.topo.domain.model.ConfirmedLocation,
+        ): Unit = error("この操作では呼ばれない")
+
         override fun createPlayer(player: Player) = error("開始では呼ばれない")
 
         override fun countByGameId(gameId: UUID): Int = count ?: error("権限がなければ人数を取得しない")

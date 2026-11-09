@@ -1,10 +1,12 @@
 package com.github.gaomond.topo.adapter.web
 
+import com.github.gaomond.topo.domain.exception.GameConfirmationNotAllowedException
 import com.github.gaomond.topo.domain.exception.GameJoinNotAllowedException
 import com.github.gaomond.topo.domain.exception.GameNotFoundException
 import com.github.gaomond.topo.domain.exception.GameStartNotAllowedException
 import com.github.gaomond.topo.domain.exception.GameValidationException
 import com.github.gaomond.topo.domain.exception.NotGameCreatorException
+import com.github.gaomond.topo.domain.exception.PlayerAlreadyConfirmedException
 import com.github.gaomond.topo.domain.exception.PlayerNotFoundException
 import org.springframework.http.HttpStatus
 import org.springframework.http.ProblemDetail
@@ -19,6 +21,10 @@ import org.springframework.web.bind.annotation.RestControllerAdvice
  */
 @RestControllerAdvice
 class GameApiExceptionHandler {
+    @ExceptionHandler(GameConfirmationNotAllowedException::class, PlayerAlreadyConfirmedException::class)
+    fun handleConfirmationNotAllowed(ex: RuntimeException): ProblemDetail =
+        ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "この位置を確定できません")
+
     @ExceptionHandler(GameValidationException::class)
     fun handleValidation(ex: GameValidationException): ProblemDetail {
         val detail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.message ?: "不正なリクエストです")

@@ -43,6 +43,17 @@ class GetGameStateUseCaseTest {
     private class StubPlayerRepository(
         private val players: List<PlayerReading>,
     ) : PlayerRepositoryPort {
+        override fun findByGameIdAndPlayerId(
+            gameId: UUID,
+            playerId: UUID,
+        ): Player? = error("この操作では呼ばれない")
+
+        override fun confirmLocation(
+            gameId: UUID,
+            playerId: UUID,
+            location: com.github.gaomond.topo.domain.model.ConfirmedLocation,
+        ): Unit = error("この操作では呼ばれない")
+
         override fun createPlayer(player: Player) = error("状態取得では呼ばれない")
 
         override fun countByGameId(gameId: UUID): Int = error("状態取得では呼ばれない")

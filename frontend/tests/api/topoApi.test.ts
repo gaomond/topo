@@ -28,6 +28,17 @@ function noContentResponse(ok = true, status = 204): Response {
 }
 
 describe("createTopoApi", () => {
+  it("test_confirmLocation_withPoint_postsJsonAndReadsConfirmation", async () => {
+    const confirmed = { playerId: "p-1", confirmed: true, confirmedAt: "2026-11-08T01:00:00Z" };
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(confirmed));
+    const api = createTopoApi({ baseUrl: "http://api.test", fetchImpl });
+    expect(await api.confirmLocation("g/1", "p-1", { lat: 35, lng: 139 })).toEqual(confirmed);
+    expect(fetchImpl).toHaveBeenCalledWith("http://api.test/api/games/g%2F1/players/p-1/confirm", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lat: 35, lng: 139 }),
+    });
+  });
   it("test_fetchConfig_returnsObjectTypesAndAreaPresets", async () => {
     const config: ConfigResponse = {
       objectTypes: ["shrine"],

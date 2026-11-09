@@ -5,6 +5,7 @@ import { vi } from "vitest";
 import type { TopoApi } from "@/api/topoApi";
 import type {
   ConfigResponse,
+  ConfirmLocationResponse,
   CreateGameResponse,
   GameStateResponse,
   JoinGameResponse,
@@ -14,6 +15,7 @@ import type {
 
 export type FakeTopoApi = {
   api: TopoApi;
+  confirmLocation: ReturnType<typeof vi.fn<() => Promise<ConfirmLocationResponse>>>;
   fetchConfig: ReturnType<typeof vi.fn<() => Promise<ConfigResponse>>>;
   createGame: ReturnType<typeof vi.fn<() => Promise<CreateGameResponse>>>;
   joinGame: ReturnType<typeof vi.fn<() => Promise<JoinGameResponse>>>;
@@ -23,6 +25,7 @@ export type FakeTopoApi = {
 };
 
 export function createFakeTopoApi(): FakeTopoApi {
+  const confirmLocation = vi.fn<() => Promise<ConfirmLocationResponse>>();
   const fetchConfig = vi.fn<() => Promise<ConfigResponse>>();
   const createGame = vi.fn<() => Promise<CreateGameResponse>>();
   const joinGame = vi.fn<() => Promise<JoinGameResponse>>();
@@ -31,6 +34,7 @@ export function createFakeTopoApi(): FakeTopoApi {
   // 既定は resolve（送信は副作用なし）。テストで rejectValue も設定できる。
   const updateLocation = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
   const api: TopoApi = {
+    confirmLocation,
     fetchConfig,
     createGame,
     joinGame,
@@ -38,7 +42,16 @@ export function createFakeTopoApi(): FakeTopoApi {
     startGame,
     updateLocation,
   };
-  return { api, fetchConfig, createGame, joinGame, getGameState, startGame, updateLocation };
+  return {
+    confirmLocation,
+    api,
+    fetchConfig,
+    createGame,
+    joinGame,
+    getGameState,
+    startGame,
+    updateLocation,
+  };
 }
 
 export function gameState(overrides: Partial<GameStateResponse> = {}): GameStateResponse {

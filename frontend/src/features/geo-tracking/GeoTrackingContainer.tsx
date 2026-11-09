@@ -9,6 +9,8 @@ import { useCallback, useMemo, useState } from "react";
 import { type TopoApi, topoApi } from "@/api/topoApi";
 import type { CurrentAreaPayload, PlayerPayload } from "@/api/types";
 import { AreaMeter } from "@/features/area-meter/AreaMeter";
+import { ConfirmLocationControl } from "@/features/location-confirm/ConfirmLocationControl";
+import { useLocationConfirmation } from "@/features/location-confirm/useLocationConfirmation";
 import { AccuracyReadout } from "./AccuracyReadout";
 import { DegradedBanner } from "./DegradedBanner";
 import { type Coordinate, GeoState, type LiveMarker } from "./geoState";
@@ -46,6 +48,14 @@ export function GeoTrackingContainer({
   const resolvedApi = api ?? topoApi;
   const { state, selfLocation, accuracyMeters, errorMessage, canRetry, retry } =
     useGeoTracking(deps);
+
+  const confirmation = useLocationConfirmation(
+    resolvedApi,
+    gameId,
+    playerId,
+    selfLocation,
+    players.some((p) => p.playerId === playerId && p.confirmed),
+  );
 
   // ライブ位置の送信関数（Smart）。ペイロードは { lat, lng } のみ（Coordinate と一致）。
   const sendLocation = useCallback(
@@ -103,17 +113,34 @@ export function GeoTrackingContainer({
     <div className="absolute inset-0">
       <MapView
         selfLocation={selfLocation}
+        confirmedLocation={confirmation.fixedLocation}
         friends={friends}
         hull={hull}
         degenerate={degenerate}
         overviewNonce={overviewNonce}
         onOverview={handleOverview}
       />
-      <AccuracyReadout accuracyMeters={accuracyMeters} />
       <DegradedBanner visible={state === GeoState.DEGRADED} />
-      {areaThreshold !== undefined && (
-        <AreaMeter sqm={currentArea?.sqm ?? null} threshold={areaThreshold} />
-      )}
+      <div className="pointer-events-none absolute inset-x-0 bottom-6 z-[1000] flex flex-col gap-3 px-3">
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <AccuracyReadout accuracyMeters={accuracyMeters} />
+          {areaThreshold !== undefined && (
+            <AreaMeter sqm={currentArea?.sqm ?? null} threshold={areaThreshold} />
+          )}
+        </div>
+        <ConfirmLocationControl
+          confirmed={confirmation.confirmed}
+          dialogOpen={confirmation.dialogOpen}
+          submitting={confirmation.submitting}
+          canConfirm={confirmation.canConfirm}
+          error={confirmation.error}
+          onOpen={confirmation.open}
+          onCancel={confirmation.cancel}
+          onConfirm={() => {
+            void confirmation.confirm();
+          }}
+        />
+      </div>
     </div>
   );
 }

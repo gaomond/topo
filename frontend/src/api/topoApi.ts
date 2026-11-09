@@ -6,6 +6,8 @@
 
 import type {
   ConfigResponse,
+  ConfirmLocationRequest,
+  ConfirmLocationResponse,
   CreateGameRequest,
   CreateGameResponse,
   GameStateResponse,
@@ -39,6 +41,11 @@ export class ApiError extends Error {
 
 export type TopoApi = {
   fetchConfig: () => Promise<ConfigResponse>;
+  confirmLocation: (
+    gameId: string,
+    playerId: string,
+    request: ConfirmLocationRequest,
+  ) => Promise<ConfirmLocationResponse>;
   createGame: (request: CreateGameRequest) => Promise<CreateGameResponse>;
   joinGame: (gameId: string, request: JoinGameRequest) => Promise<JoinGameResponse>;
   getGameState: (gameId: string) => Promise<GameStateResponse>;
@@ -88,6 +95,15 @@ export function createTopoApi(options: CreateTopoApiOptions = {}): TopoApi {
 
   return {
     fetchConfig: () => requestJson<ConfigResponse>("/api/config"),
+    confirmLocation: (gameId, playerId, request) =>
+      requestJson<ConfirmLocationResponse>(
+        `/api/games/${encodeURIComponent(gameId)}/players/${encodeURIComponent(playerId)}/confirm`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(request),
+        },
+      ),
     createGame: (request) =>
       requestJson<CreateGameResponse>("/api/games", {
         method: "POST",

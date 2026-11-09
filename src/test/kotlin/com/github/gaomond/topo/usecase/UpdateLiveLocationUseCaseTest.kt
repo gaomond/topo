@@ -27,6 +27,17 @@ class UpdateLiveLocationUseCaseTest {
         private val failure: RuntimeException? = null,
         val calls: MutableList<UpdateCall> = mutableListOf(),
     ) : PlayerRepositoryPort {
+        override fun findByGameIdAndPlayerId(
+            gameId: UUID,
+            playerId: UUID,
+        ): Player? = error("この操作では呼ばれない")
+
+        override fun confirmLocation(
+            gameId: UUID,
+            playerId: UUID,
+            location: com.github.gaomond.topo.domain.model.ConfirmedLocation,
+        ): Unit = error("この操作では呼ばれない")
+
         override fun createPlayer(player: Player) = error("位置更新では呼ばれない")
 
         override fun countByGameId(gameId: UUID): Int = error("位置更新では呼ばれない")

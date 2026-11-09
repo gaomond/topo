@@ -2,6 +2,7 @@ package com.github.gaomond.topo.adapter.web
 
 import com.github.gaomond.topo.domain.exception.GameValidationException
 import com.github.gaomond.topo.domain.model.GameStatus
+import com.github.gaomond.topo.usecase.ConfirmLocationUseCase
 import com.github.gaomond.topo.usecase.CreateGameUseCase
 import com.github.gaomond.topo.usecase.GetGameStateResult
 import com.github.gaomond.topo.usecase.GetGameStateUseCase
@@ -46,6 +47,7 @@ import java.util.UUID
         StartGameController::class,
         GameStateController::class,
         UpdateLocationController::class,
+        ConfirmLocationController::class,
     ],
 )
 @ImportAutoConfiguration(
@@ -77,6 +79,9 @@ class OpenApiContractTest {
     @MockitoBean
     lateinit var updateLiveLocationUseCase: UpdateLiveLocationUseCase
 
+    @MockitoBean
+    lateinit var confirmLocationUseCase: ConfirmLocationUseCase
+
     @Test
     fun test_getApiDocs_existingControllers_returnsGeneratedSpecification() {
         mockMvc.get("/v3/api-docs").andExpect {
@@ -86,9 +91,10 @@ class OpenApiContractTest {
     }
 
     @Test
-    fun test_getApiDocs_existingApi_exposesOnlySixOperationsAndTheirResponses() {
+    fun test_getApiDocs_existingApi_exposesOnlySevenOperationsAndTheirResponses() {
         val expected =
             mapOf(
+                "/api/games/{id}/players/{pid}/confirm" to Triple("post", "confirmLocation", setOf("200", "400", "404", "409")),
                 "/api/config" to Triple("get", "getConfig", setOf("200")),
                 "/api/games" to Triple("post", "createGame", setOf("201", "400")),
                 "/api/games/{id}/players" to Triple("post", "joinGame", setOf("201", "400", "404", "409")),
@@ -111,7 +117,7 @@ class OpenApiContractTest {
                 assertFalse(operation.path("summary").asString().isBlank())
                 operation.path("operationId").asString()
             }
-        assertEquals(6, operationIds.toSet().size)
+        assertEquals(7, operationIds.toSet().size)
     }
 
     @Test
@@ -134,6 +140,14 @@ class OpenApiContractTest {
                 .path("required")
                 .asBoolean(false),
         )
+        assertEquals(setOf("lat", "lng"), names(schema(doc, "ConfirmLocationRequest").path("required")))
+        assertEquals("date-time", schema(doc, "ConfirmLocationResponse").at("/properties/confirmedAt/format").asString())
+        assertEquals("uuid", schema(doc, "ConfirmLocationResponse").at("/properties/playerId/format").asString())
+        for ((field, bound) in mapOf("lat" to 90.0, "lng" to 180.0)) {
+            val coordinate = schema(doc, "ConfirmLocationRequest").path("properties").path(field)
+            assertEquals(-bound, coordinate.path("minimum").asDouble())
+            assertEquals(bound, coordinate.path("maximum").asDouble())
+        }
         val create = schema(doc, "CreateGameRequest")
         assertEquals(setOf("objectType", "areaPreset", "playerCount"), names(create.path("required")))
         assertEquals(setOf("shrine"), names(create.at("/properties/objectType/enum")))
@@ -155,6 +169,7 @@ class OpenApiContractTest {
     fun test_getApiDocs_responseFields_preservesPresenceNullabilityAndFormats() {
         val doc = specification()
         for (name in listOf(
+            "ConfirmLocationResponse",
             "ConfigResponse",
             "AreaPresetPayload",
             "CreateGameResponse",

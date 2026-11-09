@@ -1,5 +1,6 @@
 package com.github.gaomond.topo.adapter.persistence.jpa
 
+import com.github.gaomond.topo.domain.model.ConfirmedLocation
 import com.github.gaomond.topo.domain.model.Coordinate
 import com.github.gaomond.topo.domain.model.LiveLocation
 import com.github.gaomond.topo.domain.model.Player
@@ -8,6 +9,7 @@ import com.github.gaomond.topo.domain.port.PlayerRepositoryPort
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.Repository
+import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
 import java.util.UUID
@@ -21,6 +23,61 @@ interface PlayerJpaRepository :
 
     @Query("select player from PlayerRecord player where player.id = :playerId")
     fun findRecordById(playerId: UUID): PlayerRecord?
+
+    fun findRecordByIdAndGameId(
+        id: UUID,
+        gameId: UUID,
+    ): PlayerRecord?
+
+    @Query(
+        value = "select ST_Y(fixed_geom) as lat, ST_X(fixed_geom) as lng from player where id = :playerId and game_id = :gameId",
+        nativeQuery = true,
+    )
+    fun findFixedCoordinate(
+        gameId: UUID,
+        playerId: UUID,
+    ): FixedCoordinateRecord?
+
+    // 生SQLで更新した確定時刻を、同一トランザクション内の再取得にも反映する。
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(
+        value =
+            "update player set fixed_geom = ST_SetSRID(ST_MakePoint(:lng, :lat), 4326), confirmed_at = :at " +
+                "where id = :playerId and game_id = :gameId",
+        nativeQuery = true,
+    )
+    fun confirmRecordLocation(
+        gameId: UUID,
+        playerId: UUID,
+        lat: Double,
+        lng: Double,
+        at: Instant,
+    ): Int
+
+    @Transactional(readOnly = true)
+    override fun findByGameIdAndPlayerId(
+        gameId: UUID,
+        playerId: UUID,
+    ): Player? {
+        val record = findRecordByIdAndGameId(playerId, gameId) ?: return null
+        val location =
+            record.confirmedAt?.let { at ->
+                val fixed = checkNotNull(findFixedCoordinate(gameId, playerId))
+                ConfirmedLocation(Coordinate(checkNotNull(fixed.lat), checkNotNull(fixed.lng)), at)
+            }
+        return Player.restore(record.id, record.gameId, record.displayName ?: "", location)
+    }
+
+    @Transactional(propagation = Propagation.MANDATORY)
+    override fun confirmLocation(
+        gameId: UUID,
+        playerId: UUID,
+        location: ConfirmedLocation,
+    ) {
+        check(confirmRecordLocation(gameId, playerId, location.coordinate.lat, location.coordinate.lng, location.at) == 1) {
+            "確定位置の保存対象が存在しません: gameId=$gameId, playerId=$playerId"
+        }
+    }
 
     @Query("select count(player) from PlayerRecord player where player.gameId = :gameId")
     fun countRecordsByGameId(gameId: UUID): Long
@@ -77,4 +134,9 @@ interface PlayerJpaRepository :
             null
         }
     }
+}
+
+interface FixedCoordinateRecord {
+    val lat: Double?
+    val lng: Double?
 }

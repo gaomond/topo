@@ -95,3 +95,7 @@ export type UpdateLocationRequest = {
   lat: number;
   lng: number;
 };
+
+/** POST /api/games/{id}/players/{pid}/confirm の入力。 */
+export type ConfirmLocationRequest = { lat: number; lng: number };
+export type ConfirmLocationResponse = { playerId: string; confirmed: boolean; confirmedAt: string };

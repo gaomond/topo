@@ -56,3 +56,13 @@ class PlayerNotFoundException(
     val gameId: UUID,
     val playerId: UUID,
 ) : RuntimeException("プレイヤーが存在しません: gameId=$gameId, playerId=$playerId")
+
+/** ゲームが確定を受け付ける状態ではない。 */
+class GameConfirmationNotAllowedException(
+    val gameId: UUID,
+) : RuntimeException("このゲームでは確定できません: $gameId")
+
+/** 保存済みの確定点は変更できない。 */
+class PlayerAlreadyConfirmedException(
+    val playerId: UUID,
+) : RuntimeException("プレイヤーは確定済みです: $playerId")
