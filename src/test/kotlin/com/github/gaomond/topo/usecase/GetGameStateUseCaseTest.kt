@@ -33,6 +33,8 @@ class GetGameStateUseCaseTest {
 
         override fun updateCreatorPlayerId(game: Game) = error("状態取得では呼ばれない")
 
+        override fun saveResult(game: Game) = error("unused")
+
         override fun updateStatus(game: Game) = error("状態取得では呼ばれない")
 
         override fun findSummary(gameId: UUID): GameSummary? = summary
@@ -224,5 +226,21 @@ class GetGameStateUseCaseTest {
 
         assertFalse(state.players[0].online)
         assertNull(state.players[0].live)
+    }
+
+    @Test fun test_getGameState_completed_returnsStoredResultWithoutAreaQuery() {
+        val polygon = listOf(Coordinate(35.0, 139.0), Coordinate(35.0, 139.001), Coordinate(35.001, 139.0), Coordinate(35.0, 139.0))
+        val result =
+            com.github.gaomond.topo.domain.model
+                .GameResult(50.0, true, 3, polygon)
+        val live = SpyLiveAreaQuery(null)
+        val state =
+            useCase(
+                GameSummary(GameStatus.COMPLETED, 3, null, 500000.0, result),
+                liveArea = live,
+            ).getState(GetGameStateInput(gameId))
+        assertEquals(result, state.result)
+        assertNull(state.currentArea)
+        assertEquals(0, live.callCount)
     }
 }

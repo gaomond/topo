@@ -31,11 +31,14 @@ export class ApiError extends Error {
   readonly status: number;
   readonly path: string;
 
-  constructor(status: number, path: string) {
+  readonly reason?: string;
+
+  constructor(status: number, path: string, reason?: string) {
     super(`API エラー: ${status} ${path}`);
     this.name = "ApiError";
     this.status = status;
     this.path = path;
+    this.reason = reason;
   }
 }
 
@@ -80,7 +83,20 @@ export function createTopoApi(options: CreateTopoApiOptions = {}): TopoApi {
   async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
     const response = await fetchImpl(`${baseUrl}${path}`, init);
     if (!response.ok) {
-      throw new ApiError(response.status, path);
+      let reason: string | undefined;
+      try {
+        const problem: unknown = await response.json();
+        if (
+          typeof problem === "object" &&
+          problem !== null &&
+          "reason" in problem &&
+          typeof problem.reason === "string"
+        )
+          reason = problem.reason;
+      } catch {
+        // JSON以外でもHTTPステータスを維持する。
+      }
+      throw new ApiError(response.status, path, reason);
     }
     return (await response.json()) as T;
   }
@@ -89,7 +105,20 @@ export function createTopoApi(options: CreateTopoApiOptions = {}): TopoApi {
   async function requestNoContent(path: string, init?: RequestInit): Promise<void> {
     const response = await fetchImpl(`${baseUrl}${path}`, init);
     if (!response.ok) {
-      throw new ApiError(response.status, path);
+      let reason: string | undefined;
+      try {
+        const problem: unknown = await response.json();
+        if (
+          typeof problem === "object" &&
+          problem !== null &&
+          "reason" in problem &&
+          typeof problem.reason === "string"
+        )
+          reason = problem.reason;
+      } catch {
+        // JSON以外でもHTTPステータスを維持する。
+      }
+      throw new ApiError(response.status, path, reason);
     }
   }
 

@@ -6,7 +6,7 @@ import com.github.gaomond.topo.domain.model.PlayerSnapshot
 import com.github.gaomond.topo.usecase.GetGameStateResult
 import io.swagger.v3.oas.annotations.media.Schema
 
-/** ゲーム状態のレスポンス。確定結果 result は現在常に null を返す。 */
+/** ゲーム状態と保存済みの確定結果。 */
 @Schema(requiredProperties = ["gameId", "status", "playerCount", "creatorPlayerId", "players", "areaThreshold", "currentArea", "result"])
 data class GameStateResponse(
     @field:Schema(format = "uuid")
@@ -23,8 +23,7 @@ data class GameStateResponse(
     val areaThreshold: Double,
     // ACTIVE 以外、ライブ座標 3 点未満、計算結果が空の場合は null。
     val currentArea: CurrentAreaPayload?,
-    @field:Schema(types = ["null"], description = "現在は常にnull。確定結果の形式は未実装。")
-    val result: Any? = null,
+    val result: GameResultPayload? = null,
 ) {
     companion object {
         fun from(state: GetGameStateResult): GameStateResponse =
@@ -36,6 +35,7 @@ data class GameStateResponse(
                 players = state.players.map(PlayerPayload::from),
                 areaThreshold = state.areaThreshold,
                 currentArea = state.currentArea?.let(CurrentAreaPayload::from),
+                result = state.result?.let(GameResultPayload::from),
             )
     }
 }

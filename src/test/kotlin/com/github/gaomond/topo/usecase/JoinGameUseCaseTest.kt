@@ -34,6 +34,8 @@ class JoinGameUseCaseTest {
 
         override fun updateCreatorPlayerId(game: Game) = error("参加では呼ばれない")
 
+        override fun saveResult(game: Game) = error("unused")
+
         override fun updateStatus(game: Game) = error("参加では呼ばれない")
 
         override fun findSummary(gameId: UUID): GameSummary? = error("参加ではロック付き取得を使う")

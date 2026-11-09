@@ -1,5 +1,6 @@
 package com.github.gaomond.topo.adapter.web
 
+import com.github.gaomond.topo.domain.exception.ConfirmationAreaRejectedException
 import com.github.gaomond.topo.domain.exception.GameConfirmationNotAllowedException
 import com.github.gaomond.topo.domain.exception.GameJoinNotAllowedException
 import com.github.gaomond.topo.domain.exception.GameNotFoundException
@@ -16,11 +17,22 @@ import org.springframework.web.bind.annotation.RestControllerAdvice
 /**
  * 入力不正は 400、対象不在は 404、作成者以外の開始は 403、参加・開始不可は 409 とする。
  *
- * 入力不正のみ reason を公開する。プレイヤーの不在・非所属、参加・開始不可の個別理由は
+ * 入力不正と面積条件による確定拒否で reason を公開する。プレイヤーの不在・非所属、参加・開始不可の個別理由は
  * レスポンスで出し分けない。
  */
 @RestControllerAdvice
 class GameApiExceptionHandler {
+    @ExceptionHandler(ConfirmationAreaRejectedException::class)
+    fun handleAreaRejected(ex: ConfirmationAreaRejectedException): ProblemDetail =
+        ProblemDetail
+            .forStatusAndDetail(
+                org.springframework.http.HttpStatusCode
+                    .valueOf(422),
+                ex.message ?: ex.reason.name,
+            ).apply {
+                setProperty("reason", ex.reason.name)
+            }
+
     @ExceptionHandler(GameConfirmationNotAllowedException::class, PlayerAlreadyConfirmedException::class)
     fun handleConfirmationNotAllowed(ex: RuntimeException): ProblemDetail =
         ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "この位置を確定できません")

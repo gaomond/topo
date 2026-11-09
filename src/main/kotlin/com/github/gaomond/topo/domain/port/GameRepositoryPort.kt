@@ -18,6 +18,9 @@ interface GameRepositoryPort {
     /** status のみを更新し、結果・空間カラムを含む他の値は維持する。対象ゲームは存在すること。 */
     fun updateStatus(game: Game)
 
+    /** 完了したゲームの状態と結果だけを同じトランザクションで保存する。対象は存在すること。 */
+    fun saveResult(game: Game)
+
     /**
      * 状態取得用の [GameSummary] を返す。不在なら null。
      * 参加・開始の判定には [findByIdWithLock] を使う。

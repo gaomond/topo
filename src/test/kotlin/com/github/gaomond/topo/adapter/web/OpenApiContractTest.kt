@@ -94,7 +94,7 @@ class OpenApiContractTest {
     fun test_getApiDocs_existingApi_exposesOnlySevenOperationsAndTheirResponses() {
         val expected =
             mapOf(
-                "/api/games/{id}/players/{pid}/confirm" to Triple("post", "confirmLocation", setOf("200", "400", "404", "409")),
+                "/api/games/{id}/players/{pid}/confirm" to Triple("post", "confirmLocation", setOf("200", "400", "404", "409", "422")),
                 "/api/config" to Triple("get", "getConfig", setOf("200")),
                 "/api/games" to Triple("post", "createGame", setOf("201", "400")),
                 "/api/games/{id}/players" to Triple("post", "joinGame", setOf("201", "400", "404", "409")),
@@ -187,7 +187,8 @@ class OpenApiContractTest {
             assertTrue(allowsNull(schema(doc, "GameStateResponse").path("properties").path(name)), name)
         }
         assertTrue(allowsNull(schema(doc, "PlayerPayload").at("/properties/live")))
-        assertEquals("null", schema(doc, "GameStateResponse").at("/properties/result/type").asString())
+        assertTrue(allowsNull(schema(doc, "GameStateResponse").at("/properties/result")))
+        assertTrue(schema(doc, "GameResultPayload").path("properties").has("polygon"))
         assertEquals("date-time", schema(doc, "LiveLocationPayload").at("/properties/at/format").asString())
         for (name in listOf("CreateGameResponse", "JoinGameResponse", "StartGameResponse", "GameStateResponse", "PlayerPayload")) {
             val properties = schema(doc, name).path("properties")

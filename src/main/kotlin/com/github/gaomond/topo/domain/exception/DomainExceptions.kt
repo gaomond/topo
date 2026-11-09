@@ -66,3 +66,9 @@ class GameConfirmationNotAllowedException(
 class PlayerAlreadyConfirmedException(
     val playerId: UUID,
 ) : RuntimeException("プレイヤーは確定済みです: $playerId")
+
+class ConfirmationAreaRejectedException(
+    val reason: Reason,
+) : RuntimeException(reason.name) {
+    enum class Reason { AREA_EXCEEDS_THRESHOLD, AREA_BELOW_MIN }
+}

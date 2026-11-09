@@ -7,7 +7,12 @@ import { createFakeTopoApi, gameState, player } from "../../fakeTopoApi";
 describe("useLocationConfirmation", () => {
   it("test_confirm_afterDialogAndGpsUpdate_sendsLatestPointAndKeepsIt", async () => {
     const fake = createFakeTopoApi();
-    let resolve!: (value: { playerId: string; confirmed: boolean; confirmedAt: string }) => void;
+    let resolve!: (value: {
+      playerId: string;
+      confirmed: boolean;
+      confirmedAt: string;
+      result: null;
+    }) => void;
     fake.confirmLocation.mockReturnValue(
       new Promise((r) => {
         resolve = r;
@@ -34,7 +39,12 @@ describe("useLocationConfirmation", () => {
     expect(result.current.submitting).toBe(true);
     rerender({ coordinate: { lat: 37, lng: 141 }, confirmed: false });
     await act(async () => {
-      resolve({ playerId: "self", confirmed: true, confirmedAt: "2026-11-08T01:00:00Z" });
+      resolve({
+        playerId: "self",
+        confirmed: true,
+        confirmedAt: "2026-11-08T01:00:00Z",
+        result: null,
+      });
       await pending;
     });
     expect(result.current.confirmed).toBe(true);
@@ -99,6 +109,7 @@ describe("useLocationConfirmation", () => {
       playerId: "self",
       confirmed: true,
       confirmedAt: "2026-11-08T01:00:00Z",
+      result: null,
     });
     const { result } = renderHook(() =>
       useLocationConfirmation(fake.api, "game", "self", { lat: 35, lng: 139 }, false),
@@ -110,5 +121,49 @@ describe("useLocationConfirmation", () => {
     act(() => result.current.open());
     await act(() => result.current.confirm());
     expect(result.current.confirmed).toBe(true);
+  });
+
+  it.each([
+    ["AREA_EXCEEDS_THRESHOLD", "面積が上限を超えるため確定できません。近づいてください"],
+    ["AREA_BELOW_MIN", "面積が小さすぎるため確定できません。もっと散らばってください"],
+  ])("test_confirm_areaRejected_%s_showsReasonAndRetriesNewGps", async (reason, message) => {
+    const fake = createFakeTopoApi();
+    fake.confirmLocation
+      .mockRejectedValueOnce(new ApiError(422, "/confirm", reason))
+      .mockResolvedValue({
+        playerId: "self",
+        confirmed: true,
+        confirmedAt: "2026-11-09T01:00:00Z",
+        result: null,
+      });
+    const { result, rerender } = renderHook(
+      ({ coordinate }) => useLocationConfirmation(fake.api, "game", "self", coordinate, false),
+      { initialProps: { coordinate: { lat: 35, lng: 139 } } },
+    );
+    act(() => result.current.open());
+    await act(() => result.current.confirm());
+    expect(result.current.error).toBe(message);
+    expect(result.current.confirmed).toBe(false);
+    expect(result.current.fixedLocation).toBeNull();
+    expect(result.current.canConfirm).toBe(true);
+    rerender({ coordinate: { lat: 35.1, lng: 139.1 } });
+    act(() => result.current.open());
+    await act(() => result.current.confirm());
+    expect(fake.confirmLocation).toHaveBeenLastCalledWith("game", "self", {
+      lat: 35.1,
+      lng: 139.1,
+    });
+    expect(result.current.confirmed).toBe(true);
+  });
+  it("test_confirm_unknown422_keepsRetryWithGeneralError", async () => {
+    const fake = createFakeTopoApi();
+    fake.confirmLocation.mockRejectedValue(new ApiError(422, "/confirm", "UNKNOWN"));
+    const { result } = renderHook(() =>
+      useLocationConfirmation(fake.api, "game", "self", { lat: 35, lng: 139 }, false),
+    );
+    act(() => result.current.open());
+    await act(() => result.current.confirm());
+    expect(result.current.error).toBe("位置の確定に失敗しました。もう一度お試しください。");
+    expect(result.current.canConfirm).toBe(true);
   });
 });

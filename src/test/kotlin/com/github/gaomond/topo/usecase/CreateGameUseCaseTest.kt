@@ -66,6 +66,8 @@ class CreateGameUseCaseTest {
             calls.add(Call.UpdateCreator(game.gameId, requireNotNull(game.creatorPlayerId)))
         }
 
+        override fun saveResult(game: Game) = error("unused")
+
         override fun updateStatus(game: Game) = error("作成では呼ばれない")
 
         override fun findSummary(gameId: UUID): GameSummary? = error("作成では呼ばれない")

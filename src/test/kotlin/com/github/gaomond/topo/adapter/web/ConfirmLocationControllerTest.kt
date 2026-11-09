@@ -43,7 +43,7 @@ class ConfirmLocationControllerTest {
             confirmLocationUseCase.confirm(any()),
         ).thenReturn(
             com.github.gaomond.topo.usecase
-                .ConfirmLocationResult(playerId, true, java.time.Instant.parse("2026-11-08T01:00:00Z")),
+                .ConfirmedLocationResult(playerId, true, java.time.Instant.parse("2026-11-08T01:00:00Z")),
         )
     }
 
@@ -199,5 +199,51 @@ class ConfirmLocationControllerTest {
                 content = """{"lat":35.0,"lng":}"""
             }.andExpect { status { isBadRequest() } }
         verify(confirmLocationUseCase, never()).confirm(any())
+    }
+
+    @Test fun test_confirmLocation_areaRejected_returns422WithReason() {
+        for (reason in com.github.gaomond.topo.domain.exception.ConfirmationAreaRejectedException.Reason.entries) {
+            whenever(
+                confirmLocationUseCase.confirm(any()),
+            ).thenThrow(
+                com.github.gaomond.topo.domain.exception
+                    .ConfirmationAreaRejectedException(reason),
+            )
+            mockMvc
+                .post(path()) {
+                    contentType = MediaType.APPLICATION_JSON
+                    content = """{"lat":35.0,"lng":139.0}"""
+                }.andExpect {
+                    status { isUnprocessableEntity() }
+                    content { contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON) }
+                    jsonPath("$.reason") { value(reason.name) }
+                }
+        }
+    }
+
+    @Test fun test_confirmLocation_final_returnsTypedResult() {
+        val point = Coordinate(35.0, 139.0)
+        val polygon = listOf(point, Coordinate(35.0, 139.001), Coordinate(35.001, 139.0), point)
+        whenever(
+            confirmLocationUseCase.confirm(any()),
+        ).thenReturn(
+            com.github.gaomond.topo.usecase.ConfirmedLocationResult(
+                playerId,
+                true,
+                java.time.Instant.now(),
+                com.github.gaomond.topo.domain.model
+                    .GameResult(50.0, true, 2, polygon),
+            ),
+        )
+        mockMvc
+            .post(path()) {
+                contentType = MediaType.APPLICATION_JSON
+                content = """{"lat":35.0,"lng":139.0}"""
+            }.andExpect {
+                status { isOk() }
+                jsonPath("$.result.areaSqm") { value(50.0) }
+                jsonPath("$.result.areaValid") { value(true) }
+                jsonPath("$.result.polygon.length()") { value(4) }
+            }
     }
 }

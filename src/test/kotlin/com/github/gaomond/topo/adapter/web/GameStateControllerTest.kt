@@ -203,4 +203,32 @@ class GameStateControllerTest {
                 jsonPath("$.result") { value(null) }
             }
     }
+
+    @Test fun test_getGame_completed_returnsStoredResultAndNullCurrentArea() {
+        val point = Coordinate(35.0, 139.0)
+        val polygon = listOf(point, Coordinate(35.0, 139.001), Coordinate(35.001, 139.0), point)
+        whenever(
+            getGameStateUseCase.getState(any()),
+        ).thenReturn(
+            GetGameStateResult(
+                gameId,
+                GameStatus.COMPLETED,
+                3,
+                null,
+                emptyList(),
+                500000.0,
+                result =
+                    com.github.gaomond.topo.domain.model
+                        .GameResult(50.0, true, 4, polygon),
+            ),
+        )
+        mockMvc.get("/api/games/$gameId").andExpect {
+            status { isOk() }
+            jsonPath("$.status") { value("COMPLETED") }
+            jsonPath("$.currentArea") { value(org.hamcrest.Matchers.nullValue()) }
+            jsonPath("$.result.areaSqm") { value(50.0) }
+            jsonPath("$.result.objectCount") { value(4) }
+            jsonPath("$.result.polygon[0].lat") { value(35.0) }
+        }
+    }
 }

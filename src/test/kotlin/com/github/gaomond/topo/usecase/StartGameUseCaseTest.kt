@@ -32,6 +32,8 @@ class StartGameUseCaseTest {
 
         override fun updateCreatorPlayerId(game: Game) = error("開始では呼ばれない")
 
+        override fun saveResult(game: Game) = error("unused")
+
         override fun updateStatus(game: Game) {
             updatedStatuses.add(game.gameId to game.status)
             updatedGames.add(game)

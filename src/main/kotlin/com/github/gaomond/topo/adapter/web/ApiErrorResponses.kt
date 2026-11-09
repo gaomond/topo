@@ -33,3 +33,13 @@ data class ValidationProblemResponse(
     @field:Schema(description = "入力不正の理由コード", example = "INVALID_OBJECT_TYPE")
     val reason: String,
 )
+
+@Schema(requiredProperties = ["detail", "instance", "status", "title", "reason"])
+data class AreaRejectionProblemResponse(
+    val detail: String,
+    val instance: String,
+    val status: Int,
+    val title: String,
+    @field:Schema(allowableValues = ["AREA_EXCEEDS_THRESHOLD", "AREA_BELOW_MIN"])
+    val reason: String,
+)

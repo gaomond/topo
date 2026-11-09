@@ -58,7 +58,15 @@ export function useLocationConfirmation(
         setError(
           failure instanceof ApiError && failure.status === 409
             ? "現在のゲーム状態では確定できません。"
-            : "位置の確定に失敗しました。もう一度お試しください。",
+            : failure instanceof ApiError &&
+                failure.status === 422 &&
+                failure.reason === "AREA_EXCEEDS_THRESHOLD"
+              ? "面積が上限を超えるため確定できません。近づいてください"
+              : failure instanceof ApiError &&
+                  failure.status === 422 &&
+                  failure.reason === "AREA_BELOW_MIN"
+                ? "面積が小さすぎるため確定できません。もっと散らばってください"
+                : "位置の確定に失敗しました。もう一度お試しください。",
         );
     } finally {
       pending.current = false;

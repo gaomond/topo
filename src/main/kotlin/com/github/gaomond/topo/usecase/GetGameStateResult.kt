@@ -1,6 +1,7 @@
 package com.github.gaomond.topo.usecase
 
 import com.github.gaomond.topo.domain.model.CurrentArea
+import com.github.gaomond.topo.domain.model.GameResult
 import com.github.gaomond.topo.domain.model.GameStatus
 import com.github.gaomond.topo.domain.model.PlayerSnapshot
 import java.util.UUID
@@ -21,4 +22,5 @@ data class GetGameStateResult(
     val players: List<PlayerSnapshot>,
     val areaThreshold: Double,
     val currentArea: CurrentArea? = null,
+    val result: GameResult? = null,
 )

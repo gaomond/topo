@@ -57,6 +57,7 @@ class GetGameStateUseCase(
             players = players,
             areaThreshold = summary.areaThreshold,
             currentArea = currentArea,
+            result = summary.result,
         )
     }
 }

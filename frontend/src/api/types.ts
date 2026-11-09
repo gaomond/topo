@@ -51,8 +51,8 @@ export type GameStateResponse = {
   areaThreshold: number;
   // live 位置の暫定凸包（ACTIVE かつ live 点 3 点以上のときのみ非 null・US-08）。
   currentArea: CurrentAreaPayload | null;
-  // 確定結果。confirm/集計（US-11/13）まで常に null。
-  result: unknown | null;
+  // 完了前はnull、完了後は保存済みの確定結果。
+  result: GameResultPayload | null;
 };
 
 /** POST /api/games/{id}/start のリクエストボディ。playerId は creator 判定に使う必須項目。 */
@@ -98,4 +98,15 @@ export type UpdateLocationRequest = {
 
 /** POST /api/games/{id}/players/{pid}/confirm の入力。 */
 export type ConfirmLocationRequest = { lat: number; lng: number };
-export type ConfirmLocationResponse = { playerId: string; confirmed: boolean; confirmedAt: string };
+export type GameResultPayload = {
+  areaSqm: number;
+  areaValid: boolean;
+  objectCount: number;
+  polygon: { lat: number; lng: number }[];
+};
+export type ConfirmLocationResponse = {
+  playerId: string;
+  confirmed: boolean;
+  confirmedAt: string;
+  result: GameResultPayload | null;
+};

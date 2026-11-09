@@ -50,6 +50,16 @@ class ConfirmLocationController(
                 ],
             ),
             ApiResponse(
+                responseCode = "422",
+                description = "AREA_EXCEEDS_THRESHOLD / AREA_BELOW_MIN",
+                content = [
+                    Content(
+                        mediaType = "application/problem+json",
+                        schema = Schema(implementation = AreaRejectionProblemResponse::class),
+                    ),
+                ],
+            ),
+            ApiResponse(
                 responseCode = "409",
                 description = "非ACTIVEまたは確定済み",
                 content = [Content(mediaType = "application/problem+json", schema = Schema(implementation = ApiProblemResponse::class))],

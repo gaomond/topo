@@ -29,7 +29,12 @@ function noContentResponse(ok = true, status = 204): Response {
 
 describe("createTopoApi", () => {
   it("test_confirmLocation_withPoint_postsJsonAndReadsConfirmation", async () => {
-    const confirmed = { playerId: "p-1", confirmed: true, confirmedAt: "2026-11-08T01:00:00Z" };
+    const confirmed = {
+      playerId: "p-1",
+      confirmed: true,
+      confirmedAt: "2026-11-08T01:00:00Z",
+      result: null,
+    };
     const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(confirmed));
     const api = createTopoApi({ baseUrl: "http://api.test", fetchImpl });
     expect(await api.confirmLocation("g/1", "p-1", { lat: 35, lng: 139 })).toEqual(confirmed);
@@ -216,5 +221,29 @@ describe("createTopoApi", () => {
     const error = await api.updateLocation("g-1", "p-1", { lat: 999, lng: 2 }).catch((e) => e);
     expect(error).toBeInstanceOf(ApiError);
     expect((error as ApiError).status).toBe(400);
+  });
+
+  it("test_confirmLocation_reasonBody_preservesReason", async () => {
+    const api = createTopoApi({
+      fetchImpl: vi.fn().mockResolvedValue(jsonResponse({ reason: "AREA_BELOW_MIN" }, false, 422)),
+    });
+    const error = await api.confirmLocation("g", "p", { lat: 35, lng: 139 }).catch((e) => e);
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error.status).toBe(422);
+    expect(error.reason).toBe("AREA_BELOW_MIN");
+  });
+  it("test_confirmLocation_nonJsonError_preservesStatus", async () => {
+    const api = createTopoApi({
+      fetchImpl: vi.fn().mockResolvedValue({
+        ok: false,
+        status: 422,
+        json: async () => {
+          throw new Error("html");
+        },
+      }),
+    });
+    const error = await api.confirmLocation("g", "p", { lat: 35, lng: 139 }).catch((e) => e);
+    expect(error.status).toBe(422);
+    expect(error.reason).toBeUndefined();
   });
 });

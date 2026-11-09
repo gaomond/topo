@@ -1,5 +1,6 @@
 package com.github.gaomond.topo.domain.model
 
+import com.github.gaomond.topo.domain.exception.ConfirmationAreaRejectedException
 import com.github.gaomond.topo.domain.exception.GameConfirmationNotAllowedException
 import com.github.gaomond.topo.domain.exception.GameJoinNotAllowedException
 import com.github.gaomond.topo.domain.exception.GameStartNotAllowedException
@@ -21,6 +22,7 @@ class Game private constructor(
     val creatorPlayerId: UUID?,
     val objectType: ObjectType,
     val areaThreshold: Double,
+    val result: GameResult? = null,
 ) {
     // 待機中でなければ人数取得を行わず拒否する。
     fun requireCanJoin(getJoinedPlayerCount: () -> Int) {
@@ -54,7 +56,45 @@ class Game private constructor(
         if (status != GameStatus.ACTIVE) throw GameConfirmationNotAllowedException(gameId)
     }
 
+    fun validateArea(area: ConfirmationArea): ValidatedConfirmationArea {
+        requireCanConfirm()
+        check(area.confirmedPlayerCount <= playerCount)
+        if (area.areaSqm >
+            areaThreshold
+        ) {
+            throw ConfirmationAreaRejectedException(ConfirmationAreaRejectedException.Reason.AREA_EXCEEDS_THRESHOLD)
+        }
+        val isFinal = area.confirmedPlayerCount == playerCount
+        if (isFinal &&
+            area.areaSqm < MIN_AREA_SQM
+        ) {
+            throw ConfirmationAreaRejectedException(ConfirmationAreaRejectedException.Reason.AREA_BELOW_MIN)
+        }
+        return ValidatedConfirmationArea(gameId, area, isFinal)
+    }
+
+    fun complete(
+        validatedArea: ValidatedConfirmationArea,
+        objectCount: Int,
+    ): Game {
+        requireCanConfirm()
+        check(validatedArea.gameId == gameId && validatedArea.isFinal)
+        check(objectCount >= 0)
+        val area = validatedArea.area
+        return Game(
+            gameId,
+            GameStatus.COMPLETED,
+            playerCount,
+            creatorPlayerId,
+            objectType,
+            areaThreshold,
+            GameResult(area.areaSqm, true, objectCount, area.hull),
+        )
+    }
+
     companion object {
+        private const val MIN_AREA_SQM = 1.0
+
         private const val MIN_PLAYER_COUNT = 3
 
         fun create(
@@ -96,6 +136,7 @@ data class GameSummary(
     val playerCount: Int,
     val creatorPlayerId: UUID?,
     val areaThreshold: Double,
+    val result: GameResult? = null,
 )
 
 /**

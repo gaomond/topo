@@ -1,11 +1,15 @@
 package com.github.gaomond.topo.adapter.persistence.jpa
 
+import com.github.gaomond.topo.adapter.persistence.HullText
 import com.github.gaomond.topo.domain.model.Game
+import com.github.gaomond.topo.domain.model.GameResult
+import com.github.gaomond.topo.domain.model.GameStatus
 import com.github.gaomond.topo.domain.model.GameSummary
 import com.github.gaomond.topo.domain.model.ObjectType
 import com.github.gaomond.topo.domain.port.GameRepositoryPort
 import jakarta.persistence.LockModeType
 import org.springframework.data.jpa.repository.Lock
+import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.Repository
 import org.springframework.transaction.annotation.Propagation
@@ -58,8 +62,63 @@ interface GameJpaRepository :
         save(record)
     }
 
+    @Query(
+        value = """
+        SELECT status::text AS status, player_count AS "playerCount", creator_player_id AS "creatorPlayerId",
+               area_threshold AS "areaThreshold", area_sqm AS "areaSqm", area_valid AS "areaValid",
+               object_count AS "objectCount", ST_AsText(polygon_geom,17) AS polygon
+        FROM game WHERE id = :gameId
+    """,
+        nativeQuery = true,
+    )
+    fun findSummaryRecord(gameId: UUID): GameSummaryRecord?
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(
+        value = """
+        UPDATE game SET status = 'COMPLETED', polygon_geom = ST_GeomFromText(:polygon,4326),
+            area_sqm = :areaSqm, area_valid = true, object_count = :objectCount WHERE id = :gameId
+    """,
+        nativeQuery = true,
+    )
+    fun updateResultRecord(
+        gameId: UUID,
+        polygon: String,
+        areaSqm: Double,
+        objectCount: Int,
+    ): Int
+
+    @Transactional(propagation = Propagation.MANDATORY)
+    override fun saveResult(game: Game) {
+        check(game.status == GameStatus.COMPLETED)
+        val result = checkNotNull(game.result)
+        check(result.areaValid)
+        check(updateResultRecord(game.gameId, HullText.polygon(result.polygon), result.areaSqm, result.objectCount) == 1)
+    }
+
     @Transactional(readOnly = true)
-    override fun findSummary(gameId: UUID): GameSummary? = findRecordById(gameId)?.toSummary()
+    override fun findSummary(gameId: UUID): GameSummary? =
+        findSummaryRecord(gameId)?.let { row ->
+            val status = GameStatus.valueOf(row.status)
+            GameSummary(
+                status,
+                row.playerCount,
+                row.creatorPlayerId,
+                row.areaThreshold,
+                if (status == GameStatus.COMPLETED) {
+                    row.polygon?.let { polygon ->
+                        GameResult(
+                            checkNotNull(row.areaSqm),
+                            checkNotNull(row.areaValid),
+                            checkNotNull(row.objectCount),
+                            HullText.read(polygon),
+                        )
+                    }
+                } else {
+                    null
+                },
+            )
+        }
 
     @Transactional(propagation = Propagation.MANDATORY)
     override fun findByIdWithLock(gameId: UUID): Game? = findRecordByIdWithLock(gameId)?.toDomain()
@@ -73,12 +132,15 @@ interface GameJpaRepository :
             ObjectType.entries.single { it.jsonValue == objectType },
             areaThreshold,
         )
+}
 
-    private fun GameRecord.toSummary(): GameSummary =
-        GameSummary(
-            status = status,
-            playerCount = playerCount,
-            creatorPlayerId = creatorPlayerId,
-            areaThreshold = areaThreshold,
-        )
+interface GameSummaryRecord {
+    val status: String
+    val playerCount: Int
+    val creatorPlayerId: UUID?
+    val areaThreshold: Double
+    val areaSqm: Double?
+    val areaValid: Boolean?
+    val objectCount: Int?
+    val polygon: String?
 }

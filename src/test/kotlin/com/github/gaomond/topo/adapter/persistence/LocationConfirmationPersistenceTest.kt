@@ -13,8 +13,8 @@ import com.github.gaomond.topo.domain.model.ObjectType
 import com.github.gaomond.topo.domain.model.Player
 import com.github.gaomond.topo.support.PostgisTestContainer
 import com.github.gaomond.topo.usecase.ConfirmLocationInput
-import com.github.gaomond.topo.usecase.ConfirmLocationResult
 import com.github.gaomond.topo.usecase.ConfirmLocationUseCase
+import com.github.gaomond.topo.usecase.ConfirmedLocationResult
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.springframework.beans.factory.annotation.Autowired
@@ -42,7 +42,7 @@ import kotlin.test.assertNull
 
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import(ConfirmLocationUseCase::class, ClockConfig::class)
+@Import(ConfirmLocationUseCase::class, ClockConfig::class, PostgisHullService::class)
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class LocationConfirmationPersistenceTest {
     companion object {
@@ -152,7 +152,7 @@ class LocationConfirmationPersistenceTest {
         try {
             val requests =
                 alternatives.map { point ->
-                    executor.submit<Result<ConfirmLocationResult>> {
+                    executor.submit<Result<ConfirmedLocationResult>> {
                         ready.countDown()
                         check(start.await(5, TimeUnit.SECONDS))
                         runCatching { confirmLocationUseCase.confirm(ConfirmLocationInput(gameId, playerId, point)) }
