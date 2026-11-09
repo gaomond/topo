@@ -34,7 +34,7 @@ describe("GameResultView", () => {
     );
     expect(screen.getByRole("heading", { name: "ゲーム完了" })).toBeInTheDocument();
     expect(screen.getByText("0個")).toBeInTheDocument();
-    expect(screen.getByText("500 ㎡")).toBeInTheDocument();
+    expect(screen.getByText("0.0005 km²")).toBeInTheDocument();
     expect(screen.getByTestId("result-map")).toHaveAttribute("data-vertex-count", "3");
     expect(screen.getByTestId("result-map")).toHaveAttribute("data-polygon-count", "4");
     expect(screen.getByRole("link", { name: "新しいゲームを作成" })).toHaveAttribute("href", "/");

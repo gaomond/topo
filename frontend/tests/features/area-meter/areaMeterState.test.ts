@@ -55,16 +55,15 @@ describe("areaMeter", () => {
     expect(s.fillRatio).toBe(1);
   });
 
-  it("test_formatArea_smallValue_returnsSquareMetersWithGrouping", () => {
-    const out = formatArea(1234);
-    expect(out).toContain("㎡");
-    expect(out).toContain("1,234");
-  });
-
-  it("test_formatArea_largeValue_returnsSquareKilometers", () => {
-    // ㎢級（1,000,000㎡〜）は ㎢ 表記で可読にする。
-    const out = formatArea(2_000_000);
-    expect(out).toContain("㎢");
-    expect(out).toContain("2");
+  it.each([
+    [0, "0.00 km²"],
+    [1, "0.000001 km²"],
+    [1234, "0.001234 km²"],
+    [500_000, "0.50 km²"],
+    [2_000_000, "2.00 km²"],
+    [10_000_000, "10.00 km²"],
+    [-1, "0.00 km²"],
+  ])("test_formatArea_%sSquareMeters_returnsSquareKilometers", (sqm, expected) => {
+    expect(formatArea(sqm as number)).toBe(expected);
   });
 });

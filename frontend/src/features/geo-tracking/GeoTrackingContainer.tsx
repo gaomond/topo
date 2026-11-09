@@ -5,7 +5,7 @@
 // さらに Smart として、自分のライブ位置を throttle（≤1回/2秒）でサーバーへ送信する（US-07）。
 // API を呼ぶのは本コンテナ（Smart）のみ。Dumb は API を知らない。
 
-import { useCallback, useMemo, useState } from "react";
+import { type Ref, useCallback, useMemo, useState } from "react";
 import { type TopoApi, topoApi } from "@/api/topoApi";
 import type { CurrentAreaPayload, GameResultPayload, PlayerPayload } from "@/api/types";
 import { AreaMeter } from "@/features/area-meter/AreaMeter";
@@ -34,6 +34,9 @@ export type GeoTrackingContainerProps = {
   // 親 Smart（WaitingRoomContainer）から state.areaThreshold を渡す。未指定時はメーターを出さない。
   areaThreshold?: number;
   onResult?: (result: GameResultPayload) => void;
+  locationEnabled?: boolean;
+  onOpenWalkthrough?: () => void;
+  walkthroughButtonRef?: Ref<HTMLButtonElement>;
 };
 
 export function GeoTrackingContainer({
@@ -45,11 +48,16 @@ export function GeoTrackingContainer({
   currentArea = null,
   areaThreshold,
   onResult,
+  locationEnabled = true,
+  onOpenWalkthrough,
+  walkthroughButtonRef,
 }: GeoTrackingContainerProps) {
   // 既定は共有シングルトン（identity が安定し、send の再生成連鎖を招かない）。
   const resolvedApi = api ?? topoApi;
-  const { state, selfLocation, accuracyMeters, errorMessage, canRetry, retry } =
-    useGeoTracking(deps);
+  const { state, selfLocation, accuracyMeters, errorMessage, canRetry, retry } = useGeoTracking(
+    deps,
+    locationEnabled,
+  );
 
   const confirmation = useLocationConfirmation(
     resolvedApi,
@@ -96,14 +104,28 @@ export function GeoTrackingContainer({
   const [overviewNonce, setOverviewNonce] = useState(0);
   const handleOverview = useCallback(() => setOverviewNonce((n) => n + 1), []);
 
+  const helpButton = onOpenWalkthrough && (
+    <button
+      ref={walkthroughButtonRef}
+      type="button"
+      onClick={onOpenWalkthrough}
+      className="absolute right-3 top-3 z-[3000] rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm focus-visible:outline-2"
+    >
+      遊び方
+    </button>
+  );
+
   // 初回拒否 / 非安全コンテキスト: 地図を出さず、エラー画面を全面表示する（フォールバックしない）。
   if (state === GeoState.PERMISSION_ERROR) {
     return (
-      <LocationErrorScreen
-        message={errorMessage ?? ""}
-        // 非安全コンテキスト由来は再試行不可（canRetry=false）なので onRetry を渡さない。
-        onRetry={canRetry ? retry : undefined}
-      />
+      <>
+        <LocationErrorScreen
+          message={errorMessage ?? ""}
+          // 非安全コンテキスト由来は再試行不可（canRetry=false）なので onRetry を渡さない。
+          onRetry={canRetry ? retry : undefined}
+        />
+        {helpButton}
+      </>
     );
   }
 
@@ -114,35 +136,42 @@ export function GeoTrackingContainer({
   // 正多角形スコアは引き続き渡さない/描かない（情報マスキング）。凸包・面積の計算はサーバー側。
   return (
     <div className="absolute inset-0">
-      <MapView
-        selfLocation={selfLocation}
-        confirmedLocation={confirmation.fixedLocation}
-        friends={friends}
-        hull={hull}
-        degenerate={degenerate}
-        overviewNonce={overviewNonce}
-        onOverview={handleOverview}
-      />
+      {helpButton}
+      <div data-walkthrough="map" className="absolute inset-0">
+        <MapView
+          selfLocation={selfLocation}
+          confirmedLocation={confirmation.fixedLocation}
+          friends={friends}
+          hull={hull}
+          degenerate={degenerate}
+          overviewNonce={overviewNonce}
+          onOverview={handleOverview}
+        />
+      </div>
       <DegradedBanner visible={state === GeoState.DEGRADED} />
       <div className="pointer-events-none absolute inset-x-0 bottom-6 z-[1000] flex flex-col gap-3 px-3">
         <div className="flex flex-wrap items-end justify-between gap-2">
           <AccuracyReadout accuracyMeters={accuracyMeters} />
           {areaThreshold !== undefined && (
-            <AreaMeter sqm={currentArea?.sqm ?? null} threshold={areaThreshold} />
+            <div data-walkthrough="area" className="ml-auto">
+              <AreaMeter sqm={currentArea?.sqm ?? null} threshold={areaThreshold} />
+            </div>
           )}
         </div>
-        <ConfirmLocationControl
-          confirmed={confirmation.confirmed}
-          dialogOpen={confirmation.dialogOpen}
-          submitting={confirmation.submitting}
-          canConfirm={confirmation.canConfirm}
-          error={confirmation.error}
-          onOpen={confirmation.open}
-          onCancel={confirmation.cancel}
-          onConfirm={() => {
-            void confirmation.confirm();
-          }}
-        />
+        <div data-walkthrough="confirm" className="w-full max-w-sm self-center">
+          <ConfirmLocationControl
+            confirmed={confirmation.confirmed}
+            dialogOpen={confirmation.dialogOpen}
+            submitting={confirmation.submitting}
+            canConfirm={confirmation.canConfirm}
+            error={confirmation.error}
+            onOpen={confirmation.open}
+            onCancel={confirmation.cancel}
+            onConfirm={() => {
+              void confirmation.confirm();
+            }}
+          />
+        </div>
       </div>
     </div>
   );

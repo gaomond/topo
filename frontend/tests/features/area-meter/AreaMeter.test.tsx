@@ -15,14 +15,13 @@ describe("AreaMeter", () => {
 
   it("test_render_belowThreshold_showsAreaValueAndGauge", () => {
     render(<AreaMeter sqm={1234} threshold={THRESHOLD} />);
-    // 現在面積の数値（人間可読・桁区切り）。
-    expect(screen.getByText(/1,234/)).toBeInTheDocument();
+    expect(screen.getByText("0.001234 km²")).toBeInTheDocument();
     // 0〜上限を満杯とする進捗ゲージ。
     const gauge = screen.getByRole("progressbar");
     expect(gauge).toHaveAttribute("aria-valuemax", "100");
     expect(gauge).toHaveAttribute("aria-valuenow", "0"); // 1234/2e6 ≒ 0%
-    // 上限（満杯ライン）を数値で明示する（2,000,000㎡ = 2.00 ㎢）。
-    expect(screen.getByText(/上限 2\.00 ㎢/)).toBeInTheDocument();
+    // 上限（満杯ライン）を数値で明示する（2,000,000m² = 2.00 km²）。
+    expect(screen.getByText("上限 2.00 km²")).toBeInTheDocument();
   });
 
   it("test_render_nearThreshold_showsWarning", () => {
@@ -37,9 +36,8 @@ describe("AreaMeter", () => {
     render(<AreaMeter sqm={2_500_000} threshold={THRESHOLD} />);
     // 「上限超過（確定できません）」を明示（「失格／無効」ではなく「確定不能」）。
     expect(screen.getByText(/上限超過（このままでは確定できません）/)).toBeInTheDocument();
-    // 超過分（どれだけ超えているか）。2,500,000 - 2,000,000 = 500,000㎡ = 50.0 万㎡。
-    expect(screen.getByText(/超過分/)).toBeInTheDocument();
-    expect(screen.getByText(/50\.0/)).toBeInTheDocument();
+    // 超過分（どれだけ超えているか）。2,500,000 - 2,000,000 = 500,000m² = 0.50 km²。
+    expect(screen.getByText("超過分 0.50 km²")).toBeInTheDocument();
     // 「失格／無効」語は使わない。
     expect(screen.queryByText(/失格|無効/)).not.toBeInTheDocument();
   });

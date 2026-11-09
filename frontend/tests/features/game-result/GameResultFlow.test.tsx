@@ -57,6 +57,7 @@ function setup(
             element={
               <WaitingRoomContainer
                 api={fake.api}
+                getWalkthroughStorage={() => ({ getItem: () => "true", setItem: () => undefined })}
                 geoDeps={{ geolocation: gps, isSecureContext: true }}
                 refreshIntervalMs={2000}
               />

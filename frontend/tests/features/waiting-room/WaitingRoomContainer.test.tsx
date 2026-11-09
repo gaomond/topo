@@ -34,6 +34,7 @@ function renderAt(url: string, fake: FakeTopoApi, clipboard?: Pick<Clipboard, "w
             element={
               <WaitingRoomContainer
                 api={fake.api}
+                getWalkthroughStorage={() => ({ getItem: () => "true", setItem: () => undefined })}
                 clipboard={clip}
                 origin="https://topo.example"
                 refreshIntervalMs={2000}

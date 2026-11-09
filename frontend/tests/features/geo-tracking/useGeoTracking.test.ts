@@ -26,6 +26,17 @@ describe("useGeoTracking", () => {
     return renderHook(() => useGeoTracking({ geolocation, isSecureContext: true }));
   }
 
+  it("test_mount_locationDisabled_doesNotStartEvenWhenRetrying", () => {
+    const { result, rerender } = renderHook(
+      ({ enabled }) => useGeoTracking({ geolocation, isSecureContext: true }, enabled),
+      { initialProps: { enabled: false } },
+    );
+    act(() => result.current.retry());
+    expect(geolocation.watchPosition).not.toHaveBeenCalled();
+    rerender({ enabled: true });
+    expect(geolocation.watchPosition).toHaveBeenCalledTimes(1);
+  });
+
   it("test_mount_secureContext_startsWatchAndInitializing", () => {
     const { result } = render();
     expect(geolocation.watchPosition).toHaveBeenCalledTimes(1);

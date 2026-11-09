@@ -12,6 +12,7 @@ function renderView(overrides: Partial<WaitingRoomViewProps> = {}) {
     status: "WAITING",
     participants: [{ playerId: "p-1", displayName: "たろう", confirmed: false }],
     playerCount: 3,
+    areaThreshold: 500_000,
     inviteUrl: "https://topo.example/game/g-1",
     onCopyInviteUrl: vi.fn(),
     copied: false,
@@ -24,6 +25,16 @@ function renderView(overrides: Partial<WaitingRoomViewProps> = {}) {
 }
 
 describe("WaitingRoomView", () => {
+  it("test_waitingRoomView_differentThreshold_explainsPurposeWithSelectedImage", () => {
+    renderView({ areaThreshold: 2_000_000 });
+    expect(screen.getByText(/2.00 km²以内/)).toBeInTheDocument();
+    expect(screen.getByText(/丸はプレイヤーの位置/)).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /3人の位置/ })).toHaveAttribute(
+      "src",
+      expect.stringContaining("game-purpose-little-planet-v3.png"),
+    );
+    expect(screen.getByText("3人で囲む例")).toBeInTheDocument();
+  });
   it("test_waitingRoomView_rendersStartButton", () => {
     renderView();
     expect(screen.getByRole("button", { name: "ゲームを開始" })).toBeInTheDocument();

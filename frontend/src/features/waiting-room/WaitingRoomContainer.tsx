@@ -13,7 +13,8 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ApiError, type TopoApi, topoApi } from "@/api/topoApi";
 import type { GameResultPayload } from "@/api/types";
 import { GameResultView } from "@/features/game-result/GameResultView";
-import { GeoTrackingContainer } from "@/features/geo-tracking/GeoTrackingContainer";
+import { GameWalkthroughContainer } from "@/features/game-walkthrough/GameWalkthroughContainer";
+import type { GetWalkthroughStorage } from "@/features/game-walkthrough/useGameWalkthrough";
 import type { UseGeoTrackingDeps } from "@/features/geo-tracking/useGeoTracking";
 import { JoinGameForm } from "@/features/join-game/JoinGameForm";
 import { buildGamePath, buildInviteUrl, PLAYER_QUERY_KEY } from "@/routing/paths";
@@ -31,6 +32,7 @@ export type WaitingRoomContainerProps = {
   refreshIntervalMs?: number;
   // 地図画面（ACTIVE 遷移先）の Geolocation 注入。テスト用（既定はブラウザ実体）。
   geoDeps?: UseGeoTrackingDeps;
+  getWalkthroughStorage?: GetWalkthroughStorage;
 };
 
 // ポーリング頻度（統一 2 秒・US-08 / E5）。WAITING / ACTIVE で周期を分けず、送信周期
@@ -57,6 +59,7 @@ function WaitingRoomSession({
   origin = window.location.origin,
   refreshIntervalMs = POLL_INTERVAL_MS,
   geoDeps,
+  getWalkthroughStorage,
   gameId,
   playerId,
 }: WaitingRoomContainerProps & { gameId: string | undefined; playerId: string }) {
@@ -181,7 +184,7 @@ function WaitingRoomSession({
     // さらに US-08 でポーリング済みの players（live/online）と currentArea を Smart→Smart で渡す
     // （保持・公開のみ。友達ドット/面積メーターの描画は US-09/10）。
     return (
-      <GeoTrackingContainer
+      <GameWalkthroughContainer
         key={`${gameId}:${playerId}`}
         gameId={gameId ?? ""}
         playerId={playerId}
@@ -191,6 +194,7 @@ function WaitingRoomSession({
         currentArea={state.currentArea}
         areaThreshold={state.areaThreshold}
         onResult={showResult}
+        getWalkthroughStorage={getWalkthroughStorage}
       />
     );
   }
@@ -212,6 +216,7 @@ function WaitingRoomSession({
         status={state.status}
         participants={participants}
         playerCount={state.playerCount}
+        areaThreshold={state.areaThreshold}
         inviteUrl={inviteUrl}
         onCopyInviteUrl={handleCopyInviteUrl}
         copied={copied}

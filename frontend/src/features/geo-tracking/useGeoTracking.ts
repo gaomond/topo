@@ -54,7 +54,10 @@ function resolveSecureContext(injected: boolean | undefined): boolean {
   return typeof window !== "undefined" ? window.isSecureContext : false;
 }
 
-export function useGeoTracking(deps: UseGeoTrackingDeps = {}): UseGeoTrackingResult {
+export function useGeoTracking(
+  deps: UseGeoTrackingDeps = {},
+  enabled = true,
+): UseGeoTrackingResult {
   const geolocation = resolveGeolocation(deps.geolocation);
   const secureContext = resolveSecureContext(deps.isSecureContext);
 
@@ -128,6 +131,7 @@ export function useGeoTracking(deps: UseGeoTrackingDeps = {}): UseGeoTrackingRes
   // 再試行: 既存 watch を貼り直す。許可済みに変わっていれば TRACKING に復帰する。
   // 非安全/未提供では測位を開始しない（防御的に再確認する）。
   const retry = useCallback(() => {
+    if (!enabled) return;
     if (!secureContext || geolocation === undefined) {
       setErrorMessage(INSECURE_CONTEXT_MESSAGE);
       setCanRetry(false);
@@ -137,16 +141,16 @@ export function useGeoTracking(deps: UseGeoTrackingDeps = {}): UseGeoTrackingRes
     setErrorMessage(null);
     setState(GeoState.INITIALIZING);
     startWatch();
-  }, [secureContext, geolocation, startWatch]);
+  }, [enabled, secureContext, geolocation, startWatch]);
 
   // マウント時に起動し、アンマウントで watch を解除する。
   // start は依存値が変わらない限り安定（注入 deps が変わったときのみ再起動）。
   useEffect(() => {
-    start();
+    if (enabled) start();
     return () => {
       clearCurrentWatch();
     };
-  }, [start, clearCurrentWatch]);
+  }, [enabled, start, clearCurrentWatch]);
 
   return { state, selfLocation, accuracyMeters, errorMessage, canRetry, retry };
 }
