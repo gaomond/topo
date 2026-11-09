@@ -117,18 +117,23 @@ class ConfirmLocationUseCaseTest {
             com.github.gaomond.topo.domain.model
                 .ConfirmationArea(3, 50.0, hull)
         whenever(area.calculateArea(gameId, coordinate)).thenReturn(candidate)
-        whenever(area.countCoveredObjects(ObjectType.SHRINE, hull)).thenReturn(4)
+        whenever(area.findCoveredObjects(ObjectType.SHRINE, hull)).thenReturn(
+            List(4) {
+                com.github.gaomond.topo.domain.model
+                    .GameObjectSnapshot(it.toLong(), ObjectType.SHRINE, null, coordinate)
+            },
+        )
         val result = useCase.confirm(input)
         assertEquals(50.0, result.result?.areaSqm)
-        assertSame(hull, result.result?.polygon)
+        assertEquals(hull, result.result?.polygon)
         verify(area, times(1)).calculateArea(gameId, coordinate)
         val saved = org.mockito.kotlin.argumentCaptor<Game>()
         verify(gameRepository).saveResult(saved.capture())
-        assertSame(hull, saved.firstValue.result?.polygon)
+        assertEquals(hull, saved.firstValue.result?.polygon)
         val order = inOrder(area, playerRepository, gameRepository)
         order.verify(area).calculateArea(gameId, coordinate)
         order.verify(playerRepository).confirmLocation(gameId, playerId, ConfirmedLocation(coordinate, at))
-        order.verify(area).countCoveredObjects(ObjectType.SHRINE, hull)
+        order.verify(area).findCoveredObjects(ObjectType.SHRINE, hull)
         order.verify(gameRepository).saveResult(any())
     }
 
@@ -142,7 +147,7 @@ class ConfirmLocationUseCaseTest {
         )
         assertThrows<com.github.gaomond.topo.domain.exception.ConfirmationAreaRejectedException> { useCase.confirm(input) }
         verify(playerRepository, never()).confirmLocation(any(), any(), any())
-        verify(area, never()).countCoveredObjects(any(), any())
+        verify(area, never()).findCoveredObjects(any(), any())
         verify(gameRepository, never()).saveResult(any())
     }
 }

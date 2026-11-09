@@ -1,7 +1,22 @@
 import L from "leaflet";
 import { useEffect } from "react";
-import { CircleMarker, MapContainer, Polygon, TileLayer, useMap } from "react-leaflet";
+import {
+  CircleMarker,
+  MapContainer,
+  Marker,
+  Polygon,
+  Popup,
+  TileLayer,
+  useMap,
+} from "react-leaflet";
 import type { GameResultPresentation } from "./gameResultPresentation";
+
+const objectIcon = L.divIcon({
+  className: "",
+  html: '<span style="display:block;width:20px;height:20px;background:#d97706;border:2px solid white;border-radius:4px;box-shadow:0 1px 4px #0006;transform:rotate(45deg)"></span>',
+  iconSize: [20, 20],
+  iconAnchor: [10, 10],
+});
 
 function ResultBounds({ polygon }: Pick<GameResultPresentation, "polygon">) {
   const map = useMap();
@@ -14,7 +29,8 @@ function ResultBounds({ polygon }: Pick<GameResultPresentation, "polygon">) {
 export function GameResultMap({
   polygon,
   vertices,
-}: Pick<GameResultPresentation, "polygon" | "vertices">) {
+  objects,
+}: Pick<GameResultPresentation, "polygon" | "vertices" | "objects">) {
   return (
     <MapContainer
       center={polygon[0]}
@@ -37,6 +53,16 @@ export function GameResultMap({
           radius={6}
           pathOptions={{ color: "#065f46", fillColor: "#fff", fillOpacity: 1 }}
         />
+      ))}
+      {objects.map((object) => (
+        <Marker
+          key={object.id}
+          position={[object.lat, object.lng]}
+          icon={objectIcon}
+          title={object.name?.trim() ? object.name : "名称未登録"}
+        >
+          <Popup>{object.name?.trim() ? object.name : "名称未登録"}</Popup>
+        </Marker>
       ))}
       <ResultBounds polygon={polygon} />
     </MapContainer>

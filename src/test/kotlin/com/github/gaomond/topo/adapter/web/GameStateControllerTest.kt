@@ -219,7 +219,19 @@ class GameStateControllerTest {
                 500000.0,
                 result =
                     com.github.gaomond.topo.domain.model
-                        .GameResult(50.0, true, 4, polygon),
+                        .GameResult(
+                            50.0,
+                            true,
+                            polygon,
+                            List(4) {
+                                com.github.gaomond.topo.domain.model.GameObjectSnapshot(
+                                    9007199254740993L + it,
+                                    com.github.gaomond.topo.domain.model.ObjectType.SHRINE,
+                                    null,
+                                    polygon[0],
+                                )
+                            },
+                        ),
             ),
         )
         mockMvc.get("/api/games/$gameId").andExpect {
@@ -228,6 +240,11 @@ class GameStateControllerTest {
             jsonPath("$.currentArea") { value(org.hamcrest.Matchers.nullValue()) }
             jsonPath("$.result.areaSqm") { value(50.0) }
             jsonPath("$.result.objectCount") { value(4) }
+            jsonPath("$.result.objects[0].id") { value("9007199254740993") }
+            jsonPath("$.result.objects[0].objectType") { value("shrine") }
+            jsonPath("$.result.objects[0].name") { value(org.hamcrest.Matchers.nullValue()) }
+            jsonPath("$.result.objects[0].lat") { value(35.0) }
+            jsonPath("$.result.objects[0].lng") { value(139.0) }
             jsonPath("$.result.polygon[0].lat") { value(35.0) }
         }
     }

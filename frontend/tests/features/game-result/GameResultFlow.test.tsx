@@ -9,12 +9,21 @@ import { createFakeGeolocation } from "../../fakeGeolocation";
 import { createFakeTopoApi, gameState, player } from "../../fakeTopoApi";
 
 vi.mock("@/features/game-result/GameResultMap", () => ({
-  GameResultMap: () => <div data-testid="result-map" />,
+  GameResultMap: ({ objects }: { objects: { id: string; name: string | null }[] }) => (
+    <div data-testid="result-map">
+      {objects.map((object) => (
+        <span key={object.id}>{object.name}</span>
+      ))}
+    </div>
+  ),
 }));
 const result = {
   areaSqm: 500,
   areaValid: true,
-  objectCount: 0,
+  objectCount: 1,
+  objects: [
+    { id: "9007199254740993", objectType: "shrine", name: "獲得した神社", lat: 35, lng: 139 },
+  ],
   polygon: [
     { lat: 35, lng: 139 },
     { lat: 35.01, lng: 139 },
@@ -95,6 +104,7 @@ describe("GameResultFlow", () => {
     });
     await act(() => vi.advanceTimersByTimeAsync(5000));
     expect(screen.getByRole("heading", { name: "ゲーム完了" })).toBeInTheDocument();
+    expect(screen.getByTestId("result-map")).toHaveTextContent("獲得した神社");
     expect(fake.updateLocation).toHaveBeenCalledTimes(sends);
     await user.click(screen.getByRole("link", { name: "新しいゲームを作成" }));
     expect(screen.getByRole("heading", { name: "作成画面" })).toBeInTheDocument();
@@ -128,6 +138,7 @@ describe("GameResultFlow", () => {
     expect(await screen.findByRole("heading", { name: "ゲーム完了" })).toBeInTheDocument();
     await act(() => vi.advanceTimersByTimeAsync(3000));
     expect(screen.getByRole("heading", { name: "ゲーム完了" })).toBeInTheDocument();
+    expect(screen.getByTestId("result-map")).toHaveTextContent("獲得した神社");
     expect(gps.activeWatchCount()).toBe(0);
   });
   it.each([
@@ -140,7 +151,10 @@ describe("GameResultFlow", () => {
     );
     if (savedResult === null)
       expect(await screen.findByRole("alert")).toHaveTextContent("結果を取得できませんでした");
-    else expect(await screen.findByRole("heading", { name: "ゲーム完了" })).toBeInTheDocument();
+    else {
+      expect(await screen.findByRole("heading", { name: "ゲーム完了" })).toBeInTheDocument();
+      expect(screen.getByTestId("result-map")).toHaveTextContent("獲得した神社");
+    }
     expect(gps.watchPosition).not.toHaveBeenCalled();
     expect(fake.joinGame).not.toHaveBeenCalled();
     expect(fake.confirmLocation).not.toHaveBeenCalled();

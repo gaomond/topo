@@ -2,6 +2,7 @@ package com.github.gaomond.topo.adapter.persistence
 
 import com.github.gaomond.topo.domain.model.ConfirmationArea
 import com.github.gaomond.topo.domain.model.Coordinate
+import com.github.gaomond.topo.domain.model.GameObjectSnapshot
 import com.github.gaomond.topo.domain.model.ObjectType
 import com.github.gaomond.topo.domain.port.HullServicePort
 import org.springframework.jdbc.core.JdbcTemplate
@@ -50,21 +51,27 @@ class PostgisHullService(
             ),
         )
 
-    override fun countCoveredObjects(
+    override fun findCoveredObjects(
         objectType: ObjectType,
         hull: List<Coordinate>,
-    ): Int =
-        checkNotNull(
-            jdbc.queryForObject(
-                """
-                SELECT COUNT(*)
-                FROM game_object AS obj
-                WHERE obj.object_type = ?
-                  AND ST_Covers(ST_GeomFromText(?, 4326), obj.geom)
-                """.trimIndent(),
-                Int::class.java,
-                objectType.jsonValue,
-                HullText.polygon(hull),
-            ),
+    ): List<GameObjectSnapshot> =
+        jdbc.query(
+            """
+            SELECT obj.id, obj.object_type, obj.name, ST_Y(obj.geom) AS lat, ST_X(obj.geom) AS lng
+            FROM game_object AS obj
+            WHERE obj.object_type = ?
+              AND ST_Covers(ST_GeomFromText(?, 4326), obj.geom)
+            ORDER BY obj.id
+            """.trimIndent(),
+            { rs, _ ->
+                GameObjectSnapshot(
+                    rs.getLong("id"),
+                    ObjectType.entries.single { it.jsonValue == rs.getString("object_type") },
+                    rs.getString("name"),
+                    Coordinate(rs.getDouble("lat"), rs.getDouble("lng")),
+                )
+            },
+            objectType.jsonValue,
+            HullText.polygon(hull),
         )
 }

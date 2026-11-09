@@ -45,11 +45,9 @@ class ConfirmLocationUseCase(
             )
         }
 
-        // 全員の位置が揃ったら、計算済みの凸包内にある対象オブジェクトを数える。
-        // ゲームを完了状態にし、集計結果とともにDBへ保存する。
-        val objectCount = hullService.countCoveredObjects(game.objectType, validatedArea.area.hull)
+        val objects = hullService.findCoveredObjects(game.objectType, validatedArea.area.hull)
 
-        val completedGame = game.complete(validatedArea, objectCount)
+        val completedGame = game.complete(validatedArea, objects)
         gameRepository.saveResult(completedGame)
         return ConfirmedLocationResult(
             playerId = input.playerId,

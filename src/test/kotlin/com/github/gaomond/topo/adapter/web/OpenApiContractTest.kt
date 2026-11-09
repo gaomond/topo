@@ -170,6 +170,8 @@ class OpenApiContractTest {
         val doc = specification()
         for (name in listOf(
             "ConfirmLocationResponse",
+            "GameResultPayload",
+            "GameObjectSnapshotPayload",
             "ConfigResponse",
             "AreaPresetPayload",
             "CreateGameResponse",
@@ -189,6 +191,10 @@ class OpenApiContractTest {
         assertTrue(allowsNull(schema(doc, "PlayerPayload").at("/properties/live")))
         assertTrue(allowsNull(schema(doc, "GameStateResponse").at("/properties/result")))
         assertTrue(schema(doc, "GameResultPayload").path("properties").has("polygon"))
+        assertEquals("array", schema(doc, "GameResultPayload").at("/properties/objects/type").asString())
+        assertFalse(allowsNull(schema(doc, "GameResultPayload").at("/properties/objects")))
+        assertEquals("string", schema(doc, "GameObjectSnapshotPayload").at("/properties/id/type").asString())
+        assertTrue(allowsNull(schema(doc, "GameObjectSnapshotPayload").at("/properties/name")))
         assertEquals("date-time", schema(doc, "LiveLocationPayload").at("/properties/at/format").asString())
         for (name in listOf("CreateGameResponse", "JoinGameResponse", "StartGameResponse", "GameStateResponse", "PlayerPayload")) {
             val properties = schema(doc, name).path("properties")

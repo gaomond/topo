@@ -1,6 +1,9 @@
+import type { GameObjectSnapshotPayload } from "@/api/types";
+
 export type GameResultPresentation = {
   areaSqm: number;
   objectCount: number;
+  objects: GameObjectSnapshotPayload[];
   polygon: [number, number][];
   vertices: [number, number][];
 };
@@ -23,6 +26,44 @@ export function gameResultPresentation(value: unknown): GameResultPresentation |
     value.polygon.length < 4
   )
     return null;
+  if (
+    !("objects" in value) ||
+    !Array.isArray(value.objects) ||
+    value.objects.length !== value.objectCount
+  )
+    return null;
+  const objects: GameObjectSnapshotPayload[] = [];
+  const ids = new Set<string>();
+  for (const object of value.objects) {
+    if (
+      typeof object !== "object" ||
+      object === null ||
+      typeof object.id !== "string" ||
+      !/^-?(0|[1-9]\d*)$/.test(object.id) ||
+      object.id.length > 20 ||
+      object.objectType !== "shrine" ||
+      !(object.name === null || typeof object.name === "string") ||
+      typeof object.lat !== "number" ||
+      typeof object.lng !== "number" ||
+      !Number.isFinite(object.lat) ||
+      !Number.isFinite(object.lng) ||
+      Math.abs(object.lat) > 90 ||
+      Math.abs(object.lng) > 180 ||
+      ids.has(object.id)
+    )
+      return null;
+    const id = BigInt(object.id);
+    if (id < -9223372036854775808n || id > 9223372036854775807n || id.toString() !== object.id)
+      return null;
+    ids.add(object.id);
+    objects.push({
+      id: object.id,
+      objectType: object.objectType,
+      name: object.name,
+      lat: object.lat,
+      lng: object.lng,
+    });
+  }
   const polygon: [number, number][] = [];
   for (const point of value.polygon) {
     if (
@@ -43,5 +84,5 @@ export function gameResultPresentation(value: unknown): GameResultPresentation |
   if (first[0] !== last[0] || first[1] !== last[1]) return null;
   const vertices = polygon.slice(0, -1);
   if (new Set(vertices.map(([lat, lng]) => `${lat},${lng}`)).size < 3) return null;
-  return { areaSqm: value.areaSqm, objectCount: value.objectCount, polygon, vertices };
+  return { areaSqm: value.areaSqm, objectCount: value.objectCount, objects, polygon, vertices };
 }

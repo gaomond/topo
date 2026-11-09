@@ -67,6 +67,7 @@ frontend/
 | プレイヤー | Player | ゲーム参加者。`playerId`（UUID）で識別。認証なし |
 | 人数 | playerCount | ゲームの固定参加人数 |
 | ゲームオブジェクト | GameObject | ゲーム非依存の参照データ（OSM 由来）。`objectType` で種別を表す |
+| ゲームオブジェクトスナップショット | GameObjectSnapshot | ゲームの獲得時点のID・種別・名前・座標を保持する不変の値 |
 | オブジェクト種別 | objectType | `shrine` / `temple` / `school` / `convenience_store` / `park` / `station` |
 | ライブ位置 | liveLocation | プレイヤーの最新現在地。高頻度更新・友達ドット表示用。副作用なし |
 | 友達ドット | live marker | 地図上に表示する他プレイヤーのライブ位置マーカー |

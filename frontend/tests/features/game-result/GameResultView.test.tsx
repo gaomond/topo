@@ -16,6 +16,7 @@ const result = {
   areaSqm: 500,
   areaValid: true,
   objectCount: 0,
+  objects: [],
   polygon: [
     { lat: 35, lng: 139 },
     { lat: 35.01, lng: 139 },

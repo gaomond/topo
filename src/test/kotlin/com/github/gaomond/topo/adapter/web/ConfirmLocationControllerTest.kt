@@ -232,7 +232,19 @@ class ConfirmLocationControllerTest {
                 true,
                 java.time.Instant.now(),
                 com.github.gaomond.topo.domain.model
-                    .GameResult(50.0, true, 2, polygon),
+                    .GameResult(
+                        50.0,
+                        true,
+                        polygon,
+                        List(2) {
+                            com.github.gaomond.topo.domain.model.GameObjectSnapshot(
+                                9007199254740993L + it,
+                                com.github.gaomond.topo.domain.model.ObjectType.SHRINE,
+                                null,
+                                polygon[0],
+                            )
+                        },
+                    ),
             ),
         )
         mockMvc
@@ -243,6 +255,11 @@ class ConfirmLocationControllerTest {
                 status { isOk() }
                 jsonPath("$.result.areaSqm") { value(50.0) }
                 jsonPath("$.result.areaValid") { value(true) }
+                jsonPath("$.result.objects[0].id") { value("9007199254740993") }
+                jsonPath("$.result.objects[0].objectType") { value("shrine") }
+                jsonPath("$.result.objects[0].name") { value(org.hamcrest.Matchers.nullValue()) }
+                jsonPath("$.result.objects[0].lat") { value(35.0) }
+                jsonPath("$.result.objects[0].lng") { value(139.0) }
                 jsonPath("$.result.polygon.length()") { value(4) }
             }
     }

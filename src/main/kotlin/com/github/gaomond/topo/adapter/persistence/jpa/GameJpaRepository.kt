@@ -1,6 +1,7 @@
 package com.github.gaomond.topo.adapter.persistence.jpa
 
 import com.github.gaomond.topo.adapter.persistence.HullText
+import com.github.gaomond.topo.adapter.persistence.ResultObjectsJson
 import com.github.gaomond.topo.domain.model.Game
 import com.github.gaomond.topo.domain.model.GameResult
 import com.github.gaomond.topo.domain.model.GameStatus
@@ -66,7 +67,8 @@ interface GameJpaRepository :
         value = """
         SELECT status::text AS status, player_count AS "playerCount", creator_player_id AS "creatorPlayerId",
                area_threshold AS "areaThreshold", area_sqm AS "areaSqm", area_valid AS "areaValid",
-               object_count AS "objectCount", ST_AsText(polygon_geom,17) AS polygon
+               object_count AS "objectCount", ST_AsText(polygon_geom,17) AS polygon,
+               object_type AS "objectType", result_objects::text AS "resultObjects"
         FROM game WHERE id = :gameId
     """,
         nativeQuery = true,
@@ -77,7 +79,8 @@ interface GameJpaRepository :
     @Query(
         value = """
         UPDATE game SET status = 'COMPLETED', polygon_geom = ST_GeomFromText(:polygon,4326),
-            area_sqm = :areaSqm, area_valid = true, object_count = :objectCount WHERE id = :gameId
+            area_sqm = :areaSqm, area_valid = true, object_count = :objectCount,
+            result_objects = CAST(:resultObjects AS jsonb) WHERE id = :gameId
     """,
         nativeQuery = true,
     )
@@ -86,6 +89,7 @@ interface GameJpaRepository :
         polygon: String,
         areaSqm: Double,
         objectCount: Int,
+        resultObjects: String,
     ): Int
 
     @Transactional(propagation = Propagation.MANDATORY)
@@ -93,7 +97,15 @@ interface GameJpaRepository :
         check(game.status == GameStatus.COMPLETED)
         val result = checkNotNull(game.result)
         check(result.areaValid)
-        check(updateResultRecord(game.gameId, HullText.polygon(result.polygon), result.areaSqm, result.objectCount) == 1)
+        check(
+            updateResultRecord(
+                game.gameId,
+                HullText.polygon(result.polygon),
+                result.areaSqm,
+                result.objectCount,
+                ResultObjectsJson.write(result.objects),
+            ) == 1,
+        )
     }
 
     @Transactional(readOnly = true)
@@ -106,14 +118,14 @@ interface GameJpaRepository :
                 row.creatorPlayerId,
                 row.areaThreshold,
                 if (status == GameStatus.COMPLETED) {
-                    row.polygon?.let { polygon ->
-                        GameResult(
-                            checkNotNull(row.areaSqm),
-                            checkNotNull(row.areaValid),
-                            checkNotNull(row.objectCount),
-                            HullText.read(polygon),
-                        )
-                    }
+                    val objects = ResultObjectsJson.read(checkNotNull(row.resultObjects))
+                    check(objects.all { it.objectType.jsonValue == row.objectType }) { "保存結果の対象種別が一致しません" }
+                    GameResult(
+                        checkNotNull(row.areaSqm),
+                        checkNotNull(row.areaValid),
+                        HullText.read(checkNotNull(row.polygon)),
+                        objects,
+                    ).also { check(it.objectCount == row.objectCount) { "保存結果の件数と明細が一致しません" } }
                 } else {
                     null
                 },
@@ -142,5 +154,7 @@ interface GameSummaryRecord {
     val areaSqm: Double?
     val areaValid: Boolean?
     val objectCount: Int?
+    val objectType: String
+    val resultObjects: String?
     val polygon: String?
 }

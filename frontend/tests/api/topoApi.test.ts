@@ -28,6 +28,26 @@ function noContentResponse(ok = true, status = 204): Response {
 }
 
 describe("createTopoApi", () => {
+  it("test_confirmLocation_finalResult_preservesAcquiredObjectFields", async () => {
+    const result = {
+      areaSqm: 50,
+      areaValid: true,
+      objectCount: 1,
+      polygon: [],
+      objects: [{ id: "9007199254740993", objectType: "shrine", name: null, lat: 35, lng: 139 }],
+    };
+    const response = {
+      playerId: "p",
+      confirmed: true,
+      confirmedAt: "2026-11-09T00:00:00Z",
+      result,
+    };
+    const api = createTopoApi({
+      baseUrl: "http://api.test",
+      fetchImpl: vi.fn().mockResolvedValue(jsonResponse(response)),
+    });
+    expect((await api.confirmLocation("g", "p", { lat: 35, lng: 139 })).result).toEqual(result);
+  });
   it("test_confirmLocation_withPoint_postsJsonAndReadsConfirmation", async () => {
     const confirmed = {
       playerId: "p-1",

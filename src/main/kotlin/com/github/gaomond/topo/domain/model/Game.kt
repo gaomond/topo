@@ -75,11 +75,11 @@ class Game private constructor(
 
     fun complete(
         validatedArea: ValidatedConfirmationArea,
-        objectCount: Int,
+        objects: List<GameObjectSnapshot>,
     ): Game {
         requireCanConfirm()
         check(validatedArea.gameId == gameId && validatedArea.isFinal)
-        check(objectCount >= 0)
+        check(objects.all { it.objectType == objectType }) { "獲得オブジェクトの種別が一致しません" }
         val area = validatedArea.area
         return Game(
             gameId,
@@ -88,7 +88,7 @@ class Game private constructor(
             creatorPlayerId,
             objectType,
             areaThreshold,
-            GameResult(area.areaSqm, true, objectCount, area.hull),
+            GameResult(area.areaSqm, true, area.hull, objects),
         )
     }
 

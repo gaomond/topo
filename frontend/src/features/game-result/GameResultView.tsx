@@ -29,7 +29,11 @@ export function GameResultView({ result }: { result: unknown }) {
             </div>
           </dl>
           <div className="min-h-64 flex-1 overflow-hidden rounded-xl border border-slate-200">
-            <GameResultMap polygon={presentation.polygon} vertices={presentation.vertices} />
+            <GameResultMap
+              polygon={presentation.polygon}
+              vertices={presentation.vertices}
+              objects={presentation.objects}
+            />
           </div>
         </>
       )}

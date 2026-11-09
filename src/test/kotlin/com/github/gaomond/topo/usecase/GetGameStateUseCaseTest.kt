@@ -232,7 +232,19 @@ class GetGameStateUseCaseTest {
         val polygon = listOf(Coordinate(35.0, 139.0), Coordinate(35.0, 139.001), Coordinate(35.001, 139.0), Coordinate(35.0, 139.0))
         val result =
             com.github.gaomond.topo.domain.model
-                .GameResult(50.0, true, 3, polygon)
+                .GameResult(
+                    50.0,
+                    true,
+                    polygon,
+                    List(3) {
+                        com.github.gaomond.topo.domain.model.GameObjectSnapshot(
+                            it.toLong(),
+                            com.github.gaomond.topo.domain.model.ObjectType.SHRINE,
+                            null,
+                            polygon[0],
+                        )
+                    },
+                )
         val live = SpyLiveAreaQuery(null)
         val state =
             useCase(

@@ -65,13 +65,13 @@ class GameAggregationPersistenceTest {
         val failures = ConcurrentHashMap.newKeySet<List<Coordinate>>()
         val counts = ConcurrentHashMap<List<Coordinate>, AtomicInteger>()
 
-        override fun countCoveredObjects(
+        override fun findCoveredObjects(
             objectType: ObjectType,
             hull: List<Coordinate>,
-        ): Int {
+        ): List<com.github.gaomond.topo.domain.model.GameObjectSnapshot> {
             counts.computeIfAbsent(hull) { AtomicInteger() }.incrementAndGet()
             if (failures.remove(hull)) error("集計障害")
-            return real.countCoveredObjects(objectType, hull)
+            return real.findCoveredObjects(objectType, hull)
         }
     }
 
@@ -287,7 +287,9 @@ class GameAggregationPersistenceTest {
             val state = assertNotNull(games.findSummary(game))
             assertEquals(GameStatus.ACTIVE, state.status)
             assertNull(state.result)
-            assertNull(jdbc.queryForMap("SELECT polygon_geom FROM game WHERE id=?", game)["polygon_geom"])
+            val row = jdbc.queryForMap("SELECT polygon_geom, result_objects FROM game WHERE id=?", game)
+            assertNull(row["polygon_geom"])
+            assertNull(row["result_objects"])
         }
     }
 
@@ -300,5 +302,121 @@ class GameAggregationPersistenceTest {
         assertEquals(4, result.polygon.size)
         assertEquals(4, fixed(game))
         assertEquals(GameStatus.COMPLETED, games.findSummary(game)?.status)
+    }
+
+    @Test fun test_findCoveredObjects_boundaryAndDistinctIds_returnsAllFieldsAndNumericOrder() {
+        val hull = listOf(a, b, c, a)
+        val rows =
+            listOf(
+                Triple(2L, a, "shrine"),
+                Triple(10L, Coordinate(35.0, 139.0005), "shrine"),
+                Triple(11L, Coordinate(35.0001, 139.0001), "shrine"),
+                Triple(12L, a, "shrine"),
+                Triple(13L, a, "temple"),
+                Triple(14L, Coordinate(36.0, 140.0), "shrine"),
+            )
+        try {
+            rows.forEach { (id, point, type) ->
+                jdbc.update(
+                    "INSERT INTO game_object(id,object_type,name,geom) VALUES (?,?,?,ST_SetSRID(ST_MakePoint(?,?),4326))",
+                    id,
+                    type,
+                    if (id == 2L) null else "同じ名前",
+                    point.lng,
+                    point.lat,
+                )
+            }
+            val found = realArea.findCoveredObjects(ObjectType.SHRINE, hull)
+            assertEquals(listOf(2L, 10L, 11L, 12L), found.map { it.id })
+            assertNull(found[0].name)
+            assertEquals(a, found[0].coordinate)
+            assertEquals(a, found[3].coordinate)
+        } finally {
+            rows.forEach { jdbc.update("DELETE FROM game_object WHERE id=?", it.first) }
+        }
+    }
+
+    @Test fun test_confirm_referenceUpdatedDeletedAndReinserted_preservesSavedSnapshot() {
+        val (game, p) = seed()
+        val id = 9007199254740993L
+        try {
+            jdbc.update(
+                "INSERT INTO game_object(id,object_type,name,geom) VALUES (?,'shrine','獲得時の名前',ST_SetSRID(ST_MakePoint(139,35),4326))",
+                id,
+            )
+            run(game, p[0], a)
+            run(game, p[1], b)
+            val result = assertNotNull(run(game, p[2], c).result)
+            assertEquals(1, result.objectCount)
+            assertEquals(id, result.objects.single().id)
+            jdbc.update(
+                "UPDATE game_object SET object_type='temple', name='更新後', geom=ST_SetSRID(ST_MakePoint(140,36),4326) WHERE id=?",
+                id,
+            )
+            assertEquals(result, games.findSummary(game)?.result)
+            jdbc.update("DELETE FROM game_object WHERE id=?", id)
+            assertEquals(result, games.findSummary(game)?.result)
+            jdbc.update(
+                "INSERT INTO game_object(id,object_type,name,geom) VALUES (?,'shrine','再投入',ST_SetSRID(ST_MakePoint(140,36),4326))",
+                id,
+            )
+            assertEquals(result, games.findSummary(game)?.result)
+            assertEquals(
+                "獲得時の名前",
+                games
+                    .findSummary(game)
+                    ?.result
+                    ?.objects
+                    ?.single()
+                    ?.name,
+            )
+        } finally {
+            jdbc.update("DELETE FROM game_object WHERE id=?", id)
+        }
+    }
+
+    @Test fun test_findSummary_invalidStoredObjects_rejectsInsteadOfRepairing() {
+        val (game, p) = seed()
+        run(game, p[0], a)
+        run(game, p[1], b)
+        val result = assertNotNull(run(game, p[2], c).result)
+        assertEquals(0, result.objectCount)
+        assertEquals("[]", jdbc.queryForObject("SELECT result_objects::text FROM game WHERE id=?", String::class.java, game))
+        val obj = """{"id":"2","objectType":"shrine","name":null,"lat":35,"lng":139}"""
+        for ((count, json) in listOf(
+            1 to "[]",
+            2 to "[$obj,$obj]",
+            1 to "[$obj]".replace("shrine", "temple"),
+            1 to "[$obj]".replace("35", "135"),
+            0 to "null",
+            1 to "[{}]",
+        )) {
+            jdbc.update("UPDATE game SET object_count=?, result_objects=CAST(? AS jsonb) WHERE id=?", count, json, game)
+            assertThrows<RuntimeException> { games.findSummary(game) }
+        }
+        jdbc.update("UPDATE game SET result_objects=NULL WHERE id=?", game)
+        assertThrows<RuntimeException> { games.findSummary(game) }
+    }
+
+    @Test fun test_confirm_databaseRejectsObjects_rollsBackCandidateAndCompletion() {
+        val (game, p) = seed()
+        run(game, p[0], a)
+        run(game, p[1], b)
+        val constraint = "reject_objects_" + game.toString().replace("-", "")
+        jdbc.execute("ALTER TABLE game ADD CONSTRAINT $constraint CHECK (id <> '$game'::uuid OR result_objects IS NULL)")
+        try {
+            assertThrows<RuntimeException> { run(game, p[2], c) }
+            assertEquals(2, fixed(game))
+            val row =
+                jdbc.queryForMap(
+                    "SELECT status::text, polygon_geom, area_sqm, area_valid, object_count, result_objects FROM game WHERE id=?",
+                    game,
+                )
+            assertEquals("ACTIVE", row["status"])
+            listOf("polygon_geom", "area_sqm", "area_valid", "object_count", "result_objects").forEach { assertNull(row[it]) }
+        } finally {
+            jdbc.execute("ALTER TABLE game DROP CONSTRAINT $constraint")
+        }
+        assertEquals(emptyList(), run(game, p[2], c).result?.objects)
     }
 }

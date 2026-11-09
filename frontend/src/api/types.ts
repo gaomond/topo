@@ -102,6 +102,7 @@ export type GameResultPayload = {
   areaSqm: number;
   areaValid: boolean;
   objectCount: number;
+  objects: GameObjectSnapshotPayload[];
   polygon: { lat: number; lng: number }[];
 };
 export type ConfirmLocationResponse = {
@@ -109,4 +110,12 @@ export type ConfirmLocationResponse = {
   confirmed: boolean;
   confirmedAt: string;
   result: GameResultPayload | null;
+};
+
+export type GameObjectSnapshotPayload = {
+  id: string;
+  objectType: string;
+  name: string | null;
+  lat: number;
+  lng: number;
 };
