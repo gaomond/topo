@@ -4,15 +4,6 @@
 // 導出を純関数に切り出す（テスト容易・Dumb を薄く保つ）。クライアント計算はサーバー計算値
 // （sqm と threshold）の**スカラー比較のみ**で、凸包・面積・内包の計算はしない（US-10 / CLAUDE.md）。
 
-// 単位換算の境界（㎡ / 万㎡ / ㎢）。
-const SQM_PER_MAN = 10_000; // 万㎡（= 1 ha）
-const SQM_PER_KM2 = 1_000_000; // ㎢
-
-// 表示単位ラベル。
-const UNIT_SQM = "㎡";
-const UNIT_MAN = "万㎡";
-const UNIT_KM2 = "㎢";
-
 // 上限接近（警告）の判定比率。この比率以上かつ上限以下で「上限に接近」を出す。
 // spec 1.5/1.6 の「実装時決定」に基づく定数（0.85）。警告＝「近い・超えるな」であって「下げろ」ではない。
 export const WARNING_RATIO = 0.85;
@@ -53,26 +44,4 @@ export function deriveMeterState(sqm: number | null, threshold: number): MeterSt
   return { kind: "normal", fillRatio, overflowSqm: null };
 }
 
-/**
- * 面積（m²）を人間可読に整形する（㎡ / 万㎡ / ㎢ を自動選択＋桁区切り）。
- *
- * 小さい値は ㎡、㎢級（1,000,000㎡〜）は ㎢。変化が見える精度で丸める。
- */
-export function formatArea(sqm: number): string {
-  const value = Math.max(0, sqm);
-  if (value >= SQM_PER_KM2) {
-    const km2 = (value / SQM_PER_KM2).toLocaleString("ja-JP", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-    return `${km2} ${UNIT_KM2}`;
-  }
-  if (value >= SQM_PER_MAN) {
-    const man = (value / SQM_PER_MAN).toLocaleString("ja-JP", {
-      minimumFractionDigits: 1,
-      maximumFractionDigits: 1,
-    });
-    return `${man} ${UNIT_MAN}`;
-  }
-  return `${Math.round(value).toLocaleString("ja-JP")} ${UNIT_SQM}`;
-}
+export { formatArea } from "@/shared/formatArea";

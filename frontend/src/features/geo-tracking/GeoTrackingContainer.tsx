@@ -7,7 +7,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { type TopoApi, topoApi } from "@/api/topoApi";
-import type { CurrentAreaPayload, PlayerPayload } from "@/api/types";
+import type { CurrentAreaPayload, GameResultPayload, PlayerPayload } from "@/api/types";
 import { AreaMeter } from "@/features/area-meter/AreaMeter";
 import { ConfirmLocationControl } from "@/features/location-confirm/ConfirmLocationControl";
 import { useLocationConfirmation } from "@/features/location-confirm/useLocationConfirmation";
@@ -33,6 +33,7 @@ export type GeoTrackingContainerProps = {
   // 面積成立判定の上限（m²・作成時確定）。US-10 の面積メーターの満杯ラインに使う。
   // 親 Smart（WaitingRoomContainer）から state.areaThreshold を渡す。未指定時はメーターを出さない。
   areaThreshold?: number;
+  onResult?: (result: GameResultPayload) => void;
 };
 
 export function GeoTrackingContainer({
@@ -43,6 +44,7 @@ export function GeoTrackingContainer({
   players = [],
   currentArea = null,
   areaThreshold,
+  onResult,
 }: GeoTrackingContainerProps) {
   // 既定は共有シングルトン（identity が安定し、send の再生成連鎖を招かない）。
   const resolvedApi = api ?? topoApi;
@@ -55,6 +57,7 @@ export function GeoTrackingContainer({
     playerId,
     selfLocation,
     players.some((p) => p.playerId === playerId && p.confirmed),
+    onResult,
   );
 
   // ライブ位置の送信関数（Smart）。ペイロードは { lat, lng } のみ（Coordinate と一致）。

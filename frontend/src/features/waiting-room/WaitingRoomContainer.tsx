@@ -8,9 +8,11 @@
 // ポーリング（1.5）は useGameState（SWR）で実現し、参加者の増減を自動反映する。
 // API を呼ぶのは Smart のみ。api / clipboard / origin はテスト用に注入可能。
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ApiError, type TopoApi, topoApi } from "@/api/topoApi";
+import type { GameResultPayload } from "@/api/types";
+import { GameResultView } from "@/features/game-result/GameResultView";
 import { GeoTrackingContainer } from "@/features/geo-tracking/GeoTrackingContainer";
 import type { UseGeoTrackingDeps } from "@/features/geo-tracking/useGeoTracking";
 import { JoinGameForm } from "@/features/join-game/JoinGameForm";
@@ -35,17 +37,30 @@ export type WaitingRoomContainerProps = {
 // （LOCATION_SEND_INTERVAL_MS=2000）と概念一致させる。ACTIVE 遷移後も本 hook が回り続ける。
 const POLL_INTERVAL_MS = 2000;
 
-export function WaitingRoomContainer({
+export function WaitingRoomContainer(props: WaitingRoomContainerProps = {}) {
+  const { gameId } = useParams();
+  const [searchParams] = useSearchParams();
+  const playerId = searchParams.get(PLAYER_QUERY_KEY) ?? "";
+  return (
+    <WaitingRoomSession
+      key={`${gameId}:${playerId}`}
+      {...props}
+      gameId={gameId}
+      playerId={playerId}
+    />
+  );
+}
+
+function WaitingRoomSession({
   api,
   clipboard = navigator.clipboard,
   origin = window.location.origin,
   refreshIntervalMs = POLL_INTERVAL_MS,
   geoDeps,
-}: WaitingRoomContainerProps = {}) {
+  gameId,
+  playerId,
+}: WaitingRoomContainerProps & { gameId: string | undefined; playerId: string }) {
   const navigate = useNavigate();
-  const { gameId } = useParams();
-  const [searchParams] = useSearchParams();
-  const playerId = searchParams.get(PLAYER_QUERY_KEY) ?? "";
 
   // 既定は共有シングルトン topoApi（identity が安定し SWR key の無限再実行を招かない）。
   const resolvedApi = api ?? topoApi;
@@ -61,6 +76,16 @@ export function WaitingRoomContainer({
     gameId,
     refreshIntervalMs,
   });
+
+  const [completion, setCompletion] = useState<{ result: GameResultPayload | null } | null>(null);
+  const showResult = useCallback((result: GameResultPayload) => {
+    setCompletion((previous) => previous ?? { result });
+  }, []);
+  useEffect(() => {
+    if (state?.status === "COMPLETED") {
+      setCompletion((previous) => previous ?? { result: state.result });
+    }
+  }, [state]);
 
   const inviteUrl = gameId ? buildInviteUrl(origin, gameId) : "";
 
@@ -116,7 +141,7 @@ export function WaitingRoomContainer({
   }, [resolvedApi, gameId, playerId, mutate]);
 
   // 404（存在しない gameId）→ 見つかりません（1.4）。
-  if (error instanceof ApiError && error.status === 404) {
+  if (completion === null && error instanceof ApiError && error.status === 404) {
     return <GameNotFoundScreen />;
   }
 
@@ -145,6 +170,10 @@ export function WaitingRoomContainer({
     return <GameNotFoundScreen />;
   }
 
+  if (completion !== null || state.status === "COMPLETED") {
+    return <GameResultView result={completion === null ? state.result : completion.result} />;
+  }
+
   // ACTIVE 検知で地図画面（US-02 雛形）へ切り替える（1.3）。作成者は開始成功→mutate で、
   // 非作成者はポーリングで ACTIVE を検知し、両者とも status 駆動の同一分岐に集約する。
   if (state.status === "ACTIVE") {
@@ -161,6 +190,7 @@ export function WaitingRoomContainer({
         players={state.players}
         currentArea={state.currentArea}
         areaThreshold={state.areaThreshold}
+        onResult={showResult}
       />
     );
   }

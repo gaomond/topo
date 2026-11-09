@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ApiError, type TopoApi } from "@/api/topoApi";
+import type { GameResultPayload } from "@/api/types";
 import type { Coordinate } from "@/features/geo-tracking/geoState";
 
 export function useLocationConfirmation(
@@ -8,7 +9,15 @@ export function useLocationConfirmation(
   playerId: string,
   coordinate: Coordinate | null,
   serverConfirmed: boolean,
+  onResult?: (result: GameResultPayload) => void,
 ) {
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   const [localConfirmed, setLocalConfirmed] = useState(serverConfirmed);
   const [fixedLocation, setFixedLocation] = useState<Coordinate | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -40,9 +49,11 @@ export function useLocationConfirmation(
     setSubmitting(true);
     setError(null);
     try {
-      await api.confirmLocation(gameId, playerId, sentPoint);
+      const response = await api.confirmLocation(gameId, playerId, sentPoint);
+      if (!mounted.current) return;
       setFixedLocation(sentPoint);
       setLocalConfirmed(true);
+      if (response.result !== null) onResult?.(response.result);
     } catch (failure) {
       let foundConfirmed = false;
       if (failure instanceof ApiError && failure.status === 409) {
