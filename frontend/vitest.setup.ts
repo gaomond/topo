@@ -1,4 +1,13 @@
 import "@testing-library/jest-dom/vitest";
+
+// jsdomにはレイアウト観測がないため、Radixの入力サイズ追跡だけを代替する。
+class TestResizeObserver implements ResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+globalThis.ResizeObserver = TestResizeObserver;
+
 import { cleanup } from "@testing-library/react";
 import { afterEach } from "vitest";
 

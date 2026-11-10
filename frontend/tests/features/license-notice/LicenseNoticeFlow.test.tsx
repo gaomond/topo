@@ -81,8 +81,8 @@ function setup({
     user: userEvent.setup({ advanceTimers: vi.advanceTimersByTimeAsync }),
   };
 }
-const entry = () => screen.getByRole("button", { name: "ライセンス・データ出典" });
-const notice = () => screen.getByRole("dialog", { name: "ライセンス・データ出典" });
+const entry = () => screen.getByRole("button", { name: "licences" });
+const notice = () => screen.getByRole("dialog", { name: "Licences" });
 
 describe("LicenseNoticeFlow", () => {
   beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }));
@@ -114,9 +114,7 @@ describe("LicenseNoticeFlow", () => {
   ] as const)("test_entry_$name_doesNotRenderFooter", async (options) => {
     setup(options);
     await act(() => vi.advanceTimersByTimeAsync(50));
-    expect(
-      screen.queryByRole("button", { name: "ライセンス・データ出典" }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "licences" })).not.toBeInTheDocument();
     expect(screen.queryByRole("contentinfo")).not.toBeInTheDocument();
   });
   it("test_close_enteredCreateForm_preservesValueAndUrl", async () => {
@@ -152,7 +150,7 @@ describe("LicenseNoticeFlow", () => {
   });
   it("test_license_waitingToActiveAndCompleted_preservesProgressWithoutFooter", async () => {
     const { api, gps, storage, state, user } = setup({ status: "WAITING" });
-    await user.click(await screen.findByRole("button", { name: "ライセンス・データ出典" }));
+    await user.click(await screen.findByRole("button", { name: "licences" }));
     api.getGameState.mockResolvedValue({ ...state, status: "ACTIVE" });
     await act(() => vi.advanceTimersByTimeAsync(200));
     await waitFor(() => expect(gps.activeWatchCount()).toBe(1));

@@ -12,6 +12,7 @@ import {
   type WaitingRoomContainerProps,
 } from "@/features/waiting-room/WaitingRoomContainer";
 import { CREATE_PATH, GAME_ROUTE_PATTERN } from "@/routing/paths";
+import { PageNotFoundScreen } from "@/shared/PageNotFoundScreen";
 
 type AppProps = Pick<
   WaitingRoomContainerProps,
@@ -49,6 +50,7 @@ export function App(props: AppProps = {}) {
               />
             }
           />
+          <Route path="*" element={<PageNotFoundScreen />} />
         </Routes>
       )}
     </LicenseNotice>

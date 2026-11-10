@@ -9,6 +9,7 @@ import {
   type TooltipRenderProps,
 } from "react-joyride";
 import { formatArea } from "@/shared/formatArea";
+import { Button } from "@/shared/ui/button";
 
 function WalkthroughTooltip({
   index,
@@ -27,48 +28,32 @@ function WalkthroughTooltip({
       aria-labelledby="walkthrough-title"
       aria-describedby="walkthrough-content"
       data-walkthrough-step={index}
-      className="w-88 max-w-[calc(100vw-2rem)] max-h-[calc(100dvh-3rem)] overflow-auto rounded-2xl bg-white p-5 text-left text-slate-800 shadow-xl"
+      className="w-88 max-w-[calc(100vw-2rem)] max-h-[calc(100dvh-3rem)] overflow-auto rounded-3xl bg-surface p-5 text-left text-foreground shadow-xl"
     >
       <div className="mb-3 flex items-start justify-between gap-3">
         <h2 id="walkthrough-title" className="text-lg font-bold leading-snug">
           {step.title}
         </h2>
-        <button
-          type="button"
-          {...closeProps}
-          className="shrink-0 rounded px-2 py-1 text-sm text-slate-600 focus-visible:outline-2"
-        >
+        <Button type="button" {...closeProps} variant="ghost" className="shrink-0 px-3">
           閉じる
-        </button>
+        </Button>
       </div>
       <div id="walkthrough-content" className="text-sm leading-relaxed">
         {step.content}
       </div>
       <p className="mt-3 text-xs text-slate-500">{index + 1} / 4</p>
       <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
-        <button
-          type="button"
-          {...skipProps}
-          className="mr-auto rounded py-2 text-sm text-slate-600 focus-visible:outline-2"
-        >
+        <Button type="button" {...skipProps} variant="ghost" className="mr-auto px-3">
           スキップ
-        </button>
+        </Button>
         {index > 0 && (
-          <button
-            type="button"
-            {...backProps}
-            className="rounded border border-slate-300 px-3 py-2 text-sm focus-visible:outline-2"
-          >
+          <Button type="button" {...backProps} variant="outline" className="px-3">
             戻る
-          </button>
+          </Button>
         )}
-        <button
-          type="button"
-          {...primaryProps}
-          className="rounded bg-emerald-700 px-3 py-2 text-sm font-medium text-white focus-visible:outline-2"
-        >
+        <Button type="button" {...primaryProps} className="px-3">
           {isLastStep ? "探検を始める" : "次へ"}
-        </button>
+        </Button>
       </div>
     </div>
   );

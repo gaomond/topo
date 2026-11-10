@@ -1,21 +1,20 @@
-MIT License
+Copyright (c) 2026 gaomond. All rights reserved.
 
-Copyright (c) 2026 gaomond
+適用範囲
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+別途の許諾・表記があるものを除き、topo独自のコード・文書に関する権利を留保します。
+公開アプリの通常の利用は許可しますが、ソースや文書の一般的な再利用・改変・再配布の
+許諾を意味しません。別途の許諾を得る場合を除き、これらの行為は法令および公開先の
+利用規約で認められる範囲に従ってください。GitHubの利用規約に基づく閲覧・forkの権利や、
+法令上の例外を制限するものではありません。
 
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
+適用しないもの
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
+- OSM由来のデータおよび派生データベースにはODbL 1.0が適用されます。
+  出典・加工方法・利用条件は docs/data-loading.md を参照してください。
+- ODbL 4.6に基づく加工方法の提供を維持するため、tools/osm/ 配下のコード、
+  docs/data-loading.md、src/main/resources/db/migration/V1__init.sql は
+  tools/osm/LICENSE のMIT Licenseで引き続き提供します。
+- 依存ライブラリ、直接取り込んだ第三者コード、第三者の画像・データ等には、
+  それぞれのライセンスと著作権表示が適用されます。
+  この権利留保によって第三者の条件や利用者への許諾を変更するものではありません。

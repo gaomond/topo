@@ -5,6 +5,7 @@ import { LicenseNotice } from "@/features/license-notice/LicenseNotice";
 
 const links = [
   "/THIRD_PARTY_LICENSES.txt",
+  "/SHADCN_LICENSE.txt",
   "https://github.com/gaomond/topo/blob/main/LICENSE",
   "https://github.com/gaomond/topo/blob/main/docs/data-loading.md",
   "https://www.openstreetmap.org/copyright",
@@ -14,17 +15,21 @@ describe("LicenseNotice", () => {
   it("test_open_withoutGame_showsScopedNoticesAndExactNewTabLinks", async () => {
     const fetch = vi.spyOn(globalThis, "fetch");
     render(<LicenseNotice>{() => <p>画面</p>}</LicenseNotice>);
-    await userEvent.click(screen.getByRole("button", { name: "ライセンス・データ出典" }));
-    const dialog = screen.getByRole("dialog", { name: "ライセンス・データ出典" });
-    expect(dialog).toHaveTextContent("MIT License");
-    expect(dialog).toHaveTextContent("Copyright (c) 2026 gaomond");
+    await userEvent.click(screen.getByRole("button", { name: "licences" }));
+    const dialog = screen.getByRole("dialog", { name: "Licences" });
+    expect(dialog).toHaveTextContent("All rights reserved");
+    expect(dialog).not.toHaveTextContent("topoのコード・文書は MIT");
+    for (const name of ["topo", "Map data", "Third-party software"]) {
+      expect(within(dialog).getByRole("heading", { name })).toBeInTheDocument();
+    }
+    expect(dialog).toHaveTextContent("© 2026 gaomond");
     expect(dialog).toHaveTextContent("© OpenStreetMap contributors");
-    expect(dialog).toHaveTextContent("神社データには ODbL 1.0");
-    expect(dialog).toHaveTextContent("依存ライブラリには、それぞれのライセンス");
+    expect(dialog).toHaveTextContent("ODbL 1.0");
     expect(dialog).toHaveTextContent("別タブ");
-    expect(
-      within(dialog).getByRole("link", { name: "依存ライブラリのライセンス" }),
-    ).toHaveAttribute("href", "/THIRD_PARTY_LICENSES.txt");
+    expect(within(dialog).getByRole("link", { name: "使用ライブラリ" })).toHaveAttribute(
+      "href",
+      "/THIRD_PARTY_LICENSES.txt",
+    );
     expect(
       within(dialog)
         .getAllByRole("link")
@@ -51,7 +56,7 @@ describe("LicenseNotice", () => {
       </LicenseNotice>,
     );
     await userEvent.type(screen.getByRole("textbox"), "入力途中");
-    const entry = screen.getByRole("button", { name: "ライセンス・データ出典" });
+    const entry = screen.getByRole("button", { name: "licences" });
     await userEvent.click(entry);
     expect(screen.getByRole("button", { name: "閉じる" })).toHaveFocus();
     await userEvent.click(screen.getByRole("button", { name: "閉じる" }));
@@ -61,16 +66,16 @@ describe("LicenseNotice", () => {
   });
   it("test_tab_dialogEdges_keepsFocusInside", async () => {
     render(<LicenseNotice>{() => <button type="button">背景</button>}</LicenseNotice>);
-    await userEvent.click(screen.getByRole("button", { name: "ライセンス・データ出典" }));
+    await userEvent.click(screen.getByRole("button", { name: "licences" }));
     const close = screen.getByRole("button", { name: "閉じる" });
-    const last = screen.getByRole("link", { name: "依存ライブラリのライセンス" });
+    const last = screen.getByRole("link", { name: "UIコンポーネント" });
     fireEvent.keyDown(close, { key: "Tab", shiftKey: true });
     expect(last).toHaveFocus();
     fireEvent.keyDown(last, { key: "Tab" });
     expect(close).toHaveFocus();
     fireEvent(screen.getByRole("dialog"), new Event("cancel", { cancelable: true }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "ライセンス・データ出典" })).toHaveFocus();
+    expect(screen.getByRole("button", { name: "licences" })).toHaveFocus();
   });
   it("test_open_existingBlockingDialog_disablesEntryUntilClosed", async () => {
     render(
@@ -83,6 +88,6 @@ describe("LicenseNotice", () => {
       </LicenseNotice>,
     );
     await userEvent.click(screen.getByRole("button", { name: "確認開始" }));
-    expect(screen.getByRole("button", { name: "ライセンス・データ出典" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "licences" })).toBeDisabled();
   });
 });

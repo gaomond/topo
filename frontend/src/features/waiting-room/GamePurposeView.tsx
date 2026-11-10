@@ -3,14 +3,11 @@ import purposeImage from "./assets/game-purpose-little-planet-v3.png";
 
 export function GamePurposeView({ areaThreshold }: { areaThreshold: number }) {
   return (
-    <section
-      aria-labelledby="game-purpose-title"
-      className="rounded-2xl bg-white p-4 shadow-sm sm:p-6"
-    >
-      <h2 id="game-purpose-title" className="text-lg font-bold text-slate-800">
+    <section aria-labelledby="game-purpose-title" className="rounded-2xl bg-surface p-0">
+      <h2 id="game-purpose-title" className="text-lg font-bold text-foreground">
         仲間と歩いて、街を囲もう
       </h2>
-      <ul className="mt-2 list-disc space-y-2 pl-5 text-sm leading-relaxed text-slate-700">
+      <ul className="mt-2 list-disc space-y-2 pl-5 text-sm leading-relaxed text-muted-foreground">
         <li>
           {formatArea(areaThreshold)}以内で、できるだけ多くの地物（建物や施設など）を囲みましょう。
         </li>
@@ -24,7 +21,7 @@ export function GamePurposeView({ areaThreshold }: { areaThreshold: number }) {
           alt="3人の位置を結んだ三角形で地物を囲む模式図"
           className="h-auto w-full"
         />
-        <figcaption className="text-center text-xs leading-relaxed text-slate-600">
+        <figcaption className="text-center text-xs leading-relaxed text-muted-foreground">
           <span className="block font-medium">3人で囲む例</span>
           丸はプレイヤーの位置、四角は地物。囲んだ範囲の内側の地物を数えます。
         </figcaption>

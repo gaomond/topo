@@ -22,14 +22,20 @@
     ]
   },
   "dependencies": {
+    "@radix-ui/react-radio-group": "^1.5.1",
+    "@radix-ui/react-slot": "^1.5.0",
     "@tailwindcss/vite": "^4.1.13",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "leaflet": "^1.9.4",
+    "lucide-react": "^1.70.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-joyride": "^3.2.0",
     "react-leaflet": "^5.0.0",
     "react-router-dom": "^7.18.1",
     "swr": "^2.4.2",
+    "tailwind-merge": "^3.7.0",
     "tailwindcss": "^4.1.13"
   },
   "devDependencies": {

@@ -9,7 +9,6 @@ import {
 // Dumb（描画のみ）の検証。開始ボタンの表示・活性/非活性・onStart 発火を確認する（US-06）。
 function renderView(overrides: Partial<WaitingRoomViewProps> = {}) {
   const props: WaitingRoomViewProps = {
-    status: "WAITING",
     participants: [{ playerId: "p-1", displayName: "たろう", confirmed: false }],
     playerCount: 3,
     areaThreshold: 500_000,
@@ -25,6 +24,20 @@ function renderView(overrides: Partial<WaitingRoomViewProps> = {}) {
 }
 
 describe("WaitingRoomView", () => {
+  it("test_copy_failed_exposesManualCopyAndRetry", async () => {
+    const user = userEvent.setup();
+    const { props } = renderView({ copyFailed: true });
+    expect(screen.getByRole("textbox", { name: "招待URL" })).toHaveValue(props.inviteUrl);
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "コピーできませんでした。URLを選択してコピーしてください",
+    );
+    expect(screen.queryByText("コピーしました")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "招待URLをコピー" }));
+    await user.click(screen.getByRole("button", { name: "招待URLをコピー" }));
+    expect(props.onCopyInviteUrl).toHaveBeenCalledTimes(2);
+    expect(screen.queryByText(/WAITING/)).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "待機中" })).toBeInTheDocument();
+  });
   it("test_waitingRoomView_differentThreshold_explainsPurposeWithSelectedImage", () => {
     renderView({ areaThreshold: 2_000_000 });
     expect(screen.getByText(/2.00 km²以内/)).toBeInTheDocument();

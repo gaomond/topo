@@ -1,3 +1,4 @@
+import { Button } from "@/shared/ui/button";
 // エラー画面（Dumb）。
 //
 // 純表示部品。状態も Geolocation も持たない。初回許可拒否（PERMISSION_ERROR）と
@@ -16,21 +17,17 @@ export function LocationErrorScreen({ message, onRetry }: LocationErrorScreenPro
       role="alertdialog"
       aria-modal="true"
       aria-labelledby="location-error-title"
-      className="absolute inset-0 z-[2000] flex items-center justify-center bg-neutral-50 p-4"
+      className="absolute inset-0 z-[2000] flex items-center justify-center bg-background p-4"
     >
       <div className="max-w-sm text-center">
-        <h1 id="location-error-title" className="mb-3 text-xl font-semibold text-neutral-800">
+        <h1 id="location-error-title" className="mb-3 text-xl font-semibold text-foreground">
           位置情報を取得できません
         </h1>
-        <p className="mb-5 text-neutral-600">{message}</p>
+        <p className="mb-5 text-muted-foreground">{message}</p>
         {onRetry !== undefined && (
-          <button
-            type="button"
-            onClick={onRetry}
-            className="cursor-pointer rounded-md bg-blue-600 px-6 py-2.5 text-base text-white hover:bg-blue-700"
-          >
+          <Button type="button" onClick={onRetry}>
             再試行
-          </button>
+          </Button>
         )}
       </div>
     </div>

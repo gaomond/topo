@@ -98,6 +98,7 @@ describe("GameResultFlow", () => {
     await submit(gps, user);
     expect(await screen.findByRole("heading", { name: "ゲーム完了" })).toBeInTheDocument();
     expect(gps.activeWatchCount()).toBe(0);
+    expect(screen.getByRole("status")).toHaveTextContent("位置情報のトラッキングを終了しました");
     expect(gps.clearWatch).toHaveBeenCalled();
     const sends = fake.updateLocation.mock.calls.length;
     await act(async () => {
@@ -141,6 +142,7 @@ describe("GameResultFlow", () => {
     expect(screen.getByRole("heading", { name: "ゲーム完了" })).toBeInTheDocument();
     expect(screen.getByTestId("result-map")).toHaveTextContent("獲得した神社");
     expect(gps.activeWatchCount()).toBe(0);
+    expect(screen.getByRole("status")).toHaveTextContent("位置情報のトラッキングを終了しました");
   });
   it.each([
     result,
@@ -157,6 +159,7 @@ describe("GameResultFlow", () => {
       expect(screen.getByTestId("result-map")).toHaveTextContent("獲得した神社");
     }
     expect(gps.watchPosition).not.toHaveBeenCalled();
+    expect(screen.getByRole("status")).toHaveTextContent("位置情報のトラッキングを終了しました");
     expect(fake.joinGame).not.toHaveBeenCalled();
     expect(fake.confirmLocation).not.toHaveBeenCalled();
   });

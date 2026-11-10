@@ -9,7 +9,7 @@ topoは、OpenStreetMap（OSM）から取得した神社の位置データを使
 - **データの出典：** © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright)。神社データには [Open Database License（ODbL）1.0](https://opendatacommons.org/licenses/odbl/1-0/) が適用される。
 - **元データの取得先：** [Geofabrikの日本データ](https://download.geofabrik.de/asia/japan.html)。手順では `japan-latest.osm.pbf` を使用する。地域別・過去のファイルも取得先から参照できる。
 - **加工方法の提供：** ODbL 4.6に基づく加工方法の提供として、この文書と後述のLua・SQL・スキーマ定義を公開する方針とする。公開アプリの共通ダイアログから、この説明のGitHub公開版へ案内する（[US-18](story/18.md)）。リリース前に本文と参照先を認証なしで読めることを確認する。
-- **コードとの区別：** topoのコード・文書は [MIT License](../LICENSE)。OSM由来のデータにはODbLが適用され、依存ライブラリにはそれぞれのライセンスが適用される。OSM由来のデータを再配布する場合も、帰属表示とODbLの条件に従う。
+- **コードとの区別：** topo独自のコード・文書は [All rights reserved](../LICENSE) とする。OSM由来のデータにはODbLが適用され、第三者コードには各ライセンスが適用される。加工方法の提供を維持するため、本書・`tools/osm/`配下のコード・`V1__init.sql`は [MIT License](../tools/osm/LICENSE) で引き続き提供する。OSM由来のデータの利用・再配布に対して、アプリ本体の権利留保による追加制限を課さない。
 
 `latest`の内容は更新されるため、同じデータを再現する際は、使用した元ファイル・対象地域・データ時点を特定する。既存の投入済みデータの時点は、この文書には未記録。
 

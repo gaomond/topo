@@ -33,6 +33,7 @@ describe("GameResultView", () => {
       </MemoryRouter>,
     );
     expect(screen.getByRole("heading", { name: "ゲーム完了" })).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("位置情報のトラッキングを終了しました");
     expect(screen.getByText("0個")).toBeInTheDocument();
     expect(screen.getByText("0.0005 km²")).toBeInTheDocument();
     expect(screen.getByTestId("result-map")).toHaveAttribute("data-vertex-count", "3");
@@ -52,6 +53,7 @@ describe("GameResultView", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(
       "結果を取得できませんでした（想定外の状態）",
     );
+    expect(screen.getByRole("status")).toHaveTextContent("位置情報のトラッキングを終了しました");
     expect(screen.queryByTestId("result-map")).not.toBeInTheDocument();
     expect(screen.queryByText("0個")).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "新しいゲームを作成" })).toHaveAttribute("href", "/");

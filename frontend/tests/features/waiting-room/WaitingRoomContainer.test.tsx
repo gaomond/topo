@@ -96,7 +96,7 @@ describe("WaitingRoomContainer", () => {
 
     renderAt("/game/game-123?p=player-456", fake);
 
-    expect(await screen.findByTestId("game-status")).toHaveTextContent("WAITING");
+    expect(await screen.findByRole("heading", { name: "待機中" })).toBeInTheDocument();
     expect(fake.joinGame).not.toHaveBeenCalled();
   });
 

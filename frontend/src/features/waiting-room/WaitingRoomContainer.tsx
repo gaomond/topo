@@ -8,7 +8,7 @@
 // ポーリング（1.5）は useGameState（SWR）で実現し、参加者の増減を自動反映する。
 // API を呼ぶのは Smart のみ。api / clipboard / origin はテスト用に注入可能。
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ApiError, type TopoApi, topoApi } from "@/api/topoApi";
 import type { GameResultPayload } from "@/api/types";
@@ -20,7 +20,10 @@ import { JoinGameForm } from "@/features/join-game/JoinGameForm";
 import { buildGamePath, buildInviteUrl, PLAYER_QUERY_KEY } from "@/routing/paths";
 import { CannotJoinScreen } from "@/shared/CannotJoinScreen";
 import { GameNotFoundScreen } from "@/shared/GameNotFoundScreen";
+import { Button } from "@/shared/ui/button";
 import { type UseGameStateResult, useGameState } from "@/shared/useGameState";
+import { GameStateErrorNotice } from "./GameStateErrorNotice";
+import { useInviteUrlCopy } from "./useInviteUrlCopy";
 import type { Participant } from "./WaitingRoomView";
 import { WaitingRoomView } from "./WaitingRoomView";
 
@@ -127,15 +130,20 @@ function WaitingRoomGame({
   useLayoutEffect(() => {
     if (joining !== null) props.onLicenseEntryVisibilityChange?.(false);
   }, [joining, props.onLicenseEntryVisibilityChange]);
-  if (joining?.status === "loading") return <p role="status">読み込み中…</p>;
+  if (joining?.status === "loading")
+    return (
+      <p role="status" className="p-8 text-center text-muted-foreground">
+        読み込み中…
+      </p>
+    );
   if (joining?.status === "not-found") return <GameNotFoundScreen />;
   if (joining?.status === "failed") {
     return (
-      <section role="alert">
+      <section role="alert" className="mx-auto my-8 max-w-lg space-y-5 rounded-3xl bg-surface p-6">
         <p>参加は完了しましたが、ゲーム状態を取得できませんでした</p>
-        <button type="button" onClick={() => void loadJoinedGame(playerId)}>
+        <Button type="button" onClick={() => void loadJoinedGame(playerId)}>
           再試行
-        </button>
+        </Button>
       </section>
     );
   }
@@ -172,23 +180,42 @@ function WaitingRoomSession({
   onJoined: (playerId: string) => void;
 }) {
   const mounted = useRef(true);
+  const retryRequest = useRef<AbortController | null>(null);
+  const [retrying, setRetrying] = useState(false);
   useLayoutEffect(() => {
     mounted.current = true;
     return () => {
       mounted.current = false;
+      retryRequest.current?.abort();
     };
   }, []);
 
   // 既定は共有シングルトン topoApi（identity が安定し SWR key の無限再実行を招かない）。
   const resolvedApi = api ?? topoApi;
-  const [copied, setCopied] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [starting, setStarting] = useState(false);
   // 参加/開始アクションの失敗メッセージ（409 等）。従来は握り潰していたためユーザーに何も出なかった。
   // ポーリングで是正しきれない 409（満員のまま WAITING 継続など）を明示するために保持する。
   const [actionError, setActionError] = useState<string | null>(null);
 
-  const { state, error, mutate } = gameState;
+  const { state, error, mutate, refreshState } = gameState;
+
+  const retryGameState = useCallback(async () => {
+    if (retryRequest.current !== null) return;
+    const operation = new AbortController();
+    retryRequest.current = operation;
+    setRetrying(true);
+    try {
+      await refreshState(operation.signal);
+    } catch {
+      // SWRが保持する取得エラーを表示し、参加・開始などのPOSTは再送しない。
+    } finally {
+      if (mounted.current && retryRequest.current === operation) {
+        retryRequest.current = null;
+        setRetrying(false);
+      }
+    }
+  }, [refreshState]);
 
   const [completion, setCompletion] = useState<{ result: GameResultPayload | null } | null>(null);
   const showResult = useCallback((result: GameResultPayload) => {
@@ -212,10 +239,7 @@ function WaitingRoomSession({
 
   const inviteUrl = gameId ? buildInviteUrl(origin, gameId) : "";
 
-  const handleCopyInviteUrl = useCallback(async () => {
-    await clipboard.writeText(inviteUrl);
-    setCopied(true);
-  }, [clipboard, inviteUrl]);
+  const inviteCopy = useInviteUrlCopy(inviteUrl, clipboard);
 
   const handleJoin = useCallback(
     async (displayName: string) => {
@@ -264,14 +288,30 @@ function WaitingRoomSession({
     }
   }, [resolvedApi, gameId, playerId, mutate]);
 
-  // 404（存在しない gameId）→ 見つかりません（1.4）。
-  if (completion === null && error instanceof ApiError && error.status === 404) {
+  if (
+    completion === null &&
+    error instanceof ApiError &&
+    (error.status === 400 || error.status === 404)
+  ) {
     return <GameNotFoundScreen />;
   }
 
-  // 初回ロード中。
+  const getErrorNotice =
+    error != null ? (
+      <GameStateErrorNotice
+        hasSnapshot={state !== undefined}
+        retrying={retrying}
+        onRetry={() => void retryGameState()}
+      />
+    ) : null;
+
   if (!state) {
-    return <p role="status">読み込み中…</p>;
+    if (getErrorNotice !== null) return getErrorNotice;
+    return (
+      <p role="status" className="p-8 text-center text-muted-foreground">
+        読み込み中…
+      </p>
+    );
   }
 
   // playerId 無し（招待 URL で来た側）。
@@ -281,10 +321,10 @@ function WaitingRoomSession({
       return <CannotJoinScreen />;
     }
     return (
-      <>
+      <GameStateLayout errorNotice={getErrorNotice}>
         {actionError !== null && <p role="alert">{actionError}</p>}
         <JoinGameForm onJoin={handleJoin} submitting={submitting} />
-      </>
+      </GameStateLayout>
     );
   }
 
@@ -305,20 +345,22 @@ function WaitingRoomSession({
     // さらに US-08 でポーリング済みの players（live/online）と currentArea を Smart→Smart で渡す
     // （保持・公開のみ。友達ドット/面積メーターの描画は US-09/10）。
     return (
-      <GameWalkthroughContainer
-        key={`${gameId}:${playerId}`}
-        gameId={gameId ?? ""}
-        playerId={playerId}
-        api={resolvedApi}
-        deps={geoDeps}
-        players={state.players}
-        currentArea={state.currentArea}
-        areaThreshold={state.areaThreshold}
-        onResult={showResult}
-        getWalkthroughStorage={getWalkthroughStorage}
-        licenseOpen={licenseOpen}
-        onBlockingDialogChange={onBlockingDialogChange}
-      />
+      <GameStateLayout errorNotice={getErrorNotice}>
+        <GameWalkthroughContainer
+          key={`${gameId}:${playerId}`}
+          gameId={gameId ?? ""}
+          playerId={playerId}
+          api={resolvedApi}
+          deps={geoDeps}
+          players={state.players}
+          currentArea={state.currentArea}
+          areaThreshold={state.areaThreshold}
+          onResult={showResult}
+          getWalkthroughStorage={getWalkthroughStorage}
+          licenseOpen={licenseOpen}
+          onBlockingDialogChange={onBlockingDialogChange}
+        />
+      </GameStateLayout>
     );
   }
 
@@ -333,20 +375,35 @@ function WaitingRoomSession({
   const startEnabled = isCreator && participants.length === state.playerCount;
 
   return (
-    <>
+    <GameStateLayout errorNotice={getErrorNotice}>
       {actionError !== null && <p role="alert">{actionError}</p>}
       <WaitingRoomView
-        status={state.status}
         participants={participants}
         playerCount={state.playerCount}
         areaThreshold={state.areaThreshold}
         inviteUrl={inviteUrl}
-        onCopyInviteUrl={handleCopyInviteUrl}
-        copied={copied}
+        onCopyInviteUrl={() => void inviteCopy.copyInviteUrl()}
+        copied={inviteCopy.status === "copied"}
+        copyFailed={inviteCopy.status === "failed"}
         onStart={handleStart}
         startEnabled={startEnabled}
         starting={starting}
       />
-    </>
+    </GameStateLayout>
+  );
+}
+
+function GameStateLayout({
+  errorNotice,
+  children,
+}: {
+  errorNotice: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      {errorNotice}
+      <div className="relative min-h-0 flex-1">{children}</div>
+    </div>
   );
 }

@@ -1,3 +1,4 @@
+import { Button } from "@/shared/ui/button";
 // 測位コンテナ（Smart / 結線）。
 //
 // useGeoTracking を使い、状態に応じて Dumb（MapView / LocationErrorScreen / DegradedBanner）を
@@ -132,14 +133,15 @@ export function GeoTrackingContainer({
   const handleOverview = useCallback(() => setOverviewNonce((n) => n + 1), []);
 
   const helpButton = onOpenWalkthrough && (
-    <button
+    <Button
       ref={walkthroughButtonRef}
       type="button"
       onClick={onOpenWalkthrough}
-      className="absolute right-3 top-3 z-[3000] rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm focus-visible:outline-2"
+      variant="outline"
+      className="absolute right-3 top-3 z-[3000] px-4 shadow-sm"
     >
       遊び方
-    </button>
+    </Button>
   );
 
   // 初回拒否 / 非安全コンテキスト: 地図を出さず、エラー画面を全面表示する（フォールバックしない）。

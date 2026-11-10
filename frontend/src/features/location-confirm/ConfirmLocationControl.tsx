@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { Button } from "@/shared/ui/button";
 
 type Props = {
   confirmed: boolean;
@@ -33,14 +34,9 @@ export function ConfirmLocationControl({
           {error}
         </p>
       )}
-      <button
-        type="button"
-        disabled={!canConfirm}
-        onClick={onOpen}
-        className="w-full rounded-lg bg-blue-700 px-6 py-3 font-bold text-white shadow-lg disabled:bg-slate-500"
-      >
+      <Button type="button" disabled={!canConfirm} onClick={onOpen} className="w-full shadow-lg">
         {confirmed ? "確定済み" : submitting ? "確定中…" : "この位置で確定"}
-      </button>
+      </Button>
       <dialog
         ref={dialog}
         aria-labelledby="confirm-location-title"
@@ -48,28 +44,18 @@ export function ConfirmLocationControl({
           event.preventDefault();
           onCancel();
         }}
-        className="m-auto max-w-sm rounded-xl p-6 shadow-xl backdrop:bg-black/40"
+        className="m-auto w-[calc(100%-2rem)] max-w-sm rounded-3xl bg-surface p-6 text-foreground shadow-xl backdrop:bg-black/40"
       >
         <p id="confirm-location-title" className="mb-6">
           この位置で確定しますか？ 確定すると変更できません。
         </p>
         <div className="flex justify-end gap-4">
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={submitting}
-            className="rounded border px-4 py-2"
-          >
+          <Button type="button" onClick={onCancel} disabled={submitting} variant="outline">
             キャンセル
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={!canConfirm}
-            className="rounded bg-blue-700 px-4 py-2 text-white disabled:bg-slate-500"
-          >
+          </Button>
+          <Button type="button" onClick={onConfirm} disabled={!canConfirm}>
             {submitting ? "確定中…" : "確定する"}
-          </button>
+          </Button>
         </div>
       </dialog>
     </div>

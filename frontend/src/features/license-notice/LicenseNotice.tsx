@@ -1,4 +1,5 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
+import { Button } from "@/shared/ui/button";
 import { licenseLinks } from "./licenseLinks";
 
 export type LicenseNoticeBindings = {
@@ -31,7 +32,7 @@ export function LicenseNotice({
   }, [licenseOpen]);
 
   return (
-    <div className="flex h-dvh flex-col bg-slate-50 text-slate-900">
+    <div className="flex h-dvh flex-col bg-background text-foreground">
       <div
         ref={content}
         tabIndex={-1}
@@ -42,18 +43,19 @@ export function LicenseNotice({
       </div>
       {entryVisible && (
         <footer
-          className="shrink-0 border-t border-slate-200 bg-white px-3 py-1 text-center"
+          className="shrink-0 bg-background px-5 py-1 text-right sm:px-10"
           inert={licenseOpen}
         >
-          <button
+          <Button
             ref={entry}
             type="button"
             disabled={blockingDialogOpen}
             onClick={() => setLicenseOpen(true)}
-            className="min-h-11 rounded px-3 text-sm underline underline-offset-4 focus-visible:outline-2 disabled:text-slate-400"
+            variant="ghost"
+            className="px-2 text-xs font-normal text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
           >
-            ライセンス・データ出典
-          </button>
+            licences
+          </Button>
         </footer>
       )}
       <dialog
@@ -77,47 +79,60 @@ export function LicenseNotice({
           event.preventDefault();
           setLicenseOpen(false);
         }}
-        className="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-xl overflow-y-auto rounded-xl bg-white p-5 text-base leading-relaxed shadow-xl backdrop:bg-black/40"
+        className="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-3xl bg-surface p-6 text-sm leading-relaxed text-foreground shadow-xl backdrop:bg-black/40 sm:p-7"
       >
-        <div className="mb-4 flex items-start justify-between gap-3">
-          <h2 id="license-notice-title" className="text-xl font-bold">
-            ライセンス・データ出典
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <h2 id="license-notice-title" className="text-xl font-semibold tracking-tight">
+            Licences
           </h2>
-          <button
+          <Button
             ref={closeButton}
             type="button"
             onClick={() => setLicenseOpen(false)}
-            className="min-h-11 shrink-0 rounded border px-3"
+            variant="ghost"
+            size="icon"
+            aria-label="閉じる"
           >
-            閉じる
-          </button>
+            <X aria-hidden="true" className="size-5" />
+          </Button>
         </div>
-        <p className="mb-4 text-sm text-slate-600">詳細資料のリンクは別タブで開きます。</p>
-        <ul className="list-disc space-y-4 pl-5 [overflow-wrap:anywhere]">
-          <li>
-            topoのコード・文書は MIT License です。
-            <span className="block">Copyright (c) 2026 gaomond</span>
-            <NewTabLink href={licenseLinks.license}>topoのLICENSE全文</NewTabLink>
-          </li>
-          <li>
-            地図・神社データの出典：
+        <div className="divide-y divide-input [overflow-wrap:anywhere]">
+          <section aria-labelledby="licences-topo" className="space-y-2 py-5">
+            <h3 id="licences-topo" className="font-semibold">
+              topo
+            </h3>
+            <p className="text-muted-foreground">
+              © 2026 gaomond
+              <br />
+              All rights reserved
+            </p>
+            <NewTabLink href={licenseLinks.license}>権利表記</NewTabLink>
+          </section>
+          <section aria-labelledby="licences-map" className="space-y-2 py-5">
+            <h3 id="licences-map" className="font-semibold">
+              Map data
+            </h3>
+            <p className="text-xs text-muted-foreground">地図・神社データ</p>
             <NewTabLink href={licenseLinks.osm}>© OpenStreetMap contributors</NewTabLink>
-            <span className="block">神社データには ODbL 1.0 が適用されます。</span>
-            <NewTabLink href={licenseLinks.odbl}>ODbL 1.0本文</NewTabLink>
-          </li>
-          <li>
-            <NewTabLink href={licenseLinks.data}>
-              地図・神社データの出典・加工方法・利用条件
-            </NewTabLink>
-          </li>
-          <li>
-            地図画像の配信と、集計用の神社データの取得・投入は別の仕組みです。地図上にも出典を表示しています。
-          </li>
-          <li>
-            依存ライブラリには、それぞれのライセンスが適用されます。
-            <NewTabLink href={licenseLinks.dependencies}>依存ライブラリのライセンス</NewTabLink>
-          </li>
-        </ul>
+            <div className="flex flex-wrap gap-x-4 gap-y-2">
+              <NewTabLink href={licenseLinks.odbl}>ODbL 1.0</NewTabLink>
+              <NewTabLink href={licenseLinks.data}>出典・加工方法</NewTabLink>
+            </div>
+          </section>
+          <section aria-labelledby="licences-software" className="space-y-2 py-5">
+            <h3 id="licences-software" className="font-semibold">
+              Third-party software
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              第三者のコードには各ライセンスが適用されます。
+            </p>
+            <div className="flex flex-wrap gap-x-4 gap-y-2">
+              <NewTabLink href={licenseLinks.dependencies}>使用ライブラリ</NewTabLink>
+              <NewTabLink href={licenseLinks.uiComponents}>UIコンポーネント</NewTabLink>
+            </div>
+          </section>
+        </div>
+        <p className="text-xs text-muted-foreground">リンク先は別タブで開きます。</p>
       </dialog>
     </div>
   );
@@ -129,9 +144,12 @@ function NewTabLink({ href, children }: { href: string; children: ReactNode }) {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="text-blue-800 underline underline-offset-4"
+      className="inline-flex items-center gap-1 text-primary underline-offset-4 hover:underline"
     >
       {children}
+      <ArrowUpRight aria-hidden="true" className="size-3 shrink-0" />
     </a>
   );
 }
+
+import { ArrowUpRight, X } from "lucide-react";

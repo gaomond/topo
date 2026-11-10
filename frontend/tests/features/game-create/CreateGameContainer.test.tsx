@@ -56,18 +56,18 @@ describe("CreateGameContainer", () => {
     await waitFor(() => {
       expect(screen.getByLabelText("対象種別")).toBeInTheDocument();
     });
-    expect(screen.getByRole("option", { name: "shrine" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "お手軽" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "ふつう" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "がっつり" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "神社" })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /お手軽/ })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /ふつう/ })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /がっつり/ })).toBeInTheDocument();
   });
 
   it("test_createScreen_onSubmit_callsCreateGameWithSelectedValues", async () => {
     const user = userEvent.setup();
     renderWithRouter(api);
-    await waitFor(() => screen.getByLabelText("面積プリセット"));
+    await waitFor(() => screen.getByRole("radiogroup", { name: "面積プリセット" }));
 
-    await user.selectOptions(screen.getByLabelText("面積プリセット"), "large");
+    await user.click(screen.getByRole("radio", { name: /がっつり/ }));
     await user.type(screen.getByLabelText("表示名"), "たろう");
     await user.click(screen.getByRole("button", { name: "ゲームを作成" }));
 

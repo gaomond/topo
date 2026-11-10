@@ -1,40 +1,30 @@
-// 待機画面ビュー（Dumb / プレゼンテーショナル）。
-//
-// props で参加者一覧・状態・定員・招待 URL・コピーハンドラを受け取り描画するだけ。
-// API も共有状態も知らない。参加者一覧は GET のポーリング結果（実データ）を Smart から受け取る。
-
+import { Check, Copy } from "lucide-react";
+import { Button } from "@/shared/ui/button";
+import { Input } from "@/shared/ui/input";
 import { GamePurposeView } from "./GamePurposeView";
 
-export type Participant = {
-  playerId: string;
-  displayName: string;
-  confirmed: boolean;
-};
-
+export type Participant = { playerId: string; displayName: string; confirmed: boolean };
 export type WaitingRoomViewProps = {
-  status: string;
   participants: Participant[];
   playerCount: number;
   areaThreshold: number;
   inviteUrl: string;
   onCopyInviteUrl: () => void;
   copied: boolean;
-  // 開始ボタン（US-06）。全員に表示し、活性/非活性は Smart が算出して渡す（Dumb は描画のみ）。
+  copyFailed?: boolean;
   onStart: () => void;
-  // 押下可能か（作成者かつ定員到達で true）。非作成者・定員未達は false。
   startEnabled: boolean;
-  // 開始 API 送信中か（二重送信防止）。
   starting: boolean;
 };
 
 export function WaitingRoomView({
-  status,
   participants,
   playerCount,
   areaThreshold,
   inviteUrl,
   onCopyInviteUrl,
   copied,
+  copyFailed,
   onStart,
   startEnabled,
   starting,
@@ -42,34 +32,82 @@ export function WaitingRoomView({
   return (
     <section
       aria-label="待機画面"
-      className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 bg-slate-50 p-4 text-slate-800"
+      className="mx-auto my-6 flex max-w-2xl flex-col gap-6 rounded-3xl bg-surface p-5 text-foreground sm:my-10 sm:p-8"
     >
-      <h1>待機中</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="flex items-center gap-3 text-2xl font-bold">
+          <span>待機中</span>
+          <span aria-hidden="true" className="flex w-10 justify-between text-primary">
+            {[0, 1, 2].map((index) => (
+              <span
+                key={index}
+                className="waiting-dot"
+                style={{ animationDelay: `${index * 0.2}s` }}
+              >
+                •
+              </span>
+            ))}
+          </span>
+        </h1>
+        <p className="text-sm font-semibold text-muted-foreground">
+          参加者 <span data-testid="participant-count">{participants.length}</span> / {playerCount}
+        </p>
+      </div>
       <GamePurposeView areaThreshold={areaThreshold} />
-
-      <p>
-        状態: <span data-testid="game-status">{status}</span>
-      </p>
-
-      <h2>
-        参加者（
-        <span data-testid="participant-count">{participants.length}</span> / {playerCount}）
-      </h2>
-      <ul aria-label="参加者一覧">
-        {participants.map((participant) => (
-          <li key={participant.playerId}>{participant.displayName}</li>
-        ))}
-      </ul>
-
-      <h2>仲間を招待</h2>
-      <p data-testid="invite-url">{inviteUrl}</p>
-      <button type="button" onClick={onCopyInviteUrl}>
-        {copied ? "コピーしました" : "招待URLをコピー"}
-      </button>
-
-      <button type="button" onClick={onStart} disabled={!startEnabled || starting}>
+      <section aria-labelledby="participants-title">
+        <h2 id="participants-title" className="mb-3 text-sm font-semibold">
+          参加者
+        </h2>
+        <ul aria-label="参加者一覧" className="space-y-2">
+          {participants.map((participant) => (
+            <li
+              key={participant.playerId}
+              className="rounded-xl bg-secondary px-4 py-3 text-sm font-medium [overflow-wrap:anywhere]"
+            >
+              {participant.displayName}
+            </li>
+          ))}
+        </ul>
+      </section>
+      <section aria-labelledby="invite-title">
+        <h2 id="invite-title" className="mb-2 text-sm font-semibold">
+          仲間を招待
+        </h2>
+        <div className="flex items-center gap-2 rounded-xl border border-input bg-background p-1">
+          <Input
+            aria-label="招待URL"
+            data-testid="invite-url"
+            value={inviteUrl}
+            readOnly
+            className="border-0 bg-transparent px-3 shadow-none"
+          />
+          <Button
+            variant="ghost"
+            size="icon"
+            type="button"
+            aria-label="招待URLをコピー"
+            onClick={onCopyInviteUrl}
+          >
+            {copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+          </Button>
+        </div>
+        <p role="status" className="mt-2 min-h-5 text-xs leading-relaxed text-muted-foreground">
+          {copied
+            ? "コピーしました"
+            : copyFailed
+              ? "コピーできませんでした。URLを選択してコピーしてください"
+              : "URLを共有して仲間を招待できます。"}
+        </p>
+      </section>
+      <Button
+        type="button"
+        onClick={onStart}
+        disabled={!startEnabled || starting}
+        aria-busy={starting}
+        className="w-full"
+      >
         {starting ? "開始しています…" : "ゲームを開始"}
-      </button>
+      </Button>
     </section>
   );
 }

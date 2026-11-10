@@ -1,11 +1,10 @@
-// ゲーム作成フォーム（Dumb / プレゼンテーショナル）。
-//
-// props で選択肢（種別・プリセット）・送信ハンドラ・送信中フラグを受け取り描画するだけ。
-// 入力欄の値（objectType / areaPreset / playerCount / displayName）は UI 固有の閉じた状態として
-// 自身で管理してよい（CLAUDE.md）。API も共有状態も知らない。
-
-import { useState } from "react";
+import { useId, useState } from "react";
 import type { AreaPresetPayload } from "@/api/types";
+import { formatArea } from "@/shared/formatArea";
+import { Button } from "@/shared/ui/button";
+import { Input, inputClassName } from "@/shared/ui/input";
+import { RadioGroup, RadioGroupItem } from "@/shared/ui/radio-group";
+import { cn } from "@/shared/utils";
 
 export type CreateGameFormValues = {
   objectType: string;
@@ -13,16 +12,20 @@ export type CreateGameFormValues = {
   playerCount: number;
   displayName: string;
 };
-
 export type CreateGameFormProps = {
   objectTypes: string[];
   areaPresets: AreaPresetPayload[];
   submitting: boolean;
   onSubmit: (values: CreateGameFormValues) => void;
 };
-
-// 人数は初回リリース N=3 固定運用。UI は固定だが API へは可変で送る。
-const DEFAULT_PLAYER_COUNT = 3;
+const objectTypeLabels: Record<string, string> = {
+  shrine: "神社",
+  temple: "寺院",
+  school: "学校",
+  convenience_store: "コンビニ",
+  park: "公園",
+  station: "駅",
+};
 
 export function CreateGameForm({
   objectTypes,
@@ -30,73 +33,83 @@ export function CreateGameForm({
   submitting,
   onSubmit,
 }: CreateGameFormProps) {
+  const id = useId();
   const [objectType, setObjectType] = useState(objectTypes[0] ?? "");
   const [areaPreset, setAreaPreset] = useState(areaPresets[0]?.key ?? "");
-  const [playerCount, setPlayerCount] = useState(DEFAULT_PLAYER_COUNT);
+  const [playerCount, setPlayerCount] = useState(3);
   const [displayName, setDisplayName] = useState("");
-
-  function handleSubmit(event: React.FormEvent) {
-    event.preventDefault();
-    onSubmit({ objectType, areaPreset, playerCount, displayName });
-  }
-
   return (
-    <form onSubmit={handleSubmit} aria-label="ゲーム作成">
-      <label>
+    <form
+      className="space-y-6"
+      aria-label="ゲーム作成"
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (!submitting) onSubmit({ objectType, areaPreset, playerCount, displayName });
+      }}
+    >
+      <label className="grid gap-2 text-sm font-semibold">
         対象種別
         <select
           aria-label="対象種別"
+          className={inputClassName}
           value={objectType}
-          onChange={(e) => setObjectType(e.target.value)}
+          onChange={(event) => setObjectType(event.target.value)}
         >
           {objectTypes.map((type) => (
             <option key={type} value={type}>
-              {type}
+              {objectTypeLabels[type] ?? type}
             </option>
           ))}
         </select>
       </label>
-
-      <label>
-        面積プリセット
-        <select
-          aria-label="面積プリセット"
-          value={areaPreset}
-          onChange={(e) => setAreaPreset(e.target.value)}
-        >
-          {areaPresets.map((preset) => (
-            <option key={preset.key} value={preset.key}>
-              {preset.label}
-            </option>
+      <fieldset className="min-w-0 space-y-2">
+        <legend className="mb-2 text-sm font-semibold">面積上限</legend>
+        <RadioGroup aria-label="面積プリセット" value={areaPreset} onValueChange={setAreaPreset}>
+          {areaPresets.map((preset, index) => (
+            <label
+              key={preset.key}
+              htmlFor={`${id}-${index}`}
+              className={cn(
+                "flex min-h-15 cursor-pointer items-center gap-3 rounded-xl border border-input bg-surface px-4 py-4 text-sm transition-colors hover:bg-accent has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-primary",
+                areaPreset === preset.key && "border-primary bg-accent",
+              )}
+            >
+              <RadioGroupItem id={`${id}-${index}`} value={preset.key} />
+              <span className="min-w-0 flex-1 font-semibold [overflow-wrap:anywhere]">
+                {preset.label}
+              </span>
+              <span className="shrink-0 font-semibold text-primary">{formatArea(preset.sqm)}</span>
+            </label>
           ))}
-        </select>
-      </label>
-
-      <label>
-        人数
-        <input
-          aria-label="人数"
-          type="number"
-          min={3}
-          value={playerCount}
-          onChange={(e) => setPlayerCount(Number(e.target.value))}
-        />
-      </label>
-
-      <label>
-        表示名（任意）
-        <input
-          aria-label="表示名"
-          type="text"
-          value={displayName}
-          onChange={(e) => setDisplayName(e.target.value)}
-          placeholder="未入力なら自動で付与"
-        />
-      </label>
-
-      <button type="submit" disabled={submitting}>
+        </RadioGroup>
+      </fieldset>
+      <div className="grid gap-5 sm:grid-cols-[1fr_2fr]">
+        <label htmlFor={`${id}-count`} className="grid gap-2 text-sm font-semibold">
+          人数
+          <Input
+            id={`${id}-count`}
+            aria-label="人数"
+            type="number"
+            min={3}
+            value={playerCount}
+            onChange={(event) => setPlayerCount(Number(event.target.value))}
+          />
+        </label>
+        <label htmlFor={`${id}-name`} className="grid gap-2 text-sm font-semibold">
+          表示名（任意）
+          <Input
+            id={`${id}-name`}
+            aria-label="表示名"
+            type="text"
+            value={displayName}
+            onChange={(event) => setDisplayName(event.target.value)}
+            placeholder="名前を入力"
+          />
+        </label>
+      </div>
+      <Button type="submit" disabled={submitting} aria-busy={submitting} className="w-full">
         {submitting ? "作成中…" : "ゲームを作成"}
-      </button>
+      </Button>
     </form>
   );
 }

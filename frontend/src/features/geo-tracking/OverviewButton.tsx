@@ -1,6 +1,7 @@
+import { Button } from "@/shared/ui/button";
 // 「全体表示」ボタン（Dumb）。
 //
-// 地図右下に控えめに重ねる。押下で全頂点（自分・友達・凸包）へ強制リフィットする要求を親へ伝えるだけ。
+// 地図右上の遊び方の下に控えめに重ねる。押下で全頂点（自分・友達・凸包）へ強制リフィットする要求を親へ伝えるだけ。
 // 自身はロジックを持たず、onOverview を呼ぶ表示専用部品（AccuracyReadout と同様のオーバーレイ様式）。
 
 export type OverviewButtonProps = {
@@ -9,13 +10,14 @@ export type OverviewButtonProps = {
 
 export function OverviewButton({ onOverview }: OverviewButtonProps) {
   return (
-    <button
+    <Button
       type="button"
       onClick={onOverview}
-      // z は Leaflet コントロール（400 台）より上に置き、地図の右下に固定する。
-      className="absolute bottom-2 right-2 z-[1000] rounded bg-neutral-800/85 px-3 py-1.5 text-xs text-white shadow"
+      // 画面下部の面積・確定操作と、Leafletの帰属表示を塞がない位置に置く。
+      variant="outline"
+      className="absolute top-17 right-3 z-[1000] px-3 text-xs shadow"
     >
       全体表示
-    </button>
+    </Button>
   );
 }
