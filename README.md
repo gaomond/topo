@@ -8,9 +8,9 @@ topoは、仲間と街を歩き、それぞれの位置を結んだ図形で地�
 
 [公開版を開く](https://topo-web.onrender.com)
 
-[![ゲームの作成から結果表示までの操作デモ](docs/media/topo-demo-preview.jpg)](docs/media/topo-demo.mp4)
+https://github.com/user-attachments/assets/deb881d6-9464-4d1b-b859-1130ccbf63e2
 
-[デモ動画を開く](docs/media/topo-demo.mp4)（位置情報はデモ用の座標です）
+※動画の位置情報はデモ用の座標です。
 
 ## 制作背景
 
