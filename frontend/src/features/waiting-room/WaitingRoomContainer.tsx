@@ -8,7 +8,7 @@
 // ポーリング（1.5）は useGameState（SWR）で実現し、参加者の増減を自動反映する。
 // API を呼ぶのは Smart のみ。api / clipboard / origin はテスト用に注入可能。
 
-import { useCallback, useEffect, useLayoutEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ApiError, type TopoApi, topoApi } from "@/api/topoApi";
 import type { GameResultPayload } from "@/api/types";
@@ -20,7 +20,7 @@ import { JoinGameForm } from "@/features/join-game/JoinGameForm";
 import { buildGamePath, buildInviteUrl, PLAYER_QUERY_KEY } from "@/routing/paths";
 import { CannotJoinScreen } from "@/shared/CannotJoinScreen";
 import { GameNotFoundScreen } from "@/shared/GameNotFoundScreen";
-import { useGameState } from "@/shared/useGameState";
+import { type UseGameStateResult, useGameState } from "@/shared/useGameState";
 import type { Participant } from "./WaitingRoomView";
 import { WaitingRoomView } from "./WaitingRoomView";
 
@@ -42,16 +42,112 @@ export type WaitingRoomContainerProps = {
 // （LOCATION_SEND_INTERVAL_MS=2000）と概念一致させる。ACTIVE 遷移後も本 hook が回り続ける。
 const POLL_INTERVAL_MS = 2000;
 
+type JoinedGameLoading = {
+  playerId: string;
+  status: "loading" | "failed" | "not-found";
+};
+
 export function WaitingRoomContainer(props: WaitingRoomContainerProps = {}) {
   const { gameId } = useParams();
+  return <WaitingRoomGame key={gameId} {...props} gameId={gameId} />;
+}
+
+function WaitingRoomGame({
+  api = topoApi,
+  refreshIntervalMs = POLL_INTERVAL_MS,
+  gameId,
+  ...props
+}: WaitingRoomContainerProps & { gameId: string | undefined }) {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const playerId = searchParams.get(PLAYER_QUERY_KEY) ?? "";
+  const [joinedLoading, setJoinedLoading] = useState<JoinedGameLoading | null>(null);
+  const request = useRef<AbortController | null>(null);
+  const joinedPlayer = useRef<string | null>(null);
+  const active = useRef(true);
+  const gameState = useGameState({
+    api,
+    gameId,
+    refreshIntervalMs,
+    pauseAutomaticRevalidation: joinedLoading !== null,
+  });
+
+  useLayoutEffect(() => {
+    active.current = true;
+    return () => {
+      active.current = false;
+      request.current?.abort();
+    };
+  }, []);
+  useLayoutEffect(() => {
+    if (joinedPlayer.current !== null && joinedPlayer.current !== playerId) {
+      request.current?.abort();
+      joinedPlayer.current = null;
+      setJoinedLoading(null);
+    }
+  }, [playerId]);
+
+  const loadJoinedGame = useCallback(
+    async (joinedPlayerId: string) => {
+      if (request.current !== null && !request.current.signal.aborted) return;
+      const operation = new AbortController();
+      request.current = operation;
+      joinedPlayer.current = joinedPlayerId;
+      setJoinedLoading({ playerId: joinedPlayerId, status: "loading" });
+      try {
+        await gameState.refreshState(operation.signal);
+        if (active.current && !operation.signal.aborted) {
+          joinedPlayer.current = null;
+          setJoinedLoading(null);
+        }
+      } catch (failure) {
+        if (active.current && !operation.signal.aborted) {
+          setJoinedLoading({
+            playerId: joinedPlayerId,
+            status: failure instanceof ApiError && failure.status === 404 ? "not-found" : "failed",
+          });
+        }
+      } finally {
+        if (request.current === operation) request.current = null;
+      }
+    },
+    [gameState.refreshState],
+  );
+
+  const showJoinedGame = useCallback(
+    (joinedPlayerId: string) => {
+      if (!gameId || !active.current) return;
+      navigate(buildGamePath(gameId, joinedPlayerId));
+      void loadJoinedGame(joinedPlayerId);
+    },
+    [gameId, navigate, loadJoinedGame],
+  );
+
+  const joining = joinedLoading?.playerId === playerId ? joinedLoading : null;
+  useLayoutEffect(() => {
+    if (joining !== null) props.onLicenseEntryVisibilityChange?.(false);
+  }, [joining, props.onLicenseEntryVisibilityChange]);
+  if (joining?.status === "loading") return <p role="status">読み込み中…</p>;
+  if (joining?.status === "not-found") return <GameNotFoundScreen />;
+  if (joining?.status === "failed") {
+    return (
+      <section role="alert">
+        <p>参加は完了しましたが、ゲーム状態を取得できませんでした</p>
+        <button type="button" onClick={() => void loadJoinedGame(playerId)}>
+          再試行
+        </button>
+      </section>
+    );
+  }
   return (
     <WaitingRoomSession
       key={`${gameId}:${playerId}`}
       {...props}
+      api={api}
       gameId={gameId}
       playerId={playerId}
+      gameState={gameState}
+      onJoined={showJoinedGame}
     />
   );
 }
@@ -60,7 +156,6 @@ function WaitingRoomSession({
   api,
   clipboard = navigator.clipboard,
   origin = window.location.origin,
-  refreshIntervalMs = POLL_INTERVAL_MS,
   geoDeps,
   getWalkthroughStorage,
   licenseOpen,
@@ -68,8 +163,21 @@ function WaitingRoomSession({
   onLicenseEntryVisibilityChange,
   gameId,
   playerId,
-}: WaitingRoomContainerProps & { gameId: string | undefined; playerId: string }) {
-  const navigate = useNavigate();
+  gameState,
+  onJoined,
+}: WaitingRoomContainerProps & {
+  gameId: string | undefined;
+  playerId: string;
+  gameState: UseGameStateResult;
+  onJoined: (playerId: string) => void;
+}) {
+  const mounted = useRef(true);
+  useLayoutEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   // 既定は共有シングルトン topoApi（identity が安定し SWR key の無限再実行を招かない）。
   const resolvedApi = api ?? topoApi;
@@ -80,11 +188,7 @@ function WaitingRoomSession({
   // ポーリングで是正しきれない 409（満員のまま WAITING 継続など）を明示するために保持する。
   const [actionError, setActionError] = useState<string | null>(null);
 
-  const { state, error, mutate } = useGameState({
-    api: resolvedApi,
-    gameId,
-    refreshIntervalMs,
-  });
+  const { state, error, mutate } = gameState;
 
   const [completion, setCompletion] = useState<{ result: GameResultPayload | null } | null>(null);
   const showResult = useCallback((result: GameResultPayload) => {
@@ -123,9 +227,10 @@ function WaitingRoomSession({
           // 空文字はサーバー側フォールバック対象。未入力は送らない。
           displayName: displayName.trim() === "" ? undefined : displayName,
         });
-        // 参加成功で自分の URL（gameId + playerId）へ遷移する（1.2）。
-        navigate(buildGamePath(gameId, joined.playerId));
+        if (!mounted.current) return;
+        onJoined(joined.playerId);
       } catch (e) {
+        if (!mounted.current) return;
         // 参加失敗を明示する。409（満員/開始済み）は WAITING 継続時ポーリングでは是正されないため必須。
         setActionError(
           e instanceof ApiError && e.status === 409
@@ -135,7 +240,7 @@ function WaitingRoomSession({
         setSubmitting(false);
       }
     },
-    [resolvedApi, gameId, navigate],
+    [resolvedApi, gameId, onJoined],
   );
 
   const handleStart = useCallback(async () => {

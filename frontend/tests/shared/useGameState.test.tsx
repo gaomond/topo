@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { SWRConfig } from "swr";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -70,5 +70,34 @@ describe("useGameState", () => {
 
     await waitFor(() => expect(result.current.error).toBeInstanceOf(ApiError));
     expect((result.current.error as ApiError).status).toBe(404);
+  });
+
+  it("test_refreshState_automaticRevalidationPaused_fetchesOnlyExplicitlyAndResumesPolling", async () => {
+    const fake = createFakeTopoApi();
+    fake.getGameState.mockResolvedValue(gameState());
+    const { result, rerender } = renderHook(
+      ({ paused }) =>
+        useGameState({
+          api: fake.api,
+          gameId: "game-123",
+          refreshIntervalMs: 2000,
+          pauseAutomaticRevalidation: paused,
+        }),
+      { wrapper, initialProps: { paused: true } },
+    );
+    expect(fake.getGameState).not.toHaveBeenCalled();
+    await act(async () => {
+      await result.current.refreshState();
+    });
+    expect(result.current.state?.status).toBe("WAITING");
+    await act(async () => {
+      window.dispatchEvent(new Event("focus"));
+      window.dispatchEvent(new Event("online"));
+      await vi.advanceTimersByTimeAsync(6000);
+    });
+    expect(fake.getGameState).toHaveBeenCalledTimes(1);
+    rerender({ paused: false });
+    await act(async () => vi.advanceTimersByTimeAsync(2000));
+    await waitFor(() => expect(fake.getGameState).toHaveBeenCalledTimes(2));
   });
 });
