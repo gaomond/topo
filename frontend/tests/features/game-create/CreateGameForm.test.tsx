@@ -26,7 +26,7 @@ describe("CreateGameForm", () => {
     await user.clear(screen.getByLabelText("人数"));
     await user.type(screen.getByLabelText("人数"), "4");
     await user.type(screen.getByLabelText("表示名"), "探検者");
-    await user.selectOptions(screen.getByLabelText("対象種別"), "new_type");
+    await user.selectOptions(screen.getByLabelText("集計対象"), "new_type");
     await user.click(screen.getByRole("button", { name: "ゲームを作成" }));
     expect(options.filter((option) => option.getAttribute("aria-checked") === "true")).toHaveLength(
       1,

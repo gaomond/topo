@@ -152,7 +152,7 @@ US-12では各プレイヤーに `confirmedLocation: {lat,lng,at} | null` を追
 - **DB: PostgreSQL + PostGIS 1台**。公開環境は有料Render Postgresを使い、APIから内部接続する。ローカルは既存のPostGISコンテナを維持する。Redis等のキャッシュなし。
 - **CORS**: フロントとAPIはそれぞれRender提供のHTTPS URLを使うため、Spring側でフロントの公開オリジンを許可する。
 
-公開先はRenderを採用する。ローカルのAPI・DBのDocker起動と共通Dockerfileは[US-23](story/23.md)で実装・検証・独立レビュー承認済み（2026-11-10）。Composeの標準操作でAPI＋DBを起動し、フロントのViteは維持する。APIの変更は手動再ビルドで反映する。Renderでの初回構築・データ投入・GitHub連携・具体的なプランや設定は[US-24](story/24.md)で管理し、同ストーリーは作業整理段階。公開環境へのデプロイは未実施。
+公開先はRenderを採用する。ローカルのAPI・DBのDocker起動と共通Dockerfileは[US-23](story/23.md)で実装・検証・独立レビュー承認済み（2026-11-10）。Composeの標準操作でAPI＋DBを起動し、フロントのViteは維持する。APIの変更は手動再ビルドで反映する。公開環境はAPI 512MB・DB 256MBと1GBディスクで構築済み。API・DBはSingapore、DBはPostgreSQL 17とPostGISを使い、神社40,382件を投入した。GitHubのmain更新によるAPI・Static Site双方の自動デプロイも確認済み（2026-11-10）。料金・検証実績は[US-24](story/24.md)、設定・更新・復旧の手順は[Renderへの公開手順](render-deployment.md)を参照する。
 
 ### 計算の置き場所（重要な決定）
 

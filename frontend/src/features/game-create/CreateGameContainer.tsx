@@ -111,17 +111,17 @@ function CreateGameLayout({ children }: { children: ReactNode }) {
             みんなで囲んだ範囲に、いくつの地物があるか見つけよう！
           </p>
           <p className="mt-3 text-xs leading-relaxed text-muted-foreground sm:text-sm">
-            地物は、建物や施設などのことです。
+            地物とは、建物や施設などの、地図上にある様々な物体のことです。
           </p>
-          <figure className="mt-4 flex items-center gap-3 lg:mt-8 lg:block">
+          <figure className="mx-auto mt-4 w-full max-w-lg lg:mx-0 lg:mt-8 lg:max-w-none">
             <img
               src={purposeImage}
               width={1536}
               height={1024}
               alt="3人の位置を結んだ三角形で地物を囲む模式図"
-              className="h-auto w-24 rounded-xl sm:w-32 lg:w-full"
+              className="h-auto w-full rounded-xl"
             />
-            <figcaption className="text-xs leading-relaxed text-muted-foreground lg:mt-2 lg:text-center">
+            <figcaption className="mt-2 text-center text-xs leading-relaxed text-muted-foreground">
               仲間と位置を決めて、ひとつの範囲をつくる
             </figcaption>
           </figure>
@@ -133,7 +133,9 @@ function CreateGameLayout({ children }: { children: ReactNode }) {
           <h2 id="create-form-title" className="text-2xl font-bold">
             ゲームを作成
           </h2>
-          <p className="mb-6 mt-2 text-sm text-muted-foreground">仲間と囲む広さを選びましょう。</p>
+          <p className="mb-6 mt-2 text-sm text-muted-foreground">
+            集計対象と囲む広さを選びましょう。
+          </p>
           {children}
         </section>
       </div>

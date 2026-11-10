@@ -48,9 +48,9 @@ export function CreateGameForm({
       }}
     >
       <label className="grid gap-2 text-sm font-semibold">
-        対象種別
+        集計対象
         <select
-          aria-label="対象種別"
+          aria-label="集計対象"
           className={inputClassName}
           value={objectType}
           onChange={(event) => setObjectType(event.target.value)}

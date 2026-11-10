@@ -54,7 +54,7 @@ describe("CreateGameContainer", () => {
     renderWithRouter(api);
     // config 取得後に選択肢が動的構築される。
     await waitFor(() => {
-      expect(screen.getByLabelText("対象種別")).toBeInTheDocument();
+      expect(screen.getByLabelText("集計対象")).toBeInTheDocument();
     });
     expect(screen.getByRole("option", { name: "神社" })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: /お手軽/ })).toBeInTheDocument();
@@ -125,7 +125,7 @@ describe("CreateGameContainer", () => {
       </SWRConfig>,
     );
 
-    await screen.findByLabelText("対象種別");
+    await screen.findByLabelText("集計対象");
     expect(spy).toHaveBeenCalledTimes(1);
     spy.mockRestore();
   });
@@ -136,6 +136,6 @@ describe("CreateGameContainer", () => {
     await waitFor(() => {
       expect(screen.getByRole("alert")).toBeInTheDocument();
     });
-    expect(screen.queryByLabelText("対象種別")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("集計対象")).not.toBeInTheDocument();
   });
 });

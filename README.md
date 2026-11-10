@@ -8,7 +8,9 @@ topoは、仲間と街を歩き、それぞれの位置を結んだ図形で地�
 
 [公開版を開く](https://topo-web.onrender.com)
 
-<img src="./image.png" alt="地図上のプレイヤー位置と、それらを囲む範囲・面積の表示例" width="720">
+[![ゲームの作成から結果表示までの操作デモ](docs/media/topo-demo-preview.jpg)](docs/media/topo-demo.mp4)
+
+[デモ動画を開く](docs/media/topo-demo.mp4)（位置情報はデモ用の座標です）
 
 ## 制作背景
 
@@ -154,6 +156,7 @@ topo独自のコード・文書は **All rights reserved** です。適用範囲
 ## 関連資料
 
 - [設計ドキュメント](docs/DESIGN.md)：ゲームの要件、構成、API・DBの設計
+- [DBのER図](docs/ER.md)：テーブル・外部キー・空間カラム
 - [ユーザーストーリー](docs/story/STORY.md)：機能ごとの仕様への入口
 - [データ投入手順](docs/data-loading.md)：OSMデータの取得・投入
 - [Renderへの公開手順](docs/render-deployment.md)：初回配置、神社データの移送、通常更新と復旧

@@ -164,12 +164,12 @@ RewriteはゲームURLを直接開くための設定。`?p=<playerId>`付きURL�
 
 ## 7. 今回の確認記録（2026-11-10）
 
-ローカルとRenderの結果を区別する。API・フロントは公開されているが、US-24全体は受け入れ確認中・未承認。秘密・実プレイヤー位置は記録しない。
+ローカルとRenderの結果を区別する。API・フロントは公開済みで、US-24は本人の実機確認・On Commitの実証を含め、独立レビュー承認済み（2026-11-10）。秘密・実プレイヤー位置は記録しない。
 
 | 項目 | 状態 |
 | --- | --- |
 | 承認・認証 | DB月$6.30・API月$7はそれぞれ本人の作成許可後に作成。CLIの7日認証も本人許可済み。認証値は記録しない |
-| GitHub main | 本人許可後に既存20コミットを704411bまでpush。API・Static Siteの初回デプロイは同SHAで成功。未コミットのUS-24・US-25は未反映 |
+| GitHub main | 初回は本人許可後に既存20コミットを704411bまでpushし、API・Static Siteとも同SHAでデプロイ成功。その後、US-24・US-25を含む1e31f95へ双方が自動更新。最終仕上げ時の未コミット修正は公開版と区別する |
 | 公開DB | Singapore・PG17.11/PostGIS3.6.2、0.1CPU/256MB、1GB、自動拡張オフ。SSL接続を確認 |
 | 神社投入 | 実SQLで40,382件のみ投入。再export CSV 3,233,882bytesのSHA256が元と完全一致。投入前game/playerは0件。game_objectは索引込み6376kB、DB全体22MB |
 | DB外部接続 | 投入完了後に公式CLIのclear-ip-allow-listを実行し、ipAllowList=[]で外部接続を全閉鎖。内部APIのhealthはUP継続。1GB・自動拡張オフ・256MBプランを維持。IP値は記録しない |
@@ -183,11 +183,13 @@ RewriteはゲームURLを直接開くための設定。`?p=<playerId>`付きURL�
 | 公開ブラウザ | ?p付き結果URLで15個/0.045237km²・15マーカー・千葉神社popup、再読込後も同じ結果。Leaflet/OSM帰属と結果画面のライセンス入口非表示を確認 |
 | タイル・Referer | OSMタイル画像18個がload。img.referrerPolicy空・referrer metaなし・HTTP Referrer-Policyなしで抑制設定は見られない。実送信Refererヘッダー自体は直接観測していない |
 | 匿名ライセンス資料 | GitHubのLICENSE・docs/data-loading.md・tools/osm/game_object.lua・tools/osm/load_into_game_object.sqlは匿名で全200 |
-| 最新5品質ゲート | 04:04 UTCに全成功、フロント100ファイルの実行前後ハッシュ一致。US-25を含む作業ツリーの検証で公開704411bとは別 |
+| 初回公開時の5品質ゲート | 04:04 UTCに全成功、フロント100ファイルの実行前後ハッシュ一致。US-25を含む作業ツリーの検証で公開704411bとは別 |
 | 本人の実機確認 | 2026-11-10、スマートフォンのOS位置情報許可・GPS取得と複数端末の作成→参加→開始→確定→結果表示の確認依頼に、本人が「実機確認できました」と回答。具体座標・個人データは記録しない |
 | Node.jsの指定 | `frontend/.node-version`に`22`を追加。既存Render設定の`NODE_VERSION=22`を維持。公開ビルドのメジャー指定は変わらない |
-| On Commit | `frontend`配下を含む新規コミットの本人許可前。実pushによるAPI・Static双方の自動更新は未確認 |
+| On Commit | mainの1e31f95への更新で、API（dep-dbpb90oae00c73e4qpmg）・Static（dep-dbpb90oae00c73e4qpt0）双方のtrigger=new_commit・status=liveを公式CLIで確認。更新後のhealth/config/フロントは200、既存の合成位置ゲームの3人の確定位置・COMPLETED・神社15件を保持 |
+| 最終仕上げ時の5品質ゲート | バックエンドbuild（test・ktlint込み）、フロントlint・typecheck・test・buildが全成功。フロント36ファイル288テスト。未コミットのモバイル表示・文言修正を含み、公開1e31f95とは別の検証 |
+| 最終独立レビュー | 2026-11-10、第2回で指摘なし・US-24全体を承認。本人の実機確認とOn Commitの実証について、前回指摘の解消を確認 |
 
 ローカルではLinux/ARM64・512MiB・swap追加0・CPU0.5で、3人60回・2秒周期118.08秒、372要求成功。cgroupの真のピーク318.67MiB、OOM0、確定・集計・再起動後の結果/確定位置保持を確認した。合成神社3件・公園1件での測定で、周期PUT/GET360件のp95は198.46ms、初回状態GET3件は約1205ms。全件500ms未満や長時間負荷の保証ではない。
 
-公開先の確認とローカル測定を混同しない。本人の実機確認は回答を得ており、残る自動更新の実証と独立レビュー後にUS-24の最終判定を行う。
+公開先の確認とローカル測定を混同しない。本人の実機確認とOn Commitによる自動更新は確認済み。独立レビューの最終判定は[US-24](story/24.md)に記録する。
