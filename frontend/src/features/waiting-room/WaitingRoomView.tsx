@@ -42,7 +42,7 @@ export function WaitingRoomView({
   return (
     <section
       aria-label="待機画面"
-      className="mx-auto flex min-h-dvh max-w-2xl flex-col gap-4 bg-slate-50 p-4 text-slate-800"
+      className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 bg-slate-50 p-4 text-slate-800"
     >
       <h1>待機中</h1>
       <GamePurposeView areaThreshold={areaThreshold} />

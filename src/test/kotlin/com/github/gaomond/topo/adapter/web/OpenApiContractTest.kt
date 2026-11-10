@@ -180,6 +180,7 @@ class OpenApiContractTest {
             "GameStateResponse",
             "PlayerPayload",
             "LiveLocationPayload",
+            "ConfirmedLocationPayload",
             "CurrentAreaPayload",
         )) {
             val model = schema(doc, name)
@@ -189,6 +190,11 @@ class OpenApiContractTest {
             assertTrue(allowsNull(schema(doc, "GameStateResponse").path("properties").path(name)), name)
         }
         assertTrue(allowsNull(schema(doc, "PlayerPayload").at("/properties/live")))
+        assertTrue(allowsNull(schema(doc, "PlayerPayload").at("/properties/confirmedLocation")))
+        assertTrue(names(schema(doc, "PlayerPayload").path("required")).contains("confirmedLocation"))
+        assertEquals("date-time", schema(doc, "ConfirmedLocationPayload").at("/properties/at/format").asString())
+        assertEquals(-90.0, schema(doc, "ConfirmedLocationPayload").at("/properties/lat/minimum").asDouble())
+        assertEquals(180.0, schema(doc, "ConfirmedLocationPayload").at("/properties/lng/maximum").asDouble())
         assertTrue(allowsNull(schema(doc, "GameStateResponse").at("/properties/result")))
         assertTrue(schema(doc, "GameResultPayload").path("properties").has("polygon"))
         assertEquals("array", schema(doc, "GameResultPayload").at("/properties/objects/type").asString())

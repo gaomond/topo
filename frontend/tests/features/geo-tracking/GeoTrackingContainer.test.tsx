@@ -270,6 +270,114 @@ describe("GeoTrackingContainer", () => {
     expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
   });
 
+  it("test_poll_savedConfirmationWithoutLive_rendersAllNamedPointsAndFadesOnlyLive", () => {
+    const saved = { lat: 35.59, lng: 139.6, at: "2026-11-09T12:00:00Z" };
+    const peers = [
+      player({
+        playerId: "player-1",
+        displayName: "本人",
+        confirmed: true,
+        confirmedLocation: saved,
+      }),
+      player({
+        playerId: "other",
+        displayName: "友達",
+        confirmed: true,
+        confirmedLocation: { ...saved, lat: 35.591 },
+        online: false,
+      }),
+    ];
+    const { container, rerender } = renderActive(peers);
+    expect(container.querySelectorAll(".confirmed-marker")).toHaveLength(2);
+    expect(screen.getByText("本人")).toBeInTheDocument();
+    expect(screen.getByText("友達")).toBeInTheDocument();
+    expect(container.querySelector(".live-marker")).toBeNull();
+    act(() => geolocation.emitSuccess({ latitude: 35.6, longitude: 139.61 }));
+    const fixedBefore = (container.querySelector(".confirmed-marker") as HTMLElement).style
+      .transform;
+    expect((container.querySelector("img.leaflet-marker-icon") as HTMLElement).style.opacity).toBe(
+      "0.4",
+    );
+    rerender(
+      <GeoTrackingContainer
+        gameId="game-123"
+        playerId="player-1"
+        api={fake.api}
+        deps={{ geolocation, isSecureContext: true }}
+        players={[peers[0], { ...peers[1], live: { lat: 35.592, lng: 139.602, at: saved.at } }]}
+      />,
+    );
+    expect(container.querySelectorAll(".confirmed-marker")).toHaveLength(2);
+    expect((container.querySelector(".confirmed-marker") as HTMLElement).style.transform).toBe(
+      fixedBefore,
+    );
+    expect((container.querySelector(".live-marker") as HTMLElement).style.opacity).toBe("0.4");
+    expect(fake.getGameState).not.toHaveBeenCalled();
+  });
+
+  it("test_confirm_successBeforePoll_rendersNamedPointAndKeepsItDuringMovementAndOldGet", async () => {
+    const user = userEvent.setup();
+    fake.confirmLocation.mockResolvedValue({
+      playerId: "player-1",
+      confirmed: true,
+      confirmedAt: "2026-11-09T12:00:00Z",
+      result: null,
+    });
+    const peers = [player({ playerId: "player-1", displayName: "本人" })];
+    const { container, rerender } = renderActive(peers);
+    act(() => geolocation.emitSuccess({ latitude: 35.59, longitude: 139.6 }));
+    await user.click(screen.getByRole("button", { name: "この位置で確定" }));
+    await user.click(screen.getByRole("button", { name: "確定する" }));
+    expect(container.querySelector(".confirmed-marker")?.textContent).toContain("本人");
+    expect((container.querySelector("img.leaflet-marker-icon") as HTMLElement).style.opacity).toBe(
+      "0.4",
+    );
+    rerender(
+      <GeoTrackingContainer
+        gameId="game-123"
+        playerId="player-1"
+        api={fake.api}
+        deps={{ geolocation, isSecureContext: true }}
+        players={peers}
+      />,
+    );
+    act(() => geolocation.emitSuccess({ latitude: 35.59001, longitude: 139.60001 }));
+    expect(container.querySelectorAll(".confirmed-marker")).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "確定済み" })).toBeDisabled();
+    expect(fake.getGameState).not.toHaveBeenCalled();
+    expect(geolocation.clearWatch).not.toHaveBeenCalled();
+  });
+
+  it("test_confirm_currentAreaOverThreshold_sendsFirstConfirmationAndRendersFixedPoint", async () => {
+    const user = userEvent.setup();
+    fake.confirmLocation.mockResolvedValue({
+      playerId: "player-1",
+      confirmed: true,
+      confirmedAt: "2026-11-10T00:00:00Z",
+      result: null,
+    });
+    const { container } = renderActive([player({ playerId: "player-1", displayName: "本人" })], {
+      sqm: 2_500_000,
+      hull: [
+        [35, 139],
+        [35.1, 139],
+        [35, 139.1],
+        [35, 139],
+      ],
+    });
+    act(() => geolocation.emitSuccess({ latitude: 35, longitude: 139 }));
+    expect(screen.getByText("上限超過")).toBeInTheDocument();
+    expect(screen.queryByText(/このままでは確定できません/)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "この位置で確定" })).toBeEnabled();
+    await user.click(screen.getByRole("button", { name: "この位置で確定" }));
+    await user.click(screen.getByRole("button", { name: "確定する" }));
+    expect(fake.confirmLocation).toHaveBeenCalledWith("game-123", "player-1", {
+      lat: 35,
+      lng: 139,
+    });
+    expect(container.querySelector(".confirmed-marker")?.textContent).toContain("本人");
+  });
+
   describe("ライブ位置送信（US-07）", () => {
     beforeEach(() => {
       vi.useFakeTimers({ shouldAdvanceTime: true });

@@ -117,7 +117,7 @@ class GameJoinPersistenceTest {
     }
 
     @Test
-    fun test_findByGameId_reflectsConfirmedFromConfirmedAt() {
+    fun test_findByGameId_completeSavedConfirmation_reflectsConfirmedFlag() {
         val gameId = seedGame()
         val confirmedPlayer = UUID.randomUUID()
         val pendingPlayer = UUID.randomUUID()
@@ -125,7 +125,7 @@ class GameJoinPersistenceTest {
         playerRepository.createPlayer(Player.create(pendingPlayer, gameId, "みかくてい"))
         playerRepository.flush()
         jdbcTemplate.update(
-            "UPDATE player SET confirmed_at = now() WHERE id = ?",
+            "UPDATE player SET confirmed_at = now(), fixed_geom = ST_SetSRID(ST_MakePoint(139.60, 35.59), 4326) WHERE id = ?",
             confirmedPlayer,
         )
         entityManager.clear()

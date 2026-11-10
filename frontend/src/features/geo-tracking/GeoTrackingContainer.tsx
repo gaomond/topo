@@ -5,7 +5,7 @@
 // さらに Smart として、自分のライブ位置を throttle（≤1回/2秒）でサーバーへ送信する（US-07）。
 // API を呼ぶのは本コンテナ（Smart）のみ。Dumb は API を知らない。
 
-import { type Ref, useCallback, useMemo, useState } from "react";
+import { type Ref, useCallback, useEffect, useMemo, useState } from "react";
 import { type TopoApi, topoApi } from "@/api/topoApi";
 import type { CurrentAreaPayload, GameResultPayload, PlayerPayload } from "@/api/types";
 import { AreaMeter } from "@/features/area-meter/AreaMeter";
@@ -13,7 +13,7 @@ import { ConfirmLocationControl } from "@/features/location-confirm/ConfirmLocat
 import { useLocationConfirmation } from "@/features/location-confirm/useLocationConfirmation";
 import { AccuracyReadout } from "./AccuracyReadout";
 import { DegradedBanner } from "./DegradedBanner";
-import { type Coordinate, GeoState, type LiveMarker } from "./geoState";
+import { type ConfirmedMarker, type Coordinate, GeoState, type LiveMarker } from "./geoState";
 import { LocationErrorScreen } from "./LocationErrorScreen";
 import { MapView } from "./MapView";
 import { type UseGeoTrackingDeps, useGeoTracking } from "./useGeoTracking";
@@ -35,6 +35,8 @@ export type GeoTrackingContainerProps = {
   areaThreshold?: number;
   onResult?: (result: GameResultPayload) => void;
   locationEnabled?: boolean;
+  interactionBlocked?: boolean;
+  onBlockingDialogChange?: (open: boolean) => void;
   onOpenWalkthrough?: () => void;
   walkthroughButtonRef?: Ref<HTMLButtonElement>;
 };
@@ -49,6 +51,8 @@ export function GeoTrackingContainer({
   areaThreshold,
   onResult,
   locationEnabled = true,
+  interactionBlocked = false,
+  onBlockingDialogChange,
   onOpenWalkthrough,
   walkthroughButtonRef,
 }: GeoTrackingContainerProps) {
@@ -64,9 +68,14 @@ export function GeoTrackingContainer({
     gameId,
     playerId,
     selfLocation,
-    players.some((p) => p.playerId === playerId && p.confirmed),
+    players.find((p) => p.playerId === playerId)?.confirmedLocation ?? null,
     onResult,
   );
+
+  useEffect(() => {
+    onBlockingDialogChange?.(confirmation.dialogOpen);
+    return () => onBlockingDialogChange?.(false);
+  }, [onBlockingDialogChange, confirmation.dialogOpen]);
 
   // ライブ位置の送信関数（Smart）。ペイロードは { lat, lng } のみ（Coordinate と一致）。
   const sendLocation = useCallback(
@@ -90,10 +99,28 @@ export function GeoTrackingContainer({
             displayName: p.displayName,
             coordinate: { lat: p.live.lat, lng: p.live.lng },
             online: p.online,
+            confirmed: p.confirmed,
           },
         ];
       }),
     [players, playerId],
+  );
+
+  const confirmedMarkers = useMemo<ConfirmedMarker[]>(
+    () =>
+      players.flatMap((p) => {
+        const fixed = p.playerId === playerId ? confirmation.fixedLocation : p.confirmedLocation;
+        return fixed === null
+          ? []
+          : [
+              {
+                playerId: p.playerId,
+                displayName: p.displayName,
+                coordinate: { lat: fixed.lat, lng: fixed.lng },
+              },
+            ];
+      }),
+    [players, playerId, confirmation.fixedLocation],
   );
 
   // 凸包（面積成立の形）。頂点はサーバー提供。sqm=0 は退化（線分）として描く。objectCount・正多角形スコアは扱わない。
@@ -140,7 +167,8 @@ export function GeoTrackingContainer({
       <div data-walkthrough="map" className="absolute inset-0">
         <MapView
           selfLocation={selfLocation}
-          confirmedLocation={confirmation.fixedLocation}
+          confirmedMarkers={confirmedMarkers}
+          selfConfirmed={confirmation.confirmed}
           friends={friends}
           hull={hull}
           degenerate={degenerate}
@@ -163,9 +191,11 @@ export function GeoTrackingContainer({
             confirmed={confirmation.confirmed}
             dialogOpen={confirmation.dialogOpen}
             submitting={confirmation.submitting}
-            canConfirm={confirmation.canConfirm}
+            canConfirm={confirmation.canConfirm && !interactionBlocked}
             error={confirmation.error}
-            onOpen={confirmation.open}
+            onOpen={() => {
+              if (!interactionBlocked) confirmation.open();
+            }}
             onCancel={confirmation.cancel}
             onConfirm={() => {
               void confirmation.confirm();

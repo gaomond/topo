@@ -149,10 +149,12 @@ data class GameSummary(
 data class PlayerSnapshot(
     val playerId: UUID,
     val displayName: String,
-    val confirmed: Boolean,
+    val confirmedLocation: ConfirmedLocation?,
     val live: LiveLocation? = null,
     val online: Boolean = false,
-)
+) {
+    val confirmed: Boolean get() = confirmedLocation != null
+}
 
 /**
  * 在室判定前の参加者の読み取り射影。
@@ -165,9 +167,11 @@ data class PlayerSnapshot(
 data class PlayerReading(
     val playerId: UUID,
     val displayName: String,
-    val confirmed: Boolean,
+    val confirmedLocation: ConfirmedLocation?,
     val live: LiveLocation?,
-)
+) {
+    val confirmed: Boolean get() = confirmedLocation != null
+}
 
 /** 最新ライブ位置。記録時刻 [at] は在室判定の最終確認時刻にも使う。 */
 data class LiveLocation(
@@ -176,9 +180,9 @@ data class LiveLocation(
 )
 
 /**
- * ライブ位置の暫定凸包の面積と頂点列。
+ * 確定位置を優先した現在の凸包の面積と頂点列。
  *
- * 3 点未満の未計測は null で表し、一直線・重複による退化面積 0 と区別する。
+ * 採用位置が3人分未満の未計測はnull で表し、一直線・重複による退化面積 0 と区別する。
  *
  * @param sqm 凸包の測地面積（m²）。退化時は 0。
  * @param hull 順序付きの凸包頂点列。多角形では閉環し、退化時は線分または点を持つ。

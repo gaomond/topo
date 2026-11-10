@@ -9,10 +9,10 @@
 export const WARNING_RATIO = 0.85;
 
 // メーターの状態種別。
-// - unmeasured: currentArea=null（live 3点未満で形が非成立）。0% とは区別する。
+// - unmeasured: currentArea=null（採用位置が3人分未満で形が非成立）。0% とは区別する。
 // - normal:     上限に余裕あり（退化 sqm=0 を含む）。
-// - warning:    上限に接近（<= 上限。まだ確定できる）。
-// - over:       上限超過（確定不能。overflowSqm に超過分）。
+// - warning:    上限に接近（<= 上限）。
+// - over:       上限超過（overflowSqm に超過分）。
 export type MeterKind = "unmeasured" | "normal" | "warning" | "over";
 
 export type MeterState = {

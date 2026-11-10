@@ -11,8 +11,7 @@ import java.util.UUID
  *
  * @param creatorPlayerId 作成者未設定なら null。
  * @param areaThreshold 作成時に確定する面積閾値（m²）。
- * @param currentArea 進行中の暫定面積と頂点列。進行中以外、ライブ座標が 3 点未満、
- *                    または計算結果が空の場合は null。
+ * @param currentArea 進行中の暫定面積と頂点列。進行中以外、または採用位置が3人分未満の場合はnull。
  */
 data class GetGameStateResult(
     val gameId: UUID,

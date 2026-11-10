@@ -32,14 +32,28 @@ describe("AreaMeter", () => {
     expect(screen.queryByText(/達成|下げ/)).not.toBeInTheDocument();
   });
 
-  it("test_render_overThreshold_showsCannotConfirmAndOverflow", () => {
+  it("test_render_overThreshold_showsWarningAndOverflow", () => {
     render(<AreaMeter sqm={2_500_000} threshold={THRESHOLD} />);
-    // 「上限超過（確定できません）」を明示（「失格／無効」ではなく「確定不能」）。
-    expect(screen.getByText(/上限超過（このままでは確定できません）/)).toBeInTheDocument();
+    // 現在の配置への警告は、今回の確定可否を断定しない。
+    expect(screen.getByText("上限超過")).toBeInTheDocument();
+    expect(screen.queryByText(/このままでは確定できません/)).not.toBeInTheDocument();
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "100");
+    expect(screen.getByText("上限超過")).toHaveClass("text-red-300");
     // 超過分（どれだけ超えているか）。2,500,000 - 2,000,000 = 500,000m² = 0.50 km²。
     expect(screen.getByText("超過分 0.50 km²")).toBeInTheDocument();
     // 「失格／無効」語は使わない。
     expect(screen.queryByText(/失格|無効/)).not.toBeInTheDocument();
+  });
+
+  it.each([
+    [1_699_999, false, "bg-emerald-500"],
+    [1_700_000, true, "bg-amber-400"],
+    [2_000_000, true, "bg-amber-400"],
+  ])("test_render_boundary%s_showsExpectedWarningAndColor", (sqm, warning, color) => {
+    const { container } = render(<AreaMeter sqm={sqm} threshold={THRESHOLD} />);
+    expect(screen.queryByText("上限に接近しています") !== null).toBe(warning);
+    expect(screen.queryByText("上限超過")).not.toBeInTheDocument();
+    expect(container.querySelector(`.${color}`)).not.toBeNull();
   });
 
   it("test_render_nullArea_showsUnmeasuredNotZeroPercent", () => {

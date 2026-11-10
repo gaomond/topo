@@ -10,8 +10,8 @@ import com.github.gaomond.topo.domain.model.LiveLocation
 import com.github.gaomond.topo.domain.model.Player
 import com.github.gaomond.topo.domain.model.PlayerReading
 import com.github.gaomond.topo.domain.model.Presence
+import com.github.gaomond.topo.domain.port.CurrentAreaQueryPort
 import com.github.gaomond.topo.domain.port.GameRepositoryPort
-import com.github.gaomond.topo.domain.port.LiveAreaQueryPort
 import com.github.gaomond.topo.domain.port.PlayerRepositoryPort
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -60,7 +60,12 @@ class GetGameStateUseCaseTest {
 
         override fun countByGameId(gameId: UUID): Int = error("状態取得では呼ばれない")
 
-        override fun findByGameId(gameId: UUID): List<PlayerReading> = players
+        var findCalls: Int = 0
+
+        override fun findByGameId(gameId: UUID): List<PlayerReading> {
+            findCalls++
+            return players
+        }
 
         override fun updateLiveLocation(
             gameId: UUID,
@@ -70,11 +75,11 @@ class GetGameStateUseCaseTest {
         ): Boolean = error("状態取得では呼ばれない")
     }
 
-    private class SpyLiveAreaQuery(
+    private class SpyCurrentAreaQuery(
         private val area: CurrentArea?,
         var callCount: Int = 0,
-    ) : LiveAreaQueryPort {
-        override fun currentLiveArea(gameId: UUID): CurrentArea? {
+    ) : CurrentAreaQueryPort {
+        override fun currentArea(gameId: UUID): CurrentArea? {
             callCount++
             return area
         }
@@ -87,11 +92,11 @@ class GetGameStateUseCaseTest {
     private fun useCase(
         summary: GameSummary?,
         players: List<PlayerReading> = emptyList(),
-        liveArea: SpyLiveAreaQuery = SpyLiveAreaQuery(null),
+        currentArea: SpyCurrentAreaQuery = SpyCurrentAreaQuery(null),
     ) = GetGameStateUseCase(
         SpyGameRepository(summary),
         StubPlayerRepository(players),
-        liveArea,
+        currentArea,
         fixedClock,
     )
 
@@ -99,7 +104,17 @@ class GetGameStateUseCaseTest {
         displayName: String,
         confirmed: Boolean = false,
         live: LiveLocation? = null,
-    ) = PlayerReading(UUID.randomUUID(), displayName, confirmed, live)
+    ) = PlayerReading(
+        UUID.randomUUID(),
+        displayName,
+        if (confirmed) {
+            com.github.gaomond.topo.domain.model
+                .ConfirmedLocation(Coordinate(35.59, 139.60), now)
+        } else {
+            null
+        },
+        live,
+    )
 
     @Test
     fun test_getGameState_withExistingGame_returnsStatusPlayerCountAndPlayers() {
@@ -152,43 +167,43 @@ class GetGameStateUseCaseTest {
     }
 
     @Test
-    fun `test_getState_ACTIVEかつlive3点以上_currentAreaを載せる`() {
+    fun `test_getState_ACTIVEかつ採用位置3人分以上_currentAreaを載せる`() {
         val area = CurrentArea(sqm = 1234.5, hull = listOf(Coordinate(35.0, 139.0)))
-        val liveArea = SpyLiveAreaQuery(area)
+        val currentArea = SpyCurrentAreaQuery(area)
         val state =
             useCase(
                 GameSummary(GameStatus.ACTIVE, 3, creatorPlayerId = null, areaThreshold = 2_000_000.0),
-                liveArea = liveArea,
+                currentArea = currentArea,
             ).getState(GetGameStateInput(gameId))
 
         assertEquals(area, state.currentArea)
-        assertEquals(1, liveArea.callCount)
+        assertEquals(1, currentArea.callCount)
     }
 
     @Test
     fun `test_getState_WAITING_currentAreaはnullで空間ポート未呼び出し`() {
-        val liveArea = SpyLiveAreaQuery(CurrentArea(1.0, emptyList()))
+        val currentArea = SpyCurrentAreaQuery(CurrentArea(1.0, emptyList()))
         val state =
             useCase(
                 GameSummary(GameStatus.WAITING, 3, creatorPlayerId = null, areaThreshold = 2_000_000.0),
-                liveArea = liveArea,
+                currentArea = currentArea,
             ).getState(GetGameStateInput(gameId))
 
         assertNull(state.currentArea)
-        assertEquals(0, liveArea.callCount, "WAITING では空間クエリを発火しない")
+        assertEquals(0, currentArea.callCount, "WAITING では空間クエリを発火しない")
     }
 
     @Test
     fun `test_getState_COMPLETED_currentAreaはnull`() {
-        val liveArea = SpyLiveAreaQuery(CurrentArea(1.0, emptyList()))
+        val currentArea = SpyCurrentAreaQuery(CurrentArea(1.0, emptyList()))
         val state =
             useCase(
                 GameSummary(GameStatus.COMPLETED, 3, creatorPlayerId = null, areaThreshold = 2_000_000.0),
-                liveArea = liveArea,
+                currentArea = currentArea,
             ).getState(GetGameStateInput(gameId))
 
         assertNull(state.currentArea)
-        assertEquals(0, liveArea.callCount)
+        assertEquals(0, currentArea.callCount)
     }
 
     @Test
@@ -245,14 +260,55 @@ class GetGameStateUseCaseTest {
                         )
                     },
                 )
-        val live = SpyLiveAreaQuery(null)
+        val live = SpyCurrentAreaQuery(null)
         val state =
             useCase(
                 GameSummary(GameStatus.COMPLETED, 3, null, 500000.0, result),
-                liveArea = live,
+                currentArea = live,
             ).getState(GetGameStateInput(gameId))
         assertEquals(result, state.result)
         assertNull(state.currentArea)
         assertEquals(0, live.callCount)
+    }
+
+    @Test
+    fun test_getState_allStatuses_preservesFixedPointWithoutUsingConfirmationForPresence() {
+        val fixed =
+            com.github.gaomond.topo.domain.model
+                .ConfirmedLocation(Coordinate(35.59, 139.60), now)
+        for (status in GameStatus.entries) {
+            val stale = LiveLocation(Coordinate(35.7, 139.8), now.minusSeconds(11))
+            val players =
+                listOf(
+                    PlayerReading(UUID.randomUUID(), "離席", fixed, stale),
+                    PlayerReading(UUID.randomUUID(), "liveなし", fixed, null),
+                    PlayerReading(UUID.randomUUID(), "未確定", null, LiveLocation(Coordinate(35.0, 139.0), now)),
+                )
+            val repository = StubPlayerRepository(players)
+            val state =
+                GetGameStateUseCase(
+                    SpyGameRepository(GameSummary(status, 3, null, 500000.0)),
+                    repository,
+                    SpyCurrentAreaQuery(null),
+                    fixedClock,
+                ).getState(GetGameStateInput(gameId))
+            assertEquals(1, repository.findCalls)
+            assertEquals(listOf(fixed, fixed, null), state.players.map { it.confirmedLocation })
+            assertEquals(listOf(true, true, false), state.players.map { it.confirmed })
+            assertEquals(listOf(false, false, true), state.players.map { it.online })
+            assertEquals(stale, state.players[0].live)
+        }
+    }
+
+    @Test
+    fun test_getState_activeNullOrZero_returnsPortValueOnceWithoutRecalculation() {
+        for (area in listOf(null, CurrentArea(0.0, listOf(Coordinate(35.68, 139.76))))) {
+            val query = SpyCurrentAreaQuery(area)
+            val state =
+                useCase(GameSummary(GameStatus.ACTIVE, 3, null, 500000.0), currentArea = query)
+                    .getState(GetGameStateInput(gameId))
+            assertEquals(area, state.currentArea)
+            assertEquals(1, query.callCount)
+        }
     }
 }

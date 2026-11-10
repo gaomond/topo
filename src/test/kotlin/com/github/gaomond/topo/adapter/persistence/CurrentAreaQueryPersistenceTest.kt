@@ -17,6 +17,7 @@ import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import java.util.UUID
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -26,7 +27,7 @@ import kotlin.test.assertTrue
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-class LiveAreaQueryPersistenceTest {
+class CurrentAreaQueryPersistenceTest {
     companion object {
         @JvmStatic
         @DynamicPropertySource
@@ -47,7 +48,7 @@ class LiveAreaQueryPersistenceTest {
     @Autowired
     private lateinit var jdbcTemplate: JdbcTemplate
 
-    private fun adapter() = LiveAreaQueryAdapter(jdbcTemplate)
+    private fun adapter() = CurrentAreaQueryAdapter(jdbcTemplate)
 
     private fun seedGame(): UUID {
         val gameId = UUID.randomUUID()
@@ -61,7 +62,7 @@ class LiveAreaQueryPersistenceTest {
         gameId: UUID,
         lat: Double,
         lng: Double,
-    ) {
+    ): UUID {
         val playerId = UUID.randomUUID()
         playerRepository.createPlayer(Player.create(playerId, gameId, "プレイヤー"))
         playerRepository.flush()
@@ -71,6 +72,7 @@ class LiveAreaQueryPersistenceTest {
             lng,
             playerId,
         )
+        return playerId
     }
 
     private fun seedIdlePlayer(gameId: UUID) {
@@ -80,14 +82,14 @@ class LiveAreaQueryPersistenceTest {
     }
 
     @Test
-    fun `test_currentLiveArea_非退化3点_正の測地面積と3頂点以上のhull`() {
+    fun `test_currentArea_非退化3点_正の測地面積と3頂点以上のhull`() {
         val gameId = seedGame()
         // 東京付近の直角三角形（約 0.01 度 ≒ 1km スケール）。
         seedLivePlayer(gameId, 35.68, 139.76)
         seedLivePlayer(gameId, 35.69, 139.76)
         seedLivePlayer(gameId, 35.68, 139.77)
 
-        val area = adapter().currentLiveArea(gameId)
+        val area = adapter().currentArea(gameId)
 
         assertTrue(area != null, "3 点以上なら非 null")
         assertTrue(area.sqm > 0.0, "非退化なら正の面積")
@@ -97,23 +99,23 @@ class LiveAreaQueryPersistenceTest {
     }
 
     @Test
-    fun `test_currentLiveArea_2点以下_null`() {
+    fun `test_currentArea_2点以下_null`() {
         val gameId = seedGame()
         seedLivePlayer(gameId, 35.68, 139.76)
         seedLivePlayer(gameId, 35.69, 139.77)
 
-        assertNull(adapter().currentLiveArea(gameId), "live 点 < 3 は null")
+        assertNull(adapter().currentArea(gameId), "live 点 < 3 は null")
     }
 
     @Test
-    fun `test_currentLiveArea_一直線3点_sqm0かつ線分hull`() {
+    fun `test_currentArea_一直線3点_sqm0かつ線分hull`() {
         val gameId = seedGame()
         // 緯度を固定した共線 3 点（同一 y=35.68・floating point でも厳密に一直線）→ 凸包は LineString、面積 0。
         seedLivePlayer(gameId, 35.68, 139.76)
         seedLivePlayer(gameId, 35.68, 139.77)
         seedLivePlayer(gameId, 35.68, 139.78)
 
-        val area = adapter().currentLiveArea(gameId)
+        val area = adapter().currentArea(gameId)
 
         assertTrue(area != null, "3 点あれば退化でも非 null（未計測とは区別）")
         assertEquals(0.0, area.sqm, "一直線は面積ゼロ")
@@ -121,7 +123,7 @@ class LiveAreaQueryPersistenceTest {
     }
 
     @Test
-    fun `test_currentLiveArea_live未送信を除外し全live参加者を対象`() {
+    fun `test_currentArea_live未送信を除外し全live参加者を対象`() {
         val gameId = seedGame()
         seedLivePlayer(gameId, 35.68, 139.76)
         seedLivePlayer(gameId, 35.69, 139.76)
@@ -129,34 +131,139 @@ class LiveAreaQueryPersistenceTest {
         // 未送信は対象外（在室判定では絞り込まない）。
         seedIdlePlayer(gameId)
 
-        val area = adapter().currentLiveArea(gameId)
+        val area = adapter().currentArea(gameId)
 
         assertTrue(area != null, "live を持つ 3 人が対象で非 null")
         assertTrue(area.sqm > 0.0)
     }
 
     @Test
-    fun `test_currentLiveArea_2点live_1点未送信_null`() {
+    fun `test_currentArea_2点live_1点未送信_null`() {
         val gameId = seedGame()
         seedLivePlayer(gameId, 35.68, 139.76)
         seedLivePlayer(gameId, 35.69, 139.77)
         // 未送信は COUNT に含まれないため live は 2 点＝ null。
         seedIdlePlayer(gameId)
 
-        assertNull(adapter().currentLiveArea(gameId), "未送信を除くと 2 点で null")
+        assertNull(adapter().currentArea(gameId), "未送信を除くと 2 点で null")
     }
 
     @Test
-    fun `test_currentLiveArea_hullが閉環かつ頂点順が妥当`() {
+    fun `test_currentArea_hullが閉環かつ頂点順が妥当`() {
         val gameId = seedGame()
         seedLivePlayer(gameId, 35.68, 139.76)
         seedLivePlayer(gameId, 35.69, 139.76)
         seedLivePlayer(gameId, 35.68, 139.77)
 
-        val hull = adapter().currentLiveArea(gameId)?.hull
+        val hull = adapter().currentArea(gameId)?.hull
         assertTrue(hull != null && hull.size >= 4, "多角形の頂点列は閉環のため 4 点以上（3 頂点 + 閉じ）")
         assertEquals(hull.first(), hull.last(), "閉環（先頭 = 末尾）")
         // 各頂点が投入した緯度経度レンジ内（lat/lng の取り違えがない）。
         assertTrue(hull.all { it.lat in 35.67..35.70 && it.lng in 139.75..139.78 })
+    }
+
+    private fun fixPlayer(
+        playerId: UUID,
+        lat: Double,
+        lng: Double,
+    ) {
+        jdbcTemplate.update(
+            "UPDATE player SET fixed_geom = ST_SetSRID(ST_MakePoint(?, ?), 4326), confirmed_at = now() WHERE id = ?",
+            lng,
+            lat,
+            playerId,
+        )
+    }
+
+    @Test
+    fun test_currentArea_confirmedPointsWithRemoteLive_usesOnlyFixedTriangle() {
+        val game = seedGame()
+        val points = listOf(35.68 to 139.76, 35.69 to 139.76, 35.68 to 139.77)
+        points.forEach { (lat, lng) -> fixPlayer(seedLivePlayer(game, 40.0, 145.0), lat, lng) }
+        val area = requireNotNull(adapter().currentArea(game))
+        assertEquals(
+            points.toSet(),
+            area.hull
+                .dropLast(1)
+                .map { it.lat to it.lng }
+                .toSet(),
+        )
+        assertEquals(area.hull.first(), area.hull.last())
+        assertTrue(area.sqm in 490_000.0..510_000.0)
+    }
+
+    @Test
+    fun test_currentArea_mixedFixedAndLive_onlyUnconfirmedMovementChangesHull() {
+        val game = seedGame()
+        val fixed = seedLivePlayer(game, 40.0, 145.0)
+        fixPlayer(fixed, 35.68, 139.76)
+        seedLivePlayer(game, 35.69, 139.76)
+        val mobile = seedLivePlayer(game, 35.68, 139.77)
+        val before = adapter().currentArea(game)
+        jdbcTemplate.update("UPDATE player SET live_lat=42, live_lng=146 WHERE id=?", fixed)
+        assertEquals(before, adapter().currentArea(game))
+        jdbcTemplate.update("UPDATE player SET live_lng=139.78 WHERE id=?", mobile)
+        val after = requireNotNull(adapter().currentArea(game))
+        assertTrue(after != before)
+        assertTrue(after.hull.any { it.lat == 35.68 && it.lng == 139.76 })
+    }
+
+    @Test
+    fun test_currentArea_fixedWithoutLiveAndStaleLive_includesBothAndExcludesIdle() {
+        val game = seedGame()
+        val fixed = seedLivePlayer(game, 40.0, 145.0)
+        fixPlayer(fixed, 35.68, 139.76)
+        jdbcTemplate.update("UPDATE player SET live_lat=null, live_lng=null, live_at=null WHERE id=?", fixed)
+        val stale = seedLivePlayer(game, 35.69, 139.76)
+        jdbcTemplate.update("UPDATE player SET live_at=now()-interval '1 hour' WHERE id=?", stale)
+        seedLivePlayer(game, 35.68, 139.77)
+        seedIdlePlayer(game)
+        assertTrue(requireNotNull(adapter().currentArea(game)).sqm > 0)
+    }
+
+    @Test
+    fun test_currentArea_zeroOneTwoPlayers_returnsNullWithoutCountingBothSources() {
+        val game = seedGame()
+        assertNull(adapter().currentArea(game))
+        val fixed = seedLivePlayer(game, 40.0, 145.0)
+        fixPlayer(fixed, 35.68, 139.76)
+        assertNull(adapter().currentArea(game))
+        seedLivePlayer(game, 35.69, 139.76)
+        assertNull(adapter().currentArea(game))
+    }
+
+    @Test
+    fun test_currentArea_threeIdenticalPlayers_countsPeopleAndReturnsZeroPoint() {
+        val game = seedGame()
+        repeat(3) { seedLivePlayer(game, 35.68, 139.76) }
+        val area = requireNotNull(adapter().currentArea(game))
+        assertEquals(0.0, area.sqm)
+        assertEquals(
+            listOf(
+                com.github.gaomond.topo.domain.model
+                    .Coordinate(35.68, 139.76),
+            ),
+            area.hull,
+        )
+    }
+
+    @Test
+    fun test_currentArea_partialConfirmationWithOrWithoutLive_failsEvenBeforeThreePoints() {
+        for (geometryOnly in listOf(true, false)) {
+            for (hasLive in listOf(true, false)) {
+                for (enoughPoints in listOf(true, false)) {
+                    val game = seedGame()
+                    val broken = seedLivePlayer(game, 40.0, 145.0)
+                    if (geometryOnly) {
+                        jdbcTemplate.update("UPDATE player SET fixed_geom=ST_SetSRID(ST_MakePoint(139.76,35.68),4326) WHERE id=?", broken)
+                    } else {
+                        jdbcTemplate.update("UPDATE player SET confirmed_at=now() WHERE id=?", broken)
+                    }
+                    if (!hasLive) jdbcTemplate.update("UPDATE player SET live_lat=null, live_lng=null, live_at=null WHERE id=?", broken)
+                    if (enoughPoints) repeat(3) { seedLivePlayer(game, 35.68, 139.76) }
+                    assertFailsWith<IllegalStateException> { adapter().currentArea(game) }
+                }
+            }
+        }
     }
 }

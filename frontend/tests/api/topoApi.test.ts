@@ -149,7 +149,14 @@ describe("createTopoApi", () => {
       status: "WAITING",
       playerCount: 3,
       players: [
-        { playerId: "p-1", displayName: "たろう", confirmed: false, live: null, online: false },
+        {
+          playerId: "p-1",
+          displayName: "たろう",
+          confirmed: false,
+          confirmedLocation: null,
+          live: null,
+          online: false,
+        },
       ],
       areaThreshold: 2_000_000,
       currentArea: null,

@@ -3,6 +3,7 @@ package com.github.gaomond.topo.adapter.persistence
 import com.github.gaomond.topo.adapter.persistence.jpa.GameJpaRepository
 import com.github.gaomond.topo.adapter.persistence.jpa.PlayerJpaRepository
 import com.github.gaomond.topo.domain.model.AreaPreset
+import com.github.gaomond.topo.domain.model.ConfirmedLocation
 import com.github.gaomond.topo.domain.model.Coordinate
 import com.github.gaomond.topo.domain.model.Game
 import com.github.gaomond.topo.domain.model.GameStatus
@@ -12,6 +13,7 @@ import com.github.gaomond.topo.support.PostgisTestContainer
 import jakarta.persistence.EntityManager
 import jakarta.persistence.PersistenceContext
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase
@@ -26,7 +28,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /** ゲームとプレイヤーの一致条件付き更新、所属不一致時の未更新、記録時刻の反映を検証する。 */
-@DataJpaTest
+@DataJpaTest(properties = ["spring.jpa.properties.hibernate.generate_statistics=true"])
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 class LiveLocationPersistenceTest {
     companion object {
@@ -158,5 +160,45 @@ class LiveLocationPersistenceTest {
                 playerId,
             )
         assertEquals(at, storedAt?.toInstant())
+    }
+
+    @Test
+    fun test_findByGameId_multipleSavedPoints_preservesOrderAndFixedValueAfterLiveUpdate() {
+        val gameId = seedGame()
+        val ids = List(3) { seedPlayer(gameId) }
+        val at = Instant.parse("2026-11-09T12:00:00Z")
+        ids.forEachIndexed { index, id ->
+            jdbcTemplate.update("update player set joined_at = ? where id = ?", java.sql.Timestamp.from(at.plusSeconds(index.toLong())), id)
+        }
+        val fixed = ConfirmedLocation(Coordinate(35.59, 139.60), at)
+        playerRepository.confirmLocation(gameId, ids[0], fixed)
+        playerRepository.confirmLocation(gameId, ids[1], ConfirmedLocation(Coordinate(35.591, 139.601), at.plusSeconds(1)))
+        playerRepository.updateLiveLocation(gameId, ids[0], Coordinate(36.0, 140.0), at.plusSeconds(20))
+        entityManager.clear()
+        val statistics = entityManager.entityManagerFactory.unwrap(org.hibernate.SessionFactory::class.java).statistics
+        val previousStatements = statistics.prepareStatementCount
+        val readings = playerRepository.findByGameId(gameId)
+        assertEquals(1L, statistics.prepareStatementCount - previousStatements)
+        assertEquals(ids, readings.map { it.playerId })
+        assertEquals(listOf(true, true, false), readings.map { it.confirmed })
+        assertEquals(fixed, readings[0].confirmedLocation)
+        assertEquals(Coordinate(36.0, 140.0), readings[0].live?.coordinate)
+        assertEquals(Coordinate(35.591, 139.601), readings[1].confirmedLocation?.coordinate)
+        assertNull(readings[1].live)
+        assertNull(readings[2].confirmedLocation)
+        playerRepository.updateLiveLocation(gameId, ids[0], Coordinate(37.0, 141.0), at.plusSeconds(40))
+        assertEquals(fixed, playerRepository.findByGameId(gameId)[0].confirmedLocation)
+    }
+
+    @Test
+    fun test_findByGameId_partialConfirmation_rejectsBothKindsOfMissingData() {
+        for (assignment in listOf("confirmed_at = now()", "fixed_geom = ST_SetSRID(ST_MakePoint(139.6,35.59),4326)")) {
+            val gameId = seedGame()
+            val id = seedPlayer(gameId)
+            jdbcTemplate.update("update player set $assignment where id = ?", id)
+            entityManager.clear()
+            val failure = assertThrows<org.springframework.dao.InvalidDataAccessApiUsageException> { playerRepository.findByGameId(gameId) }
+            assertTrue(failure.mostSpecificCause is IllegalStateException)
+        }
     }
 }

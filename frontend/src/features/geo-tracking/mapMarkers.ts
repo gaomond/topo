@@ -22,6 +22,8 @@ export const selfIcon = L.icon({
 
 // 離席（online=false）マーカーの不透明度。在室は 1.0（Marker の opacity prop で適用）。
 export const OFFLINE_OPACITY = 0.45;
+export const CONFIRMED_LIVE_OPACITY = 0.4;
+export const CONFIRMED_Z_INDEX_OFFSET = 10000;
 
 // 凸包ポリゴン（面積成立の形）の塗り＋輪郭スタイル。控えめな塗りで、上に重なる友達ドットが読める透過度にする。
 export const HULL_FILL_STYLE = {
@@ -68,9 +70,15 @@ export function liveMarkerIcon(online: boolean, displayName: string): L.DivIcon 
   });
 }
 
-export const confirmedIcon = L.divIcon({
-  className: "confirmed-marker",
-  html: '<span style="display:block;width:26px;height:26px;border-radius:50%;background:#15803d;border:3px solid white;color:white;text-align:center;line-height:20px;font-weight:bold;box-shadow:0 1px 5px #333">✓</span>',
-  iconSize: [26, 26],
-  iconAnchor: [13, 13],
-});
+export function confirmedMarkerIcon(displayName: string): L.DivIcon {
+  return L.divIcon({
+    className: "confirmed-marker",
+    html:
+      '<span style="display:block;width:26px;height:26px;border-radius:50%;background:#15803d;border:3px solid white;color:white;text-align:center;line-height:20px;font-weight:bold;box-shadow:0 1px 5px #333">✓</span>' +
+      '<span class="confirmed-marker__label" style="position:absolute;top:28px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:12px;color:#14532d;background:white;padding:1px 4px;border-radius:3px;font-weight:bold">' +
+      escapeHtml(displayName) +
+      "</span>",
+    iconSize: [26, 26],
+    iconAnchor: [13, 13],
+  });
+}

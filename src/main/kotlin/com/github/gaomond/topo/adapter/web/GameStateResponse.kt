@@ -1,5 +1,6 @@
 package com.github.gaomond.topo.adapter.web
 
+import com.github.gaomond.topo.domain.model.ConfirmedLocation
 import com.github.gaomond.topo.domain.model.CurrentArea
 import com.github.gaomond.topo.domain.model.LiveLocation
 import com.github.gaomond.topo.domain.model.PlayerSnapshot
@@ -21,7 +22,7 @@ data class GameStateResponse(
     // 作成時に確定する面積閾値（m²）。
     @field:Schema(description = "作成時に確定する面積閾値（m²）")
     val areaThreshold: Double,
-    // ACTIVE 以外、ライブ座標 3 点未満、計算結果が空の場合は null。
+    // ACTIVE以外、または採用位置が3人分未満の場合はnull。
     val currentArea: CurrentAreaPayload?,
     val result: GameResultPayload? = null,
 ) {
@@ -40,12 +41,13 @@ data class GameStateResponse(
     }
 }
 
-@Schema(requiredProperties = ["playerId", "displayName", "confirmed", "live", "online"])
+@Schema(requiredProperties = ["playerId", "displayName", "confirmed", "confirmedLocation", "live", "online"])
 data class PlayerPayload(
     @field:Schema(format = "uuid")
     val playerId: String,
     val displayName: String,
     val confirmed: Boolean,
+    val confirmedLocation: ConfirmedLocationPayload?,
     // 未送信、または座標・記録時刻が欠けている場合は null。
     val live: LiveLocationPayload?,
     // 最新ライブ位置の記録時刻から 10 秒以内なら在室。
@@ -58,9 +60,26 @@ data class PlayerPayload(
                 playerId = snapshot.playerId.toString(),
                 displayName = snapshot.displayName,
                 confirmed = snapshot.confirmed,
+                confirmedLocation = snapshot.confirmedLocation?.let(ConfirmedLocationPayload::from),
                 live = snapshot.live?.let(LiveLocationPayload::from),
                 online = snapshot.online,
             )
+    }
+}
+
+/** 保存された確定座標と確定時刻。ライブ位置からは補完しない。 */
+@Schema(requiredProperties = ["lat", "lng", "at"])
+data class ConfirmedLocationPayload(
+    @field:Schema(minimum = "-90", maximum = "90", description = "WGS84の緯度")
+    val lat: Double,
+    @field:Schema(minimum = "-180", maximum = "180", description = "WGS84の経度")
+    val lng: Double,
+    @field:Schema(format = "date-time", description = "ISO-8601のUTC表記（末尾Z）")
+    val at: String,
+) {
+    companion object {
+        fun from(location: ConfirmedLocation): ConfirmedLocationPayload =
+            ConfirmedLocationPayload(location.coordinate.lat, location.coordinate.lng, location.at.toString())
     }
 }
 

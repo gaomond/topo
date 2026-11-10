@@ -4,8 +4,8 @@ import com.github.gaomond.topo.domain.exception.GameNotFoundException
 import com.github.gaomond.topo.domain.model.GameStatus
 import com.github.gaomond.topo.domain.model.PlayerSnapshot
 import com.github.gaomond.topo.domain.model.Presence
+import com.github.gaomond.topo.domain.port.CurrentAreaQueryPort
 import com.github.gaomond.topo.domain.port.GameRepositoryPort
-import com.github.gaomond.topo.domain.port.LiveAreaQueryPort
 import com.github.gaomond.topo.domain.port.PlayerRepositoryPort
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -19,7 +19,7 @@ import java.time.Clock
 class GetGameStateUseCase(
     private val gameRepository: GameRepositoryPort,
     private val playerRepository: PlayerRepositoryPort,
-    private val liveAreaQuery: LiveAreaQueryPort,
+    private val currentAreaQuery: CurrentAreaQueryPort,
     private val clock: Clock,
 ) {
     /**
@@ -40,14 +40,14 @@ class GetGameStateUseCase(
                 PlayerSnapshot(
                     playerId = reading.playerId,
                     displayName = reading.displayName,
-                    confirmed = reading.confirmed,
+                    confirmedLocation = reading.confirmedLocation,
                     live = reading.live,
                     online = Presence.isOnline(reading.live?.at, now),
                 )
             }
 
         val currentArea =
-            if (summary.status == GameStatus.ACTIVE) liveAreaQuery.currentLiveArea(gameId) else null
+            if (summary.status == GameStatus.ACTIVE) currentAreaQuery.currentArea(gameId) else null
 
         return GetGameStateResult(
             gameId = gameId,

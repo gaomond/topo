@@ -30,6 +30,13 @@ export type LiveMarker = {
   coordinate: Coordinate;
   // 在室（online=true）= 通常表示 / 離席（online=false）= グレーアウト（半透明）。
   online: boolean;
+  confirmed: boolean;
+};
+
+export type ConfirmedMarker = {
+  playerId: string;
+  displayName: string;
+  coordinate: Coordinate;
 };
 
 // 許可拒否時のエラー文言（旧 error-view.js から移植）。

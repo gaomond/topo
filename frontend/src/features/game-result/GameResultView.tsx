@@ -9,7 +9,7 @@ export function GameResultView({ result }: { result: unknown }) {
   return (
     <section
       aria-label="ゲーム結果"
-      className="flex h-dvh flex-col gap-4 overflow-auto bg-slate-50 p-4 text-slate-900"
+      className="flex h-full flex-col gap-4 overflow-auto bg-slate-50 p-4 text-slate-900"
     >
       {presentation === null ? (
         <p role="alert">結果を取得できませんでした（想定外の状態）</p>

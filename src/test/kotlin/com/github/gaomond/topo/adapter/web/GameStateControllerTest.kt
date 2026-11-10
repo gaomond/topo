@@ -44,8 +44,17 @@ class GameStateControllerTest {
                 creatorPlayerId = p1,
                 players =
                     listOf(
-                        PlayerSnapshot(p1, "たろう", confirmed = true),
-                        PlayerSnapshot(p2, "じろう", confirmed = false),
+                        PlayerSnapshot(
+                            p1,
+                            "たろう",
+                            confirmedLocation =
+                                com.github.gaomond.topo.domain.model.ConfirmedLocation(
+                                    com.github.gaomond.topo.domain.model
+                                        .Coordinate(35.59, 139.60),
+                                    java.time.Instant.parse("2026-11-09T12:00:00Z"),
+                                ),
+                        ),
+                        PlayerSnapshot(p2, "じろう", confirmedLocation = null),
                     ),
                 areaThreshold = 2_000_000.0,
             ),
@@ -76,7 +85,7 @@ class GameStateControllerTest {
                 status = GameStatus.WAITING,
                 playerCount = 3,
                 creatorPlayerId = creator,
-                players = listOf(PlayerSnapshot(creator, "たろう", confirmed = false)),
+                players = listOf(PlayerSnapshot(creator, "たろう", confirmedLocation = null)),
                 areaThreshold = 2_000_000.0,
             ),
         )
@@ -112,7 +121,7 @@ class GameStateControllerTest {
                         PlayerSnapshot(
                             p1,
                             "たろう",
-                            confirmed = false,
+                            confirmedLocation = null,
                             live = LiveLocation(Coordinate(35.68, 139.76), at),
                             online = true,
                         ),
@@ -151,7 +160,7 @@ class GameStateControllerTest {
                 status = GameStatus.ACTIVE,
                 playerCount = 3,
                 creatorPlayerId = p1,
-                players = listOf(PlayerSnapshot(p1, "たろう", confirmed = false, live = null, online = false)),
+                players = listOf(PlayerSnapshot(p1, "たろう", confirmedLocation = null, live = null, online = false)),
                 areaThreshold = 2_000_000.0,
                 currentArea = null,
             ),
@@ -175,7 +184,7 @@ class GameStateControllerTest {
                 status = GameStatus.ACTIVE,
                 playerCount = 3,
                 creatorPlayerId = p1,
-                players = listOf(PlayerSnapshot(p1, "たろう", confirmed = false)),
+                players = listOf(PlayerSnapshot(p1, "たろう", confirmedLocation = null)),
                 areaThreshold = 2_000_000.0,
                 currentArea = null,
             ),
@@ -193,7 +202,7 @@ class GameStateControllerTest {
     fun `test_getGame_resultは常にnull`() {
         val p1 = UUID.randomUUID()
         whenever(getGameStateUseCase.getState(any())).thenReturn(
-            GetGameStateResult(gameId, GameStatus.WAITING, 3, p1, listOf(PlayerSnapshot(p1, "たろう", confirmed = false)), 2_000_000.0),
+            GetGameStateResult(gameId, GameStatus.WAITING, 3, p1, listOf(PlayerSnapshot(p1, "たろう", confirmedLocation = null)), 2_000_000.0),
         )
 
         mockMvc
@@ -246,6 +255,64 @@ class GameStateControllerTest {
             jsonPath("$.result.objects[0].lat") { value(35.0) }
             jsonPath("$.result.objects[0].lng") { value(139.0) }
             jsonPath("$.result.polygon[0].lat") { value(35.0) }
+        }
+    }
+
+    @Test
+    fun test_getGame_allStatuses_returnsSavedConfirmationAndExplicitNull() {
+        val at = java.time.Instant.parse("2026-11-09T12:00:00Z")
+        val fixed =
+            com.github.gaomond.topo.domain.model
+                .ConfirmedLocation(Coordinate(35.59, 139.60), at)
+        for (gameStatus in GameStatus.entries) {
+            val id = UUID.randomUUID()
+            whenever(getGameStateUseCase.getState(any())).thenReturn(
+                GetGameStateResult(
+                    id,
+                    gameStatus,
+                    3,
+                    null,
+                    listOf(
+                        PlayerSnapshot(UUID.randomUUID(), "確定", fixed, LiveLocation(Coordinate(36.0, 140.0), at.plusSeconds(20)), false),
+                        PlayerSnapshot(UUID.randomUUID(), "未確定", null),
+                        PlayerSnapshot(UUID.randomUUID(), "liveなし", fixed),
+                    ),
+                    500000.0,
+                ),
+            )
+            val body =
+                tools.jackson.databind.json.JsonMapper().readTree(
+                    mockMvc
+                        .get("/api/games/$id")
+                        .andExpect {
+                            status { isOk() }
+                            jsonPath("$.players[0].confirmed") { value(true) }
+                            jsonPath("$.players[0].confirmedLocation.lat") { value(35.59) }
+                            jsonPath("$.players[0].confirmedLocation.lng") { value(139.60) }
+                            jsonPath("$.players[0].confirmedLocation.at") { value("2026-11-09T12:00:00Z") }
+                            jsonPath("$.players[0].live.lat") { value(36.0) }
+                            jsonPath("$.players[2].confirmedLocation.lat") { value(35.59) }
+                        }.andReturn()
+                        .response.contentAsString,
+                )
+            kotlin.test.assertTrue(body.at("/players/1").has("confirmedLocation"))
+            kotlin.test.assertTrue(body.at("/players/1/confirmedLocation").isNull)
+        }
+    }
+
+    @Test
+    fun test_getGame_degenerateCurrentArea_returnsZeroAndPointOrLineInLatLngOrder() {
+        for (hull in listOf(listOf(Coordinate(35.68, 139.76)), listOf(Coordinate(35.68, 139.76), Coordinate(35.68, 139.78)))) {
+            whenever(getGameStateUseCase.getState(any())).thenReturn(
+                GetGameStateResult(gameId, GameStatus.ACTIVE, 3, null, emptyList(), 500000.0, CurrentArea(0.0, hull)),
+            )
+            mockMvc.get("/api/games/$gameId").andExpect {
+                status { isOk() }
+                jsonPath("$.currentArea.sqm") { value(0.0) }
+                jsonPath("$.currentArea.hull.length()") { value(hull.size) }
+                jsonPath("$.currentArea.hull[0][0]") { value(35.68) }
+                jsonPath("$.currentArea.hull[0][1]") { value(139.76) }
+            }
         }
     }
 }

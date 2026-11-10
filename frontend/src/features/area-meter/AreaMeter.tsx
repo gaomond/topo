@@ -1,7 +1,7 @@
 // 面積メーター（Dumb / view・US-10）。
 //
 // props（sqm / threshold）だけで「現在面積の数値」「0〜上限を満杯とする進捗ゲージ」「上限接近の警告」
-// 「上限超過（確定不能）＋超過分」「未計測」を描き分ける。API も共有状態も知らない（Smart から props で受け取る）。
+// 「上限超過＋超過分」「未計測」を描き分ける。API も共有状態も知らない（Smart から props で受け取る）。
 // 判定・整形は純関数 areaMeter に委譲する。凸包・面積・内包の計算はしない（サーバー計算値の比較のみ）。
 //
 // 描画してはいけないもの（回帰防止）: objectCount・獲得数・正多角形スコア・regularityHint・
@@ -12,7 +12,7 @@
 import { deriveMeterState, formatArea } from "./areaMeterState";
 
 export type AreaMeterProps = {
-  // 現在の暫定凸包面積（m²・サーバー計算）。live 3点未満で形が非成立のときは null（未計測）。
+  // 現在の暫定凸包面積（m²・サーバー計算）。採用位置が3人分未満で形が非成立のときは null（未計測）。
   sqm: number | null;
   // 面積成立判定の上限（m²・作成時確定）。ゲージの満杯ライン。
   threshold: number;
@@ -62,9 +62,7 @@ export function AreaMeter({ sqm, threshold }: AreaMeterProps) {
           )}
           {state.kind === "over" && state.overflowSqm !== null && (
             <>
-              <p className="mt-1 text-xs font-semibold text-red-300">
-                上限超過（このままでは確定できません）
-              </p>
+              <p className="mt-1 text-xs font-semibold text-red-300">上限超過</p>
               <p className="text-xs text-red-200 tabular-nums">
                 超過分 {formatArea(state.overflowSqm)}
               </p>

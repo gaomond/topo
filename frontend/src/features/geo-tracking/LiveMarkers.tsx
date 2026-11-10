@@ -6,7 +6,7 @@
 
 import { Marker } from "react-leaflet";
 import type { LiveMarker } from "./geoState";
-import { liveMarkerIcon, OFFLINE_OPACITY } from "./mapMarkers";
+import { CONFIRMED_LIVE_OPACITY, liveMarkerIcon, OFFLINE_OPACITY } from "./mapMarkers";
 
 export type LiveMarkersProps = {
   // 描くべき友達ドットだけを含む配列（自分除外・live=null 除外済み）。
@@ -21,8 +21,8 @@ export function LiveMarkers({ markers }: LiveMarkersProps) {
           key={marker.playerId}
           position={[marker.coordinate.lat, marker.coordinate.lng]}
           icon={liveMarkerIcon(marker.online, marker.displayName)}
-          // 離席は半透明（グレーアウト）。凸包（面積）に離席者の最終点を含む挙動と地図の見た目を一致させる。
-          opacity={marker.online ? 1 : OFFLINE_OPACITY}
+          // 確定後は補助表示とし、離席と不透明度を乗算しない。
+          opacity={marker.confirmed ? CONFIRMED_LIVE_OPACITY : marker.online ? 1 : OFFLINE_OPACITY}
         />
       ))}
     </>

@@ -82,7 +82,16 @@ interface PlayerJpaRepository :
     @Query("select count(player) from PlayerRecord player where player.gameId = :gameId")
     fun countRecordsByGameId(gameId: UUID): Long
 
-    fun findRecordsByGameIdOrderByJoinedAtAsc(gameId: UUID): List<PlayerRecord>
+    @Query(
+        value = """
+            select id, display_name as "displayName", live_lat as "liveLat", live_lng as "liveLng",
+                   live_at as "liveAt", ST_Y(fixed_geom) as "fixedLat", ST_X(fixed_geom) as "fixedLng",
+                   confirmed_at as "confirmedAt"
+            from player where game_id = :gameId order by joined_at asc
+        """,
+        nativeQuery = true,
+    )
+    fun findReadingsByGameId(gameId: UUID): List<PlayerReadingRecord>
 
     @Modifying
     @Query(
@@ -115,16 +124,25 @@ interface PlayerJpaRepository :
 
     @Transactional(readOnly = true)
     override fun findByGameId(gameId: UUID): List<PlayerReading> =
-        findRecordsByGameIdOrderByJoinedAtAsc(gameId).map { record ->
+        findReadingsByGameId(gameId).map { record ->
             PlayerReading(
                 playerId = record.id,
                 displayName = record.displayName ?: "",
-                confirmed = record.confirmedAt != null,
+                confirmedLocation = record.toConfirmedLocation(),
                 live = record.toLiveLocation(),
             )
         }
 
-    private fun PlayerRecord.toLiveLocation(): LiveLocation? {
+    private fun PlayerReadingRecord.toConfirmedLocation(): ConfirmedLocation? {
+        val lat = fixedLat
+        val lng = fixedLng
+        val at = confirmedAt
+        if (lat == null && lng == null && at == null) return null
+        check(lat != null && lng != null && at != null) { "保存済みの確定記録が不完全です: playerId=$id" }
+        return ConfirmedLocation(Coordinate(lat, lng), at)
+    }
+
+    private fun PlayerReadingRecord.toLiveLocation(): LiveLocation? {
         val lat = liveLat
         val lng = liveLng
         val at = liveAt
@@ -139,4 +157,15 @@ interface PlayerJpaRepository :
 interface FixedCoordinateRecord {
     val lat: Double?
     val lng: Double?
+}
+
+interface PlayerReadingRecord {
+    val id: UUID
+    val displayName: String?
+    val liveLat: Double?
+    val liveLng: Double?
+    val liveAt: Instant?
+    val fixedLat: Double?
+    val fixedLng: Double?
+    val confirmedAt: Instant?
 }

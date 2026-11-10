@@ -49,7 +49,7 @@ export type GameStateResponse = {
   players: PlayerPayload[];
   // 面積成立判定の上限（m²）。作成時確定の静的値。面積メーターの満杯ライン（US-10）。
   areaThreshold: number;
-  // live 位置の暫定凸包（ACTIVE かつ live 点 3 点以上のときのみ非 null・US-08）。
+  // 確定位置優先の現在凸包（ACTIVEかつ採用位置が3人分以上で非null・US-20）。
   currentArea: CurrentAreaPayload | null;
   // 完了前はnull、完了後は保存済みの確定結果。
   result: GameResultPayload | null;
@@ -71,11 +71,14 @@ export type PlayerPayload = {
   playerId: string;
   displayName: string;
   confirmed: boolean;
+  confirmedLocation: ConfirmedLocationPayload | null;
   // 最新ライブ位置（未送信は null・US-08）。
   live: LiveLocationPayload | null;
   // live_at の鮮度（TTL 内）による在室判定（サーバー計算・US-08）。
   online: boolean;
 };
+
+export type ConfirmedLocationPayload = { lat: number; lng: number; at: string };
 
 /** ライブ位置（PlayerPayload の構成要素・US-08）。at は ISO-8601 / Z。 */
 export type LiveLocationPayload = {

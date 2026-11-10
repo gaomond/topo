@@ -1,12 +1,17 @@
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "@/App";
+import { topoApi } from "@/api/topoApi";
 
-// ルーティングの結線を検証する。両コンテナとも既定 API（実 fetch）を使うため、ここでは
-// API に依存せず初期描画（読み込み中 status）でルートに乗っていることのみを確認する。
-// 画面遷移・状態表示の詳細は各コンテナのテスト（API 注入）で検証する。
+// 作成画面は読込中も案内を表示し、ゲームは待機状態が確認できるまで表示しない。
 describe("App routing", () => {
+  beforeEach(() => {
+    vi.spyOn(topoApi, "fetchConfig").mockImplementation(() => new Promise(() => {}));
+    vi.spyOn(topoApi, "getGameState").mockImplementation(() => new Promise(() => {}));
+  });
+  afterEach(() => vi.restoreAllMocks());
   it("test_route_root_rendersCreateScreen", async () => {
     render(
       <MemoryRouter initialEntries={["/"]}>
@@ -17,6 +22,9 @@ describe("App routing", () => {
     await waitFor(() => {
       expect(screen.getByRole("status")).toBeInTheDocument();
     });
+    await userEvent.click(screen.getByRole("button", { name: "ライセンス・データ出典" }));
+    expect(screen.getByRole("dialog", { name: "ライセンス・データ出典" })).toBeInTheDocument();
+    expect(topoApi.fetchConfig).toHaveBeenCalledTimes(1);
   });
 
   it("test_route_gamePath_rendersWaitingRoomRoute", async () => {
@@ -29,5 +37,9 @@ describe("App routing", () => {
     await waitFor(() => {
       expect(screen.getByRole("status")).toHaveTextContent("読み込み中");
     });
+    expect(
+      screen.queryByRole("button", { name: "ライセンス・データ出典" }),
+    ).not.toBeInTheDocument();
+    expect(topoApi.getGameState).toHaveBeenCalledTimes(1);
   });
 });

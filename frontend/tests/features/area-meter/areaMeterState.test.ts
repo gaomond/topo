@@ -14,6 +14,10 @@ describe("areaMeter", () => {
     expect(s.overflowSqm).toBeNull();
   });
 
+  it("test_deriveMeterState_justBelow85Percent_returnsNormal", () => {
+    expect(deriveMeterState(THRESHOLD * 0.85 - 1, THRESHOLD).kind).toBe("normal");
+  });
+
   it("test_deriveMeterState_nearThreshold_returnsWarning", () => {
     // 上限に接近（>= threshold*WARNING_RATIO かつ <= threshold）→ 警告。
     const s = deriveMeterState(THRESHOLD * WARNING_RATIO, THRESHOLD);
@@ -35,7 +39,7 @@ describe("areaMeter", () => {
   });
 
   it("test_deriveMeterState_null_returnsUnmeasured", () => {
-    // live 3点未満で形が非成立。0% にしない（未計測）。
+    // 採用位置が3人分未満で形が非成立。0% にしない（未計測）。
     const s = deriveMeterState(null, THRESHOLD);
     expect(s.kind).toBe("unmeasured");
   });

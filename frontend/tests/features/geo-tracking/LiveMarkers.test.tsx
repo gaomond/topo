@@ -20,6 +20,7 @@ function marker(overrides: Partial<LiveMarker> = {}): LiveMarker {
     displayName: "アリス",
     coordinate: { lat: 35.0, lng: 139.0 },
     online: true,
+    confirmed: false,
     ...overrides,
   };
 }

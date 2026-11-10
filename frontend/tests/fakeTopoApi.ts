@@ -75,6 +75,7 @@ export function player(overrides: Partial<PlayerPayload> = {}): PlayerPayload {
     playerId: "player-1",
     displayName: "プレイヤー",
     confirmed: false,
+    confirmedLocation: null,
     live: null,
     online: false,
     ...overrides,

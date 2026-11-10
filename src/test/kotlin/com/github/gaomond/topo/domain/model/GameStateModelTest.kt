@@ -29,14 +29,25 @@ class GameStateModelTest {
 
     @Test
     fun test_playerReading_allowsNullLive() {
-        val reading = PlayerReading(UUID.randomUUID(), "たろう", confirmed = false, live = null)
+        val reading = PlayerReading(UUID.randomUUID(), "たろう", confirmedLocation = null, live = null)
         assertNull(reading.live)
     }
 
     @Test
     fun test_playerSnapshot_defaultsLiveNullAndOfflineWhenOmitted() {
-        val snapshot = PlayerSnapshot(UUID.randomUUID(), "たろう", confirmed = false)
+        val snapshot = PlayerSnapshot(UUID.randomUUID(), "たろう", confirmedLocation = null)
         assertNull(snapshot.live)
         assertEquals(false, snapshot.online)
+    }
+
+    @Test
+    fun test_playerReading_savedConfirmation_derivesFlagWithoutLive() {
+        val fixed = ConfirmedLocation(Coordinate(35.59, 139.60), Instant.parse("2026-11-09T12:00:00Z"))
+        val reading = PlayerReading(UUID.randomUUID(), "確定", confirmedLocation = fixed, live = null)
+        val snapshot = PlayerSnapshot(reading.playerId, reading.displayName, confirmedLocation = fixed)
+        assertEquals(true, reading.confirmed)
+        assertEquals(fixed, snapshot.confirmedLocation)
+        assertEquals(true, snapshot.confirmed)
+        assertEquals(false, PlayerSnapshot(UUID.randomUUID(), "未確定", confirmedLocation = null).confirmed)
     }
 }

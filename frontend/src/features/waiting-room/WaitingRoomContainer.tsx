@@ -8,7 +8,7 @@
 // ポーリング（1.5）は useGameState（SWR）で実現し、参加者の増減を自動反映する。
 // API を呼ぶのは Smart のみ。api / clipboard / origin はテスト用に注入可能。
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ApiError, type TopoApi, topoApi } from "@/api/topoApi";
 import type { GameResultPayload } from "@/api/types";
@@ -25,6 +25,9 @@ import type { Participant } from "./WaitingRoomView";
 import { WaitingRoomView } from "./WaitingRoomView";
 
 export type WaitingRoomContainerProps = {
+  licenseOpen?: boolean;
+  onBlockingDialogChange?: (open: boolean) => void;
+  onLicenseEntryVisibilityChange?: (visible: boolean) => void;
   // テスト用に API・クリップボード・origin・ポーリング間隔を注入できる（既定はブラウザ実体）。
   api?: TopoApi;
   clipboard?: Pick<Clipboard, "writeText">;
@@ -60,6 +63,9 @@ function WaitingRoomSession({
   refreshIntervalMs = POLL_INTERVAL_MS,
   geoDeps,
   getWalkthroughStorage,
+  licenseOpen,
+  onBlockingDialogChange,
+  onLicenseEntryVisibilityChange,
   gameId,
   playerId,
 }: WaitingRoomContainerProps & { gameId: string | undefined; playerId: string }) {
@@ -89,6 +95,16 @@ function WaitingRoomSession({
       setCompletion((previous) => previous ?? { result: state.result });
     }
   }, [state]);
+
+  const waitingRoomVisible =
+    completion === null &&
+    state?.status === "WAITING" &&
+    state.players.some((player) => player.playerId === playerId) &&
+    !(error instanceof ApiError && error.status === 404);
+  useLayoutEffect(() => {
+    onLicenseEntryVisibilityChange?.(waitingRoomVisible);
+    return () => onLicenseEntryVisibilityChange?.(false);
+  }, [onLicenseEntryVisibilityChange, waitingRoomVisible]);
 
   const inviteUrl = gameId ? buildInviteUrl(origin, gameId) : "";
 
@@ -195,6 +211,8 @@ function WaitingRoomSession({
         areaThreshold={state.areaThreshold}
         onResult={showResult}
         getWalkthroughStorage={getWalkthroughStorage}
+        licenseOpen={licenseOpen}
+        onBlockingDialogChange={onBlockingDialogChange}
       />
     );
   }

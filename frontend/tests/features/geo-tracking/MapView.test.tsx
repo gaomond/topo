@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import L from "leaflet";
+import { describe, expect, it, vi } from "vitest";
 import type { LiveMarker } from "@/features/geo-tracking/geoState";
 import { MapView } from "@/features/geo-tracking/MapView";
 
@@ -13,6 +14,7 @@ function friend(overrides: Partial<LiveMarker> = {}): LiveMarker {
     displayName: "ボブ",
     coordinate: { lat: 35.1, lng: 139.1 },
     online: true,
+    confirmed: false,
     ...overrides,
   };
 }
@@ -75,5 +77,59 @@ describe("MapView", () => {
   it("test_render_onOverviewあり_全体表示ボタンが地図上に出る", () => {
     render(<MapView selfLocation={null} onOverview={() => {}} />);
     expect(screen.getByRole("button", { name: "全体表示" })).toBeInTheDocument();
+  });
+
+  it("test_render_samePointAndUnsafeName_keepsFullStrengthCheckAndNameAboveFadedLive", () => {
+    const name = "<>&\"'";
+    const { container } = render(
+      <MapView
+        selfLocation={{ lat: 35, lng: 139 }}
+        selfConfirmed
+        friends={[friend({ coordinate: { lat: 35, lng: 139 }, confirmed: true, online: false })]}
+        confirmedMarkers={[
+          { playerId: "self", displayName: name, coordinate: { lat: 35, lng: 139 } },
+        ]}
+      />,
+    );
+    const fixed = container.querySelector(".confirmed-marker") as HTMLElement;
+    const live = container.querySelector(".live-marker") as HTMLElement;
+    const self = container.querySelector("img.leaflet-marker-icon") as HTMLElement;
+    expect(fixed.textContent).toContain(name);
+    expect(fixed.querySelector("img")).toBeNull();
+    expect(Number(fixed.style.opacity || 1)).toBe(1);
+    expect(Number(live.style.opacity)).toBe(0.4);
+    expect(Number(self.style.opacity)).toBe(0.4);
+    expect(Number(fixed.style.zIndex)).toBeGreaterThan(Number(live.style.zIndex));
+    expect(Number(fixed.style.zIndex)).toBeGreaterThan(Number(self.style.zIndex));
+  });
+
+  it("test_overview_fixedPointWithoutLive_includesSavedCoordinateInBounds", () => {
+    const fit = vi.spyOn(L.Map.prototype, "fitBounds");
+    try {
+      const { rerender } = render(
+        <MapView
+          selfLocation={null}
+          confirmedMarkers={[
+            { playerId: "other", displayName: "保存点", coordinate: { lat: 35.59, lng: 139.6 } },
+          ]}
+          overviewNonce={0}
+        />,
+      );
+      const bounds = fit.mock.calls.at(-1)?.[0] as L.LatLngBounds;
+      expect(bounds.contains([35.59, 139.6])).toBe(true);
+      const count = fit.mock.calls.length;
+      rerender(
+        <MapView
+          selfLocation={null}
+          confirmedMarkers={[
+            { playerId: "other", displayName: "保存点", coordinate: { lat: 35.59, lng: 139.6 } },
+          ]}
+          overviewNonce={1}
+        />,
+      );
+      expect(fit.mock.calls.length).toBe(count + 1);
+    } finally {
+      fit.mockRestore();
+    }
   });
 });

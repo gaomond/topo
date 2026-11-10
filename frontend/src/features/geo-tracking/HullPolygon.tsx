@@ -3,7 +3,7 @@
 // サーバー提供の hull（[lat,lng] 閉環）を Leaflet の Polygon として描く。頂点はサーバー計算値で、
 // クライアントでは並べ替え・重複除去・閉環補正・面積計算を一切しない（CLAUDE.md）。
 // 退化（一直線・sqm=0）のときは Polygon が面を持たず破綻し得るため、Polyline（線分）に切り替える。
-// hull=null（currentArea=null / live 点 3 点未満）のときは描かない。API・状態は知らない。
+// hull=null（currentArea=null / 採用位置が3人分未満）のときは描かない。API・状態は知らない。
 
 import { Polygon, Polyline } from "react-leaflet";
 import { HULL_FILL_STYLE, HULL_LINE_STYLE } from "./mapMarkers";
@@ -16,7 +16,7 @@ export type HullPolygonProps = {
 };
 
 export function HullPolygon({ hull, degenerate = false }: HullPolygonProps) {
-  // 形が未成立（3 点未満）／空頂点は描かない。
+  // 形が未成立（採用位置が3人分未満）／空頂点は描かない。
   if (hull === null || hull.length === 0) {
     return null;
   }
