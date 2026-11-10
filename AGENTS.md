@@ -12,7 +12,7 @@
 - **Migration:** Flyway
 - **Frontend:** React 19 + Vite + TypeScript の SPA。地図描画は Leaflet（**react-leaflet** で統合）、スタイルは Tailwind CSS v4。リポジトリ直下 `frontend/` に独立プロジェクトとして配置。静的ホスティング前提で、Spring の `resources/static` には同梱しない
 - **Build:** バックエンド = Gradle（Kotlin DSL）/ JDK 25。フロントエンド = Vite（`frontend/` の npm scripts）。両者は独立してビルドする
-- **Infra:** Docker Compose（PostgreSQL + PostGIS）
+- **Infra:** Docker Compose（Spring Boot API + PostgreSQL + PostGIS）
 - **Test:** バックエンド = JUnit 5 + Spring Boot Test（テストスライス）+ Testcontainers。フロントエンド = Vitest + @testing-library/react（jsdom）
 - **Lint / Format:** バックエンド = ktlint。フロントエンド = Biome（lint/format）。いずれも品質ゲートで強制（detekt は JDK25/Kotlin2.3 対応版が出たら追加）。フロントの pre-commit は husky + lint-staged
 - **ライブラリ方針:** 車輪の再発明をしない。react-leaflet 級に成熟・広く使われているライブラリは積極採用する（無名・小規模なものは避ける）

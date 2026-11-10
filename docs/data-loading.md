@@ -41,7 +41,7 @@ topoは、OpenStreetMap（OSM）から取得した神社の位置データを使
 
 - `osm2pgsql`（flex出力対応）を用意する。macOSでは `brew install osm2pgsql` で導入できる。
 - Geofabrikから取得したOSMファイル（例：`japan-latest.osm.pbf`）をリポジトリ直下に置く。元ファイルはGitに含めない。
-- DBを起動し、API起動時のFlywayでスキーマを作成しておく。スキーマはFlywayが管理し、データは別途 [osm2pgsql](https://osm2pgsql.org/) で投入する。
+- リポジトリのルートで `docker compose up -d --build` を実行し、API起動時のFlywayでスキーマを作成しておく。DBの接続準備はComposeが待つ。`docker compose logs -f api` でAPIの起動完了を確認してから、以下の投入へ進む。スキーマはFlywayが管理し、データは別途 [osm2pgsql](https://osm2pgsql.org/) で投入する。既存の保存ボリュームを維持し、APIの再起動・再ビルドでは地物データを再投入しない。
 
 ## ローカルへの投入
 

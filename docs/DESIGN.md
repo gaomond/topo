@@ -147,10 +147,12 @@ US-12では各プレイヤーに `confirmedLocation: {lat,lng,at} | null` を追
 
 ### レイヤー判断
 
-- **フロントエンド: React 19 + Vite + TypeScript の SPA**（SSR不要）。認証なし・SEO不要・処理はほぼクライアント側（GPS取得・Leaflet描画・ポーリング）。リポジトリ直下 `frontend/` に独立プロジェクトとして置き、Vite で静的ビルドして静的ホスティングに配置する（ホスト先は後決め）。**Spring の `resources/static` には同梱しない**（API サーバーとは別デプロイ）。
-- **APIサーバー: ステートレスなSpring Boot 1プロセス**。WSなし・確定計算もリクエスト内で完結するため、ゲートウェイ/LB/複数インスタンス不要。
-- **DB: PostgreSQL + PostGIS 1台**。Redis等のキャッシュなし。
-- **CORS**: フロント（静的ホスト）とAPI（別ドメイン）が分離するため、Spring側でCORS許可設定が必要（認証がない分これだけ）。
+- **フロントエンド: React 19 + Vite + TypeScript の SPA**（SSR不要）。認証なし・SEO不要・処理はほぼクライアント側（GPS取得・Leaflet描画・ポーリング）。リポジトリ直下 `frontend/` に独立プロジェクトとして置き、Vite で静的ビルドしてRender Static Siteに配置する。**Spring の `resources/static` には同梱しない**（API サーバーとは別デプロイ）。
+- **APIサーバー: ステートレスなSpring Boot 1プロセス**。Renderの有料Web Serviceに配置し、DockerfileからビルドしたJava実行環境でJARを起動する。WSなし・確定計算もリクエスト内で完結するため、アプリ側でゲートウェイ/LB/複数インスタンスを追加しない。
+- **DB: PostgreSQL + PostGIS 1台**。公開環境は有料Render Postgresを使い、APIから内部接続する。ローカルは既存のPostGISコンテナを維持する。Redis等のキャッシュなし。
+- **CORS**: フロントとAPIはそれぞれRender提供のHTTPS URLを使うため、Spring側でフロントの公開オリジンを許可する。
+
+公開先はRenderを採用する。ローカルのAPI・DBのDocker起動と共通Dockerfileは[US-23](story/23.md)で実装・検証・独立レビュー承認済み（2026-11-10）。Composeの標準操作でAPI＋DBを起動し、フロントのViteは維持する。APIの変更は手動再ビルドで反映する。Renderでの初回構築・データ投入・GitHub連携・具体的なプランや設定は[US-24](story/24.md)で管理し、同ストーリーは作業整理段階。公開環境へのデプロイは未実施。
 
 ### 計算の置き場所（重要な決定）
 
