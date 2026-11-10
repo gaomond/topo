@@ -6,6 +6,8 @@ topoは、仲間と街を歩き、それぞれの位置を結んだ図形で地�
 
 例えば「0.5 km²以内の範囲で、できるだけ多くの神社を囲む」というお題なら、地図と面積を見ながら、どの方向へ歩き、どこで位置を確定するかを相談します。全員が確定すると、囲んだ範囲に神社がいくつあったかがわかります。
 
+[公開版を開く](https://topo-web.onrender.com)
+
 <img src="./image.png" alt="地図上のプレイヤー位置と、それらを囲む範囲・面積の表示例" width="720">
 
 ## 制作背景
@@ -154,3 +156,4 @@ APIの起動後、[Swagger UI](http://localhost:8080/swagger-ui.html) でAPI仕�
 - [設計ドキュメント](docs/DESIGN.md)：ゲームの要件、構成、API・DBの設計
 - [ユーザーストーリー](docs/story/STORY.md)：機能ごとの仕様への入口
 - [データ投入手順](docs/data-loading.md)：OSMデータの取得・投入
+- [Renderへの公開手順](docs/render-deployment.md)：初回配置、神社データの移送、通常更新と復旧

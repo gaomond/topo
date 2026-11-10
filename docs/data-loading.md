@@ -66,18 +66,11 @@ docker compose exec -T db psql -U topo -d topo -c \
 
 ## 公開環境への投入
 
-公開環境もFlywayでスキーマを作成する。ローカルで上記の投入を行い、`game_object`のデータをダンプして公開環境へ移す。
+公開DBのスキーマはAPI起動時のFlywayで作成し、加工済み`game_object`から神社（`object_type = 'shrine'`）だけを移す。ゲーム・プレイヤー・ローカルのFlyway履歴・他種別は移さない。
 
-```bash
-# ローカルのデータを出力する（スキーマはFlywayが管理するためデータのみ）
-docker compose exec -T db pg_dump -U topo -d topo -t game_object --data-only \
-  > game_object.sql
+[`export_shrines.sql`](../tools/osm/export_shrines.sql)でCSVを書き出し、[`import_shrines.sql`](../tools/osm/import_shrines.sql)で検証後に1トランザクションで追加・更新する。名前の改行・引用符・NULLと座標・SRIDを保持し、再試行でも重複しない。CSVにない既存行は削除しない。
 
-# 公開環境へ投入する
-psql "$PROD_DATABASE_URL" -f game_object.sql
-```
-
-大きなダンプにはカスタム形式（`pg_dump -Fc` と `pg_restore`）を使う。
+`pg_dump -t game_object --data-only`は全種別を出力するため、この公開移送には使わない。ローカルの一時テーブルから全種別を再投入するSQLも公開移送とは分ける。書き出し・TLSでの投入・件数と空間検索・容量確認は[Renderへの公開手順](render-deployment.md#4-神社だけを移す)を参照する。
 
 ## 将来、対象種別を追加する場合
 
