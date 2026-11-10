@@ -53,3 +53,7 @@ OpenAPIアノテーションへ直接記載する。別の手書きJSON／YAML�
 
 Game objects are imported from OpenStreetMap. See [docs/data-loading.md](docs/data-loading.md)
 for local and production import steps.
+
+## 依存ライブラリのライセンス
+
+アプリ内の「ライセンス・データ出典」から、同梱した依存ライブラリのライセンス本文を別タブで閲覧できます。生成・配布方法と収集範囲は [ライセンス・出典表示の説明](docs/license-notices.md) を参照してください。

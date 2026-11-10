@@ -97,30 +97,33 @@ export function LicenseNotice({
           <li>
             topoのコード・文書は MIT License です。
             <span className="block">Copyright (c) 2026 gaomond</span>
-            <ExternalLink href={licenseLinks.license}>topoのLICENSE全文</ExternalLink>
+            <NewTabLink href={licenseLinks.license}>topoのLICENSE全文</NewTabLink>
           </li>
           <li>
             地図・神社データの出典：
-            <ExternalLink href={licenseLinks.osm}>© OpenStreetMap contributors</ExternalLink>
+            <NewTabLink href={licenseLinks.osm}>© OpenStreetMap contributors</NewTabLink>
             <span className="block">神社データには ODbL 1.0 が適用されます。</span>
-            <ExternalLink href={licenseLinks.odbl}>ODbL 1.0本文</ExternalLink>
+            <NewTabLink href={licenseLinks.odbl}>ODbL 1.0本文</NewTabLink>
           </li>
           <li>
-            <ExternalLink href={licenseLinks.data}>
+            <NewTabLink href={licenseLinks.data}>
               地図・神社データの出典・加工方法・利用条件
-            </ExternalLink>
+            </NewTabLink>
           </li>
           <li>
             地図画像の配信と、集計用の神社データの取得・投入は別の仕組みです。地図上にも出典を表示しています。
           </li>
-          <li>依存ライブラリには、それぞれのライセンスが適用されます。</li>
+          <li>
+            依存ライブラリには、それぞれのライセンスが適用されます。
+            <NewTabLink href={licenseLinks.dependencies}>依存ライブラリのライセンス</NewTabLink>
+          </li>
         </ul>
       </dialog>
     </div>
   );
 }
 
-function ExternalLink({ href, children }: { href: string; children: ReactNode }) {
+function NewTabLink({ href, children }: { href: string; children: ReactNode }) {
   return (
     <a
       href={href}

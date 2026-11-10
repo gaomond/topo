@@ -4,13 +4,14 @@ import { describe, expect, it, vi } from "vitest";
 import { LicenseNotice } from "@/features/license-notice/LicenseNotice";
 
 const links = [
+  "/THIRD_PARTY_LICENSES.txt",
   "https://github.com/gaomond/topo/blob/main/LICENSE",
   "https://github.com/gaomond/topo/blob/main/docs/data-loading.md",
   "https://www.openstreetmap.org/copyright",
   "https://opendatacommons.org/licenses/odbl/1-0/",
 ];
 describe("LicenseNotice", () => {
-  it("test_open_withoutGame_showsScopedNoticesAndExactExternalLinks", async () => {
+  it("test_open_withoutGame_showsScopedNoticesAndExactNewTabLinks", async () => {
     const fetch = vi.spyOn(globalThis, "fetch");
     render(<LicenseNotice>{() => <p>画面</p>}</LicenseNotice>);
     await userEvent.click(screen.getByRole("button", { name: "ライセンス・データ出典" }));
@@ -21,6 +22,9 @@ describe("LicenseNotice", () => {
     expect(dialog).toHaveTextContent("神社データには ODbL 1.0");
     expect(dialog).toHaveTextContent("依存ライブラリには、それぞれのライセンス");
     expect(dialog).toHaveTextContent("別タブ");
+    expect(
+      within(dialog).getByRole("link", { name: "依存ライブラリのライセンス" }),
+    ).toHaveAttribute("href", "/THIRD_PARTY_LICENSES.txt");
     expect(
       within(dialog)
         .getAllByRole("link")
@@ -59,7 +63,7 @@ describe("LicenseNotice", () => {
     render(<LicenseNotice>{() => <button type="button">背景</button>}</LicenseNotice>);
     await userEvent.click(screen.getByRole("button", { name: "ライセンス・データ出典" }));
     const close = screen.getByRole("button", { name: "閉じる" });
-    const last = screen.getByRole("link", { name: "地図・神社データの出典・加工方法・利用条件" });
+    const last = screen.getByRole("link", { name: "依存ライブラリのライセンス" });
     fireEvent.keyDown(close, { key: "Tab", shiftKey: true });
     expect(last).toHaveFocus();
     fireEvent.keyDown(last, { key: "Tab" });
